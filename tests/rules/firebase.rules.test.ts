@@ -83,6 +83,24 @@ describe("Firestore rules", () => {
     );
   });
 
+  it("keeps onboarding profile creation server-owned", async () => {
+    const newUserDb = testEnv.authenticatedContext("new-user").firestore();
+
+    await assertFails(
+      setDoc(doc(newUserDb, "users", "new-user"), {
+        uid: "new-user",
+        displayName: "New Educator",
+        role: "educator",
+        status: "active",
+      }),
+    );
+    await assertFails(
+      setDoc(doc(newUserDb, "userPrivate", "new-user"), {
+        email: "new@example.test",
+      }),
+    );
+  });
+
   it("prevents suspended users from creating posts", async () => {
     await seedActiveUser("suspended", "suspended");
     await assertFails(

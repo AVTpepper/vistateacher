@@ -35,15 +35,7 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if true;
-      allow create: if owns(uid)
-        && request.resource.data.uid == uid
-        && request.resource.data.role == "educator"
-        && request.resource.data.status == "active"
-        && request.resource.data.isVerified == false
-        && request.resource.data.followerCount == 0
-        && request.resource.data.followingCount == 0
-        && request.resource.data.resourceCount == 0
-        && request.resource.data.postCount == 0;
+      allow create: if false;
       allow update: if owns(uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "displayName", "displayNameLower", "photoURL", "coverImageURL",
@@ -56,11 +48,7 @@ service cloud.firestore {
 
     match /userPrivate/{uid} {
       allow read: if owns(uid) || isAdmin();
-      allow create: if owns(uid)
-        && request.resource.data.keys().hasOnly([
-          "email", "contactDetails", "privacySettings", "notificationSettings",
-          "accountDeletion", "createdAt", "updatedAt"
-        ]);
+      allow create: if false;
       allow update: if owns(uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "contactDetails", "privacySettings", "notificationSettings",

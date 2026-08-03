@@ -6,8 +6,8 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 
 | Path                   | Ownership and purpose                  | Important fields                                                                                       |
 | ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `users/{uid}`          | Public/semi-public educator profile    | normalized identity/location, professional fields, role, verification, counters, status, timestamps    |
-| `userPrivate/{uid}`    | Owner and trusted admin/server         | email, contact details, privacy/notification settings, payment reference, moderation/deletion metadata |
+| `users/{uid}`          | Server-created public educator profile | normalized identity/location, professional fields, role, verification, counters, status, timestamps    |
+| `userPrivate/{uid}`    | Server-created; owner/admin reads      | email, contact details, privacy/notification settings, payment reference, moderation/deletion metadata |
 | `subscriptions/{uid}`  | Server-owned; owner reads safe state   | plan/status, Stripe IDs, interval/end/cancellation, VistaTeacher trial state                           |
 | `usage/{uid}_{period}` | Server-owned monthly or daily counters | messages, uploads, AI lessons, period, timestamp                                                       |
 

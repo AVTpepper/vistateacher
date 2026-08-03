@@ -10,12 +10,14 @@ Pages compose domain components and do not own persistence logic. Product code b
 
 1. The browser signs in through Firebase Authentication.
 2. It sends a fresh ID token to `/api/auth/session` over HTTPS.
-3. Firebase Admin verifies the token and required email state.
+3. Firebase Admin verifies revocation, recent authentication time, and required email state.
 4. The server creates a short-lived `httpOnly`, `secure`, `sameSite=lax` session cookie.
 5. Protected layouts verify the cookie and load current account status.
 6. Logout clears the cookie through `/api/auth/logout`.
 
 Client auth state improves UX but never authorizes server operations. Administration additionally requires a server-verified `platform_admin` custom claim or trusted role.
+
+Session, logout, and onboarding mutations require the configured same-origin request. Onboarding validates a bounded educator profile with Zod, then an Admin SDK transaction creates the public profile, private preferences, and Free subscription record together. Firestore rules deny direct client creation of these identity records.
 
 ## Firebase Access
 

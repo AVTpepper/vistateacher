@@ -5,6 +5,7 @@
 The browser is untrusted. Firebase ID tokens prove authentication only after Admin verification; they do not prove current status, ownership, entitlement, quota, or admin authority. Rules constrain direct SDK traffic. Every Admin SDK operation repeats authorization and validation.
 
 - Protected routes verify HTTP-only Firebase session cookies server-side.
+- Session mutations enforce same-origin requests; session exchange requires a recently issued ID token and verified email.
 - Admin access requires a verified `platform_admin` custom claim or trusted role.
 - Suspended users cannot create content, follow, upload, message, or generate lessons.
 - Subscription, usage, notification, message-send, aggregate, and audit writes are server-owned.
@@ -13,6 +14,8 @@ The browser is untrusted. Firebase ID tokens prove authentication only after Adm
 ## Rules and Secrets
 
 Rules are deny-by-default. Public profile updates use field allowlists excluding role, status, verification, and counters. Private documents are owner/admin readable. Conversation reads require membership; lessons are owner-only; admin collections require claims.
+
+Initial profile, private preference, and subscription documents are created only by the transactional server onboarding endpoint. Clients cannot create partial identity records directly.
 
 Firebase Admin credentials, Stripe secrets, webhook secrets, and OpenAI keys remain in `server-only` modules and managed App Hosting secrets. Logs redact tokens, keys, contacts, private lesson content, and unnecessary payment payloads.
 

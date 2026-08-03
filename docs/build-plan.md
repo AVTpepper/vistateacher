@@ -15,11 +15,11 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 1 - Marketing, Authentication, and Onboarding
 
-- [ ] Build accessible marketing, pricing, legal, help, and authentication routes.
-- [ ] Implement Firebase email/password and Google authentication.
-- [ ] Implement secure server session cookies and protected routes.
-- [ ] Implement verified-email gating and password reset.
-- [ ] Implement persisted, Zod-validated educator onboarding.
+- [x] Build accessible marketing, pricing, legal, help, and authentication routes.
+- [x] Implement Firebase email/password and Google authentication.
+- [x] Implement secure server session cookies and protected routes.
+- [x] Implement verified-email gating and password reset.
+- [x] Implement persisted, Zod-validated educator onboarding.
 
 ## Phase 2 - Application Shell and Profiles
 

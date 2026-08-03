@@ -7,6 +7,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import {
+  MarketingFooter,
+  MarketingHeader,
+} from "@/components/marketing/marketing-shell";
 import { Button } from "@/components/ui/button";
 
 const features = [
@@ -39,39 +43,7 @@ const features = [
 export default function Home() {
   return (
     <div className="bg-background min-h-screen overflow-x-hidden">
-      <header className="bg-background/92 sticky top-0 z-50 border-b backdrop-blur-md">
-        <nav
-          aria-label="Main navigation"
-          className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 lg:px-8"
-        >
-          <Link
-            href="/"
-            className="text-foreground flex items-center gap-2 rounded-md font-serif text-xl"
-          >
-            <span
-              aria-hidden="true"
-              className="bg-primary text-primary-foreground grid size-9 place-items-center rounded-lg font-sans text-sm font-bold"
-            >
-              VT
-            </span>
-            VistaTeacher
-          </Link>
-          <div className="hidden items-center gap-7 text-sm font-semibold md:flex">
-            <Link className="hover:text-primary rounded-sm" href="#features">
-              Features
-            </Link>
-            <Link className="hover:text-primary rounded-sm" href="#community">
-              Community
-            </Link>
-            <Link className="hover:text-primary rounded-sm" href="#pricing">
-              Pricing
-            </Link>
-          </div>
-          <Button asChild size="sm">
-            <Link href="#pricing">Explore plans</Link>
-          </Button>
-        </nav>
-      </header>
+      <MarketingHeader />
 
       <main>
         <section className="relative isolate border-b">
@@ -93,8 +65,8 @@ export default function Home() {
               </p>
               <div className="mt-9 flex flex-wrap gap-3">
                 <Button asChild size="lg">
-                  <Link href="#community">
-                    Explore the community <ArrowRight aria-hidden="true" />
+                  <Link href="/sign-up">
+                    Join the community <ArrowRight aria-hidden="true" />
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
@@ -222,12 +194,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="bg-sidebar text-sidebar-foreground/70 border-t px-5 py-8 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <p>VistaTeacher</p>
-          <p>Professional community for educators.</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }
