@@ -1,0 +1,227 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function owns(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.role == "platform_admin";
+    }
+
+    function isActive() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == "active";
+    }
+
+    function ownsExisting(field) {
+      return signedIn() && resource.data[field] == request.auth.uid;
+    }
+
+    function ownsIncoming(field) {
+      return signedIn() && request.resource.data[field] == request.auth.uid;
+    }
+
+    function conversationMember(conversationId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+    }
+
+    match /users/{uid} {
+      allow read: if true;
+      allow create: if owns(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.role == "educator"
+        && request.resource.data.status == "active"
+        && request.resource.data.isVerified == false
+        && request.resource.data.followerCount == 0
+        && request.resource.data.followingCount == 0
+        && request.resource.data.resourceCount == 0
+        && request.resource.data.postCount == 0;
+      allow update: if owns(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "displayName", "displayNameLower", "photoURL", "coverImageURL",
+          "gradeLevel", "subjects", "country", "city", "cityLower", "school",
+          "schoolLower", "yearsOfExperience", "bio", "website", "interests",
+          "searchKeywords", "updatedAt"
+        ]);
+      allow delete: if false;
+    }
+
+    match /userPrivate/{uid} {
+      allow read: if owns(uid) || isAdmin();
+      allow create: if owns(uid)
+        && request.resource.data.keys().hasOnly([
+          "email", "contactDetails", "privacySettings", "notificationSettings",
+          "accountDeletion", "createdAt", "updatedAt"
+        ]);
+      allow update: if owns(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "contactDetails", "privacySettings", "notificationSettings",
+          "accountDeletion", "updatedAt"
+        ]);
+      allow delete: if false;
+    }
+
+    match /subscriptions/{uid} {
+      allow read: if owns(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    match /usage/{usageId} {
+      allow read: if signedIn() && usageId.matches('^' + request.auth.uid + '_.*$');
+      allow write: if false;
+    }
+
+    match /follows/{followId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /posts/{postId} {
+      allow read: if resource.data.moderationStatus == "approved" || ownsExisting("authorId") || isAdmin();
+      allow create: if isActive()
+        && ownsIncoming("authorId")
+        && request.resource.data.likeCount == 0
+        && request.resource.data.commentCount == 0
+        && request.resource.data.shareCount == 0
+        && request.resource.data.moderationStatus == "pending";
+      allow update: if isActive() && ownsExisting("authorId")
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "type", "content", "imageURLs", "tags", "visibility", "updatedAt"
+        ]);
+      allow delete: if ownsExisting("authorId") || isAdmin();
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+        allow create: if isActive()
+          && ownsIncoming("authorId")
+          && request.resource.data.moderationStatus == "pending";
+        allow update, delete: if ownsExisting("authorId") || isAdmin();
+      }
+    }
+
+    match /postLikes/{likeId} {
+      allow read: if signedIn();
+      allow create: if isActive() && ownsIncoming("uid");
+      allow delete: if ownsExisting("uid");
+      allow update: if false;
+    }
+
+    match /postBookmarks/{bookmarkId} {
+      allow read, create, delete: if signedIn()
+        && (ownsIncoming("uid") || ownsExisting("uid"));
+      allow update: if false;
+    }
+
+    match /resources/{resourceId} {
+      allow read: if resource.data.moderationStatus == "approved" || ownsExisting("authorId") || isAdmin();
+      allow create: if false;
+      allow update, delete: if false;
+    }
+
+    match /resourceReviews/{reviewId} {
+      allow read: if signedIn();
+      allow create: if isActive() && ownsIncoming("authorId");
+      allow update, delete: if ownsExisting("authorId") || isAdmin();
+    }
+
+    match /forumCategories/{categoryId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /forumThreads/{threadId} {
+      allow read: if signedIn();
+      allow create: if isActive()
+        && ownsIncoming("authorId")
+        && request.resource.data.pinned == false
+        && request.resource.data.locked == false
+        && request.resource.data.solved == false
+        && request.resource.data.acceptedReplyId == null
+        && request.resource.data.viewCount == 0
+        && request.resource.data.likeCount == 0
+        && request.resource.data.replyCount == 0
+        && request.resource.data.moderationStatus == "pending";
+      allow update: if isActive() && ownsExisting("authorId")
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "title", "content", "tags", "solved", "acceptedReplyId", "updatedAt", "lastActivityAt"
+        ]);
+      allow delete: if ownsExisting("authorId") || isAdmin();
+
+      match /replies/{replyId} {
+        allow read: if signedIn();
+        allow create: if isActive()
+          && ownsIncoming("authorId")
+          && request.resource.data.likeCount == 0
+          && request.resource.data.moderationStatus == "pending";
+        allow update, delete: if ownsExisting("authorId") || isAdmin();
+      }
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.participantIds;
+      allow write: if false;
+
+      match /messages/{messageId} {
+        allow read: if conversationMember(conversationId);
+        allow write: if false;
+      }
+    }
+
+    match /users/{uid}/notifications/{notificationId} {
+      allow read: if owns(uid);
+      allow update: if owns(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["read"]);
+      allow create, delete: if false;
+    }
+
+    match /lessons/{lessonId} {
+      allow read: if ownsExisting("ownerId") || isAdmin();
+      allow write: if false;
+
+      match /versions/{versionId} {
+        allow read: if signedIn()
+          && get(/databases/$(database)/documents/lessons/$(lessonId)).data.ownerId == request.auth.uid;
+        allow write: if false;
+      }
+    }
+
+    match /verificationRequests/{requestId} {
+      allow read: if ownsExisting("uid") || isAdmin();
+      allow create: if isActive() && ownsIncoming("uid");
+      allow update, delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isActive() && ownsIncoming("reporterId");
+      allow update, delete: if false;
+    }
+
+    match /platformStats/{statsId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /userAnalytics/{uid} {
+      allow read: if owns(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    match /auditLogs/{auditLogId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

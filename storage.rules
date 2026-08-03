@@ -1,0 +1,66 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function active() {
+      return signedIn()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == "active";
+    }
+
+    function image() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
+    function imageWithin(limit) {
+      return image() && request.resource.size <= limit;
+    }
+
+    match /users/{uid}/avatar/{fileName} {
+      allow read: if true;
+      allow write: if active() && request.auth.uid == uid && imageWithin(5 * 1024 * 1024);
+    }
+
+    match /users/{uid}/cover/{fileName} {
+      allow read: if true;
+      allow write: if active() && request.auth.uid == uid && imageWithin(10 * 1024 * 1024);
+    }
+
+    match /posts/{uid}/{postId}/{fileName} {
+      allow read: if signedIn();
+      allow write: if active() && request.auth.uid == uid && imageWithin(10 * 1024 * 1024);
+    }
+
+    match /resources/{uid}/{resourceId}/{fileName} {
+      allow read: if false;
+      allow write: if active()
+        && request.auth.uid == uid
+        && request.resource.size <= 25 * 1024 * 1024
+        && request.resource.contentType.matches('(application/pdf|application/vnd.openxmlformats-officedocument.wordprocessingml.document|application/vnd.openxmlformats-officedocument.presentationml.presentation|image/(jpeg|png|webp)|video/mp4)');
+    }
+
+    match /resources/{uid}/{resourceId}/thumbnail/{fileName} {
+      allow read: if signedIn();
+      allow write: if active() && request.auth.uid == uid && imageWithin(5 * 1024 * 1024);
+    }
+
+    match /messages/{conversationId}/{messageId}/{fileName} {
+      allow read, write: if false;
+    }
+
+    match /verification/{uid}/{fileName} {
+      allow read: if false;
+      allow write: if active()
+        && request.auth.uid == uid
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('(application/pdf|image/(jpeg|png|webp))');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

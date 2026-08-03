@@ -1,0 +1,107 @@
+# VistaTeacher Build Plan
+
+This checklist tracks code and tests that exist in the repository. A task is marked complete only after its implementation and relevant verification pass.
+
+## Phase 0 - Foundation
+
+- [x] Initialize Next.js App Router with strict TypeScript, Tailwind CSS, ESLint, and pnpm.
+- [x] Add the VistaTeacher design tokens and local font configuration.
+- [x] Add application dependencies and reusable UI foundations.
+- [x] Configure formatting, unit tests, browser tests, and continuous integration.
+- [x] Add Firebase client, Admin SDK, emulators, rules, indexes, and typed model foundations.
+- [x] Add environment validation and a documented environment template.
+- [x] Add architecture, data model, security, and decision documentation.
+- [x] Pass lint, type checking, unit tests, rules tests, browser smoke tests, and a production build.
+
+## Phase 1 - Marketing, Authentication, and Onboarding
+
+- [ ] Build accessible marketing, pricing, legal, help, and authentication routes.
+- [ ] Implement Firebase email/password and Google authentication.
+- [ ] Implement secure server session cookies and protected routes.
+- [ ] Implement verified-email gating and password reset.
+- [ ] Implement persisted, Zod-validated educator onboarding.
+
+## Phase 2 - Application Shell and Profiles
+
+- [ ] Build responsive desktop and mobile platform navigation.
+- [ ] Build public profiles, profile editing, and settings.
+- [ ] Add privacy-aware contact details and account deletion requests.
+- [ ] Add the grouped search service and command interface.
+
+## Phase 3 - Discover and Network
+
+- [ ] Build normalized educator discovery and filters.
+- [ ] Implement transactional follow and unfollow operations.
+- [ ] Enforce connection entitlements on the server.
+- [ ] Build followers, following, and suggestions views.
+
+## Phase 4 - Feed
+
+- [ ] Implement paginated posts, questions, and resource shares.
+- [ ] Implement image uploads, likes, comments, bookmarks, and reports.
+- [ ] Implement following and saved feeds.
+- [ ] Add optimistic interactions with rollback and ownership checks.
+
+## Phase 5 - Resources
+
+- [ ] Implement validated Storage uploads and resource metadata.
+- [ ] Build searchable grid, list, detail, rating, and review experiences.
+- [ ] Enforce upload and download entitlements on the server.
+- [ ] Implement safe downloads, counters, moderation, and cleanup.
+
+## Phase 6 - Forum
+
+- [ ] Build categories, paginated threads, replies, likes, and reports.
+- [ ] Implement solved answers and accepted replies.
+- [ ] Implement owner and administrator moderation controls.
+
+## Phase 7 - Messaging and Notifications
+
+- [ ] Implement deterministic one-to-one conversations and real-time messages.
+- [ ] Enforce daily message limits transactionally.
+- [ ] Implement attachments, blocks, reports, read state, and pagination.
+- [ ] Implement trusted notification creation and read controls.
+
+## Phase 8 - AI Lesson Builder
+
+- [ ] Implement server-only OpenAI structured generation and one repair attempt.
+- [ ] Enforce status, rate, entitlement, and monthly quota checks.
+- [ ] Persist lessons and version history transactionally.
+- [ ] Implement editing, regeneration, duplication, PDF, and DOCX exports.
+
+## Phase 9 - Dashboard and Analytics
+
+- [ ] Build the personalized dashboard and recommendations.
+- [ ] Build basic and Plus analytics from aggregate documents.
+- [ ] Add lazy Recharts visualizations and quota/subscription states.
+
+## Phase 10 - Billing
+
+- [ ] Implement the server-owned fourteen-day Plus trial.
+- [ ] Implement Stripe Checkout and Customer Portal routes.
+- [ ] Implement verified, idempotent webhook reconciliation.
+- [ ] Implement pricing and billing lifecycle states.
+
+## Phase 11 - Administration
+
+- [ ] Protect all administrator routes and operations server-side.
+- [ ] Build aggregate overview, users, content, reports, and verification views.
+- [ ] Implement moderation actions and immutable audit logs.
+
+## Phase 12 - Hardening and Release
+
+- [ ] Complete Firestore and Storage rule coverage.
+- [ ] Complete required Playwright workflows against emulators.
+- [ ] Audit accessibility, responsiveness, performance, and SEO.
+- [ ] Verify App Hosting deployment configuration and documentation.
+- [ ] Pass the complete locked-install CI pipeline.
+
+## Release Gates
+
+- [x] `pnpm install --frozen-lockfile`
+- [x] `pnpm lint`
+- [x] `pnpm typecheck`
+- [x] `pnpm test`
+- [x] `pnpm test:rules`
+- [x] `pnpm test:e2e`
+- [x] `pnpm build`
