@@ -61,38 +61,22 @@ service cloud.firestore {
 
     match /posts/{postId} {
       allow read: if resource.data.moderationStatus == "approved" || ownsExisting("authorId") || isAdmin();
-      allow create: if isActive()
-        && ownsIncoming("authorId")
-        && request.resource.data.likeCount == 0
-        && request.resource.data.commentCount == 0
-        && request.resource.data.shareCount == 0
-        && request.resource.data.moderationStatus == "pending";
-      allow update: if isActive() && ownsExisting("authorId")
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "type", "content", "imageURLs", "tags", "visibility", "updatedAt"
-        ]);
-      allow delete: if ownsExisting("authorId") || isAdmin();
+      allow write: if false;
 
       match /comments/{commentId} {
         allow read: if signedIn();
-        allow create: if isActive()
-          && ownsIncoming("authorId")
-          && request.resource.data.moderationStatus == "pending";
-        allow update, delete: if ownsExisting("authorId") || isAdmin();
+        allow write: if false;
       }
     }
 
     match /postLikes/{likeId} {
       allow read: if signedIn();
-      allow create: if isActive() && ownsIncoming("uid");
-      allow delete: if ownsExisting("uid");
-      allow update: if false;
+      allow write: if false;
     }
 
     match /postBookmarks/{bookmarkId} {
-      allow read, create, delete: if signedIn()
-        && (ownsIncoming("uid") || ownsExisting("uid"));
-      allow update: if false;
+      allow read: if ownsExisting("uid") || isAdmin();
+      allow write: if false;
     }
 
     match /resources/{resourceId} {
@@ -176,8 +160,7 @@ service cloud.firestore {
 
     match /reports/{reportId} {
       allow read: if isAdmin();
-      allow create: if isActive() && ownsIncoming("reporterId");
-      allow update, delete: if false;
+      allow write: if false;
     }
 
     match /platformStats/{statsId} {

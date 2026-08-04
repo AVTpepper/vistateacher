@@ -50,3 +50,11 @@ Public profile routes read `users/{uid}` and join subscription state on the serv
 Educator discovery performs a bounded active-profile read and applies normalized name, subject, grade, location, and verification filters on the server. Suggestions rank unfollowed educators by shared subjects, grade level, and city without fabricating recommendation data.
 
 Follow IDs are deterministic (`followerUid_followingUid`). A same-origin authenticated route runs follow and unfollow through an Admin SDK transaction that reads both profiles, the relationship, and server-owned subscription state before writing. The transaction enforces active status, prevents self-follow and duplicates, resolves the effective plan centrally, applies the Free connection limit, and updates both profile counters atomically.
+
+## Feed
+
+The home feed renders its first bounded page in a Server Component and loads later pages through an authenticated route. Opaque cursors contain only a validated timestamp and document ID. All, Following, and Saved views share the same post DTO; Following scans a bounded newest-post window against server-owned relationships, while Saved pages the viewer's private bookmark records.
+
+Post, question, and resource-share payloads use one Zod contract. Same-origin route handlers create content and run likes, bookmarks, comments, reports, counter updates, and owner deletion through Firebase Admin. Deterministic like, bookmark, and report IDs make retries idempotent. Client interactions update immediately and restore prior state when a trusted mutation fails.
+
+Feed images use generated owner-scoped Storage paths. The browser validates image type and size before upload, and Storage rules independently require an active matching owner, an approved image MIME type, and a 10 MB maximum. Feed document writes remain server-only so uploaded URLs cannot be used to alter moderation or counters directly.

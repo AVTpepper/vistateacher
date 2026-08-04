@@ -13,18 +13,18 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 
 ## Community
 
-| Path                                        | Ownership and purpose        | Important fields                                                                        |
-| ------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------- |
-| `follows/{followerUid_followingUid}`        | Server transaction           | `followerUid`, `followingUid`, `createdAt`                                              |
-| `posts/{postId}`                            | Author content               | type/content/images/tags, visibility/moderation, counters, timestamps                   |
-| `posts/{postId}/comments/{commentId}`       | Comment author               | author, content, moderation, timestamps                                                 |
-| `postLikes/{postId_uid}`                    | User reaction                | post, user, timestamp                                                                   |
-| `postBookmarks/{uid_postId}`                | Private save                 | post, user, timestamp                                                                   |
-| `resources/{resourceId}`                    | Trusted upload workflow      | taxonomy/access, Storage path, safe file metadata, rating/download counters, moderation |
-| `resourceReviews/{resourceId_uid}`          | One review per user/resource | author, rating, review, timestamps                                                      |
-| `forumCategories/{categoryId}`              | Server/admin taxonomy        | name, description, icon, order, active                                                  |
-| `forumThreads/{threadId}`                   | Author discussion            | category/content/tags, pin/lock/solved, accepted reply, counters/activity               |
-| `forumThreads/{threadId}/replies/{replyId}` | Reply author                 | author, content, likes, moderation, timestamps                                          |
+| Path                                        | Ownership and purpose         | Important fields                                                                        |
+| ------------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------- |
+| `follows/{followerUid_followingUid}`        | Server transaction            | `followerUid`, `followingUid`, `createdAt`                                              |
+| `posts/{postId}`                            | Server-written author content | type/content/images/tags/resource, visibility/moderation, trusted counters, timestamps  |
+| `posts/{postId}/comments/{commentId}`       | Server-written comment        | author, content, moderation, timestamps                                                 |
+| `postLikes/{postId_uid}`                    | Server-owned user reaction    | post, user, timestamp                                                                   |
+| `postBookmarks/{uid_postId}`                | Server-owned private save     | post, user, timestamp                                                                   |
+| `resources/{resourceId}`                    | Trusted upload workflow       | taxonomy/access, Storage path, safe file metadata, rating/download counters, moderation |
+| `resourceReviews/{resourceId_uid}`          | One review per user/resource  | author, rating, review, timestamps                                                      |
+| `forumCategories/{categoryId}`              | Server/admin taxonomy         | name, description, icon, order, active                                                  |
+| `forumThreads/{threadId}`                   | Author discussion             | category/content/tags, pin/lock/solved, accepted reply, counters/activity               |
+| `forumThreads/{threadId}/replies/{replyId}` | Reply author                  | author, content, likes, moderation, timestamps                                          |
 
 ## Messaging and Lessons
 
@@ -41,7 +41,7 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 
 | Path                        | Ownership and purpose               | Important fields                                                  |
 | --------------------------- | ----------------------------------- | ----------------------------------------------------------------- |
-| `reports/{reportId}`        | Reporter creates; admins review     | reporter/target, reason, status, assignee, resolution, timestamps |
+| `reports/{reportId}`        | Server-created; admins review       | reporter/target, reason, status, assignee, resolution, timestamps |
 | `verificationRequests/{id}` | Applicant creates; admins decide    | user, evidence path, status, reviewer/reason, timestamps          |
 | `auditLogs/{id}`            | Server append-only                  | admin, action/target, previous/new state, reason, timestamp       |
 | `platformStats/current`     | Server aggregate                    | user/content/subscription/moderation totals and trends            |
@@ -52,3 +52,5 @@ Soft deletion precedes permanent deletion. Retention policies must minimize priv
 Public educator discovery uses bounded `searchKeywords` arrays derived by trusted profile mutations. Private contact fields never enter public profile documents or search indexes. A deletion request is stored under `userPrivate/{uid}.accountDeletion.requestedAt`; a later reviewed workflow performs soft and permanent deletion.
 
 Follow transactions create or remove the deterministic relationship document and update `users/{followerUid}.followingCount` plus `users/{followingUid}.followerCount` atomically. Relationship queries use the single-field `followerUid` and `followingUid` indexes; no client may write these records or counters directly.
+
+Feed writes are server-only. Post creation initializes moderation and counters and increments the author's `postCount` in one transaction. Like and bookmark IDs are deterministic for idempotent retries; comments update `commentCount` transactionally. Report IDs combine target and reporter to prevent duplicate reports. Owner deletion decrements `postCount` and removes comments, reactions, bookmarks, and report records. Feed and bookmark pagination order by server timestamp plus document ID for stable opaque cursors.

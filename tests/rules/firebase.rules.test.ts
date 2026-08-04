@@ -21,6 +21,15 @@ import {
   NetworkActionError,
   unfollowEducator,
 } from "@/lib/network/server";
+import {
+  addPostComment,
+  createPost,
+  deletePost,
+  FeedActionError,
+  getFeedPage,
+  setPostBookmarked,
+  setPostLiked,
+} from "@/lib/feed/server";
 
 const projectId = "demo-vista-teacher";
 let testEnv: RulesTestEnvironment;
@@ -241,7 +250,7 @@ describe("Firestore rules", () => {
     );
   });
 
-  it("prevents active users from choosing post counters or approval", async () => {
+  it("keeps all post and interaction writes behind server validation", async () => {
     await seedActiveUser("author");
     const authorDb = testEnv.authenticatedContext("author").firestore();
 
@@ -254,7 +263,7 @@ describe("Firestore rules", () => {
         moderationStatus: "approved",
       }),
     );
-    await assertSucceeds(
+    await assertFails(
       setDoc(doc(authorDb, "posts", "safe-post"), {
         authorId: "author",
         likeCount: 0,
@@ -263,6 +272,79 @@ describe("Firestore rules", () => {
         moderationStatus: "pending",
       }),
     );
+    await assertFails(
+      setDoc(doc(authorDb, "postLikes", "safe-post_author"), {
+        postId: "safe-post",
+        uid: "author",
+      }),
+    );
+    await assertFails(
+      setDoc(doc(authorDb, "postBookmarks", "author_safe-post"), {
+        postId: "safe-post",
+        uid: "author",
+      }),
+    );
+    await assertFails(
+      setDoc(doc(authorDb, "reports", "post_safe-post_author"), {
+        reporterId: "author",
+        targetType: "post",
+        targetId: "safe-post",
+      }),
+    );
+  });
+
+  it("updates feed counters transactionally and enforces post ownership", async () => {
+    await seedNetworkUser("author");
+    await seedNetworkUser("reader");
+    await expect(getFeedPage("reader", "saved")).resolves.toEqual({
+      posts: [],
+      nextCursor: null,
+    });
+    const postId = await createPost("author", {
+      type: "question",
+      content: "How do you structure peer feedback?",
+      imageURLs: [],
+      tags: ["Feedback"],
+      resourceId: null,
+    });
+
+    await setPostLiked("reader", postId, true);
+    await setPostBookmarked("reader", postId, true);
+    await addPostComment("reader", {
+      postId,
+      content: "I use a two-stars-and-a-wish protocol.",
+    });
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [post, author, like, bookmark] = await Promise.all([
+        getDoc(doc(context.firestore(), "posts", postId)),
+        getDoc(doc(context.firestore(), "users", "author")),
+        getDoc(doc(context.firestore(), "postLikes", `${postId}_reader`)),
+        getDoc(doc(context.firestore(), "postBookmarks", `reader_${postId}`)),
+      ]);
+      expect(post.data()).toMatchObject({
+        authorId: "author",
+        moderationStatus: "approved",
+        likeCount: 1,
+        commentCount: 1,
+      });
+      expect(author.data()?.postCount).toBe(1);
+      expect(like.exists()).toBe(true);
+      expect(bookmark.exists()).toBe(true);
+    });
+
+    await expect(deletePost("reader", postId)).rejects.toMatchObject({
+      code: "not-owner",
+    } satisfies Partial<FeedActionError>);
+    await deletePost("author", postId);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [post, author] = await Promise.all([
+        getDoc(doc(context.firestore(), "posts", postId)),
+        getDoc(doc(context.firestore(), "users", "author")),
+      ]);
+      expect(post.exists()).toBe(false);
+      expect(author.data()?.postCount).toBe(0);
+    });
   });
 
   it("prevents thread authors from granting moderation fields", async () => {

@@ -37,10 +37,10 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 4 - Feed
 
-- [ ] Implement paginated posts, questions, and resource shares.
-- [ ] Implement image uploads, likes, comments, bookmarks, and reports.
-- [ ] Implement following and saved feeds.
-- [ ] Add optimistic interactions with rollback and ownership checks.
+- [x] Implement paginated posts, questions, and resource shares.
+- [x] Implement image uploads, likes, comments, bookmarks, and reports.
+- [x] Implement following and saved feeds.
+- [x] Add optimistic interactions with rollback and ownership checks.
 
 ## Phase 5 - Resources
 
