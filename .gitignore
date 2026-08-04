@@ -44,6 +44,7 @@ next-env.d.ts
 
 # Firebase emulators and Playwright
 /.firebase/
+/.firebaserc
 /firebase-debug.log
 /firestore-debug.log
 /storage-debug.log
