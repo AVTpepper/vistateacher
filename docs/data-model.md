@@ -8,7 +8,7 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 | ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `users/{uid}`          | Server-created public educator profile | normalized identity/location, professional fields, role, verification, counters, status, timestamps    |
 | `userPrivate/{uid}`    | Server-written; owner/admin reads      | email, contact details, privacy/notification settings, payment reference, moderation/deletion metadata |
-| `subscriptions/{uid}`  | Server-owned; owner reads safe state   | plan/status, Stripe IDs, interval/end/cancellation, event watermark, VistaTeacher trial state          |
+| `subscriptions/{uid}`  | Server-owned; owner reads safe state   | plan/status, Stripe IDs, interval/end/cancellation, event watermark, legacy temporary-access state     |
 | `billingEvents/{id}`   | Server-only Stripe webhook dedup       | event type/user, Stripe creation time, applied state, processing timestamp                             |
 | `usage/{uid}_{period}` | Server-owned monthly or daily counters | messages, resource uploads, AI lessons, period, timestamp                                              |
 
@@ -68,4 +68,4 @@ One-to-one conversation IDs sort both participant UIDs. Message transactions ver
 
 AI generation reserves `usage/{uid}_{YYYY-MM}.aiLessons` and lesson generation state in one transaction. The usage document also stores the trusted last-generation timestamp used for cross-instance rate enforcement. A successful model response writes validated current content and `versions/v{number}` atomically. Failed generation restores the previous ready lesson and decrements quota. Manual edits and duplication create immutable version snapshots without consuming AI quota.
 
-Dashboard requests read `userAnalytics/{uid}` as a bounded aggregate containing basic totals and at most 24 points per trend series. Free responses exclude trend series; Plus responses may include follower growth, profile views, resource downloads, and engagement. Quota cards join exact daily or monthly `usage` records with centrally resolved plan limits. Recommendation inputs remain in their owning bounded domain readers and are not copied into analytics documents.
+Dashboard requests read `userAnalytics/{uid}` as a bounded aggregate containing basic totals and at most 24 points per trend series. Community responses exclude trend series; Plus responses may include follower growth, profile views, resource downloads, and engagement. Quota cards join exact daily or monthly `usage` records with centrally resolved plan limits. Recommendation inputs remain in their owning bounded domain readers and are not copied into analytics documents.

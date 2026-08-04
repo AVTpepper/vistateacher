@@ -10,7 +10,7 @@
 
 ## ADR-003: Server-owned entitlements
 
-**Accepted.** One entitlement map defines Free/Plus behavior. Effective plan derives from the server subscription and no-card trial on each privileged request. Stripe redirects never grant access, and payment never grants verification.
+**Accepted.** One entitlement map defines Community/Plus behavior. Effective plan derives from the server subscription and any unexpired legacy temporary-access record on each privileged request. New temporary-access enrollment is retired. Stripe redirects never grant access, and payment never grants verification.
 
 ## ADR-004: Trusted invariant-heavy writes
 

@@ -34,6 +34,11 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: NEXT_PUBLIC_USE_FIREBASE_EMULATORS
+    value: "false"
+    availability:
+      - BUILD
+      - RUNTIME
   - variable: FIREBASE_PROJECT_ID
     secret: FIREBASE_PROJECT_ID
   - variable: FIREBASE_CLIENT_EMAIL
@@ -50,3 +55,11 @@ env:
     secret: STRIPE_PRICE_PLUS_YEARLY
   - variable: OPENAI_API_KEY
     secret: OPENAI_API_KEY
+  - variable: OPENAI_LESSON_MODEL
+    value: gpt-4.1-mini
+    availability:
+      - RUNTIME
+  - variable: AI_PROVIDER
+    value: OPENAI
+    availability:
+      - RUNTIME

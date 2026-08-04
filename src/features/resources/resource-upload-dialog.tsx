@@ -228,7 +228,7 @@ export function ResourceUploadDialog() {
                   }
                   className="resource-input"
                 >
-                  <option value="free">Free for all</option>
+                  <option value="free">Available to everyone</option>
                   <option value="plus">Plus members</option>
                 </select>
               </Field>

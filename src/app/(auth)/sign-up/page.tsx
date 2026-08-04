@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Create account" };
 export default function SignUpPage() {
   return (
     <>
-      <h1 className="font-serif text-3xl">Join VistaTeacher</h1>
+      <h1 className="font-serif text-3xl">Create your VistaTeacher account</h1>
       <p className="text-muted-foreground mt-2 mb-7 text-sm">
         Create your professional educator account.
       </p>

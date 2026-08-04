@@ -21,11 +21,11 @@ Rules are deny-by-default. Public profile and private settings mutations are ser
 
 Initial profile, private preference, and subscription documents are created only by the transactional server onboarding endpoint. Clients cannot create partial identity records directly.
 
-Clients cannot create or delete follow documents or alter connection counters. The follow endpoint re-verifies active account state, trusted origin, target state, existing relationship, effective plan, and current count inside the transaction. Free accounts stop at five following connections; Plus accounts use the centralized unlimited entitlement.
+Clients cannot create or delete follow documents or alter connection counters. The follow endpoint re-verifies active account state, trusted origin, target state, existing relationship, effective plan, and current count inside the transaction. Community accounts stop at five following connections; Plus accounts use the centralized unlimited entitlement.
 
 Clients cannot write posts, comments, reactions, bookmarks, or reports directly. Feed routes validate bounded payloads, re-verify active sessions, derive every owner ID, initialize moderation and counters, and enforce post visibility or ownership inside Admin transactions. Like, bookmark, comment, report, and delete requests never accept counters or owner fields from the browser.
 
-Resource reservations validate taxonomy, access tier, file name, MIME, and size before allocating quota. Storage accepts an upload only when an `uploading` Firestore reservation matches the authenticated owner, complete object path, MIME, and exact byte size. Clients cannot write resource or review documents, choose counters, read private objects, or bypass the monthly Free upload limit.
+Resource reservations validate taxonomy, access tier, file name, MIME, and size before allocating quota. Storage accepts an upload only when an `uploading` Firestore reservation matches the authenticated owner, complete object path, MIME, and exact byte size. Clients cannot write resource or review documents, choose counters, read private objects, or bypass the monthly Community upload limit.
 
 Clients cannot write forum categories, threads, replies, reactions, reports, solved state, or counters directly. Forum routes validate bounded content and trusted origins, derive actor IDs from the session, reject inactive accounts and locked discussions, and update related counters transactionally. Thread owners may lock or delete their discussions and moderate replies; only platform administrators may pin discussions. Accepted answers must belong to the selected visible thread.
 
@@ -35,7 +35,7 @@ Firebase Admin credentials, Stripe secrets, webhook secrets, and OpenAI keys rem
 
 Clients cannot write lessons, versions, AI usage, generation status, or source parameters directly. Lesson routes derive ownership from the session and require an active account. Generation and regeneration additionally require effective Plus access, available monthly quota, and the persistent cooldown. Structured model output is schema-validated before persistence; a failed repair releases quota. Export routes re-check ownership and current Plus access before producing private, non-cached PDF or DOCX attachments.
 
-Analytics documents are owner/admin-readable and server-write-only. The dashboard validates bounded aggregate shapes and resolves the effective plan before projecting full trend series. Free users receive summary totals but never Plus series. Browser-provided counts, subscription labels, and quota values are ignored; the server joins trusted profile, subscription, and exact usage documents.
+Analytics documents are owner/admin-readable and server-write-only. The dashboard validates bounded aggregate shapes and resolves the effective plan before projecting full trend series. Community users receive summary totals but never Plus series. Browser-provided counts, subscription labels, and quota values are ignored; the server joins trusted profile, subscription, and exact usage documents.
 
 Administrator pages, action routes, and domain mutations each enforce the `platform_admin` role server-side. Lists are bounded, overview metrics come from the trusted platform aggregate, and the console excludes private contacts and general message access. Moderation requires a bounded explicit reason. Target updates, pending-count changes, and append-only audit creation share one transaction; direct audit writes remain denied even to administrators. Self-suspension and suspension of other platform administrators are blocked.
 
@@ -43,15 +43,15 @@ Administrator pages, action routes, and domain mutations each enforce the `platf
 
 Generated object names prevent path injection. Feed images use direct authenticated uploads only under `posts/{uid}/{generatedId}/{generatedName}`; browser checks are repeated by Storage rules that enforce active ownership, image MIME type, and a 10 MB limit. The server validates MIME, extension, size, ownership, and resource type for trusted workflows. Unsafe documents download with `Content-Disposition: attachment` and are never executed inline. Paid resources, messages, and verification evidence deny direct Storage reads; trusted endpoints provide short-lived authorized downloads. Deletion workflows clean orphaned files idempotently.
 
-Resource files are returned with `Content-Disposition: attachment`, `Cache-Control: private, no-store`, and `X-Content-Type-Options: nosniff`. The route verifies active account state and effective plan before reading bytes; Free accounts cannot download Plus-only files unless they own them. Failed or canceled uploads delete any reserved object, and owner deletion removes every file under the generated resource prefix.
+Resource files are returned with `Content-Disposition: attachment`, `Cache-Control: private, no-store`, and `X-Content-Type-Options: nosniff`. The route verifies active account state and effective plan before reading bytes; Community accounts cannot download Plus-only files unless they own them. Failed or canceled uploads delete any reserved object, and owner deletion removes every file under the generated resource prefix.
 
 Message attachment uploads require an active account and a matching server-owned reservation for owner, conversation, generated path, MIME, and exact byte size. Browser reads are always denied. The participant-authorized download route returns private, non-sniffable attachments; failed message sends delete unused reservations and objects.
 
 ## Billing, Quotas, and Rate Limits
 
-The browser cannot set plans or trials. Stripe signatures and event IDs provide authenticity and idempotency. Quota checks and increments use transactions; failed operations do not consume quota. Free messaging is limited to ten sends per UTC day using the sender's server-owned daily usage record; Plus messaging is unlimited. Plus AI generation is limited to 50 successful lessons per UTC month. Production rate limits use persistent usage records, never instance memory.
+The browser cannot set plans or temporary access. Stripe signatures and event IDs provide authenticity and idempotency. Quota checks and increments use transactions; failed operations do not consume quota. Community messaging is limited to ten sends per UTC day using the sender's server-owned daily usage record; Plus messaging is unlimited. Plus AI generation is limited to 50 successful lessons per UTC month. Production rate limits use persistent usage records, never instance memory.
 
-The no-card trial can be consumed once and uses server-derived start/end timestamps. Checkout and Portal require an active session and trusted origin; redirect URLs, customer IDs, and price IDs are never accepted from the browser. Webhooks read the raw request body, verify the Stripe signature, persist a private event-ID receipt, and ignore events older than the subscription watermark. Configure both Plus price IDs and the webhook endpoint `/api/billing/webhook` before enabling production billing.
+New temporary-access enrollment is disabled; the retired endpoint returns HTTP 410. Legacy start/end timestamps remain server-derived so existing access expires correctly. Checkout and Portal require an active session and trusted origin; redirect URLs, customer IDs, and price IDs are never accepted from the browser. Webhooks read the raw request body, verify the Stripe signature, persist a private event-ID receipt, and ignore events older than the subscription watermark. Configure both Plus price IDs and the webhook endpoint `/api/billing/webhook` before enabling production billing.
 
 ## Privacy and Moderation
 
@@ -61,7 +61,7 @@ Private contact data is fetched only when the viewer owns the profile or the edu
 
 - Use least-privilege service accounts and rotate exposed credentials.
 - Add App Check after test/emulator bypasses are documented.
-- Configure CSP, HSTS, referrer, framing, and MIME-sniffing headers before release.
-- Alert on webhook failures, elevated admin actions, trial abuse, and quota anomalies.
+- CSP, production HSTS, referrer, framing, permissions, and MIME-sniffing headers are enforced through Next.js configuration and checked by Playwright.
+- Alert on webhook failures, elevated admin actions, retired-endpoint traffic, and quota anomalies.
 - Review rules/index changes and run emulator tests before deployment.
 - Establish retention, legal hold, export, and permanent deletion procedures.

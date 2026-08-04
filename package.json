@@ -16,7 +16,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:rules": "firebase emulators:exec --project demo-vista-teacher --only firestore,storage \"vitest run --config vitest.rules.config.ts\"",
-    "test:e2e": "playwright test",
+    "test:e2e": "firebase emulators:exec --project demo-vista-teacher --only auth,firestore,storage \"pnpm test:e2e:emulated\"",
+    "test:e2e:emulated": "tsx scripts/run-e2e.ts",
     "emulators": "firebase emulators:start --project demo-vista-teacher",
     "seed": "tsx scripts/seed-emulator.ts",
     "format": "prettier --write .",
@@ -60,6 +61,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@firebase/rules-unit-testing": "^5.0.1",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",

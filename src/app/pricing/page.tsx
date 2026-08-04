@@ -11,11 +11,14 @@ import {
 import { getCurrentAccount } from "@/lib/auth/session";
 import { getBillingState } from "@/lib/billing/server";
 
-export const metadata: Metadata = { title: "Pricing" };
+export const metadata: Metadata = {
+  title: "Pricing",
+  alternates: { canonical: "/pricing" },
+};
 
 const plans = [
   {
-    name: "Free",
+    name: "Community",
     price: "$0",
     note: "For joining the community",
     features: [
@@ -55,7 +58,7 @@ export default async function PricingPage() {
     <ContentPage
       eyebrow="Simple plans"
       title="Begin with community. Add Plus for deeper tools."
-      intro="Core professional participation stays available on the Free plan. Plus expands limits and unlocks planning, export, and analytics tools."
+      intro="Core professional participation is included with Community access. Plus expands limits and unlocks planning, export, and analytics tools."
     >
       <div className="grid gap-6 md:grid-cols-2">
         {plans.map((plan) => (
@@ -89,7 +92,7 @@ export default async function PricingPage() {
                 variant={plan.name === "Plus" ? "accent" : "default"}
               >
                 <Link href={account ? "/app" : "/sign-up"}>
-                  {account ? "Current plan" : "Start free"}
+                  {account ? "Current plan" : "Create account"}
                 </Link>
               </Button>
             )}
@@ -97,8 +100,8 @@ export default async function PricingPage() {
         ))}
       </div>
       <p className="text-muted-foreground mt-6 text-sm">
-        The fourteen-day Plus trial requires no card. Paid memberships are
-        processed securely by Stripe and can be managed from account settings.
+        Paid memberships are processed securely by Stripe and can be managed
+        from account settings.
       </p>
     </ContentPage>
   );

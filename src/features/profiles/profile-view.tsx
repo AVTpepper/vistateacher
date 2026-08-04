@@ -207,7 +207,7 @@ export function ProfileView({
           { label: "Experience", value: `${profile.yearsOfExperience} years` },
           {
             label: "Plan",
-            value: data.plan === "plus" ? "Plus member" : "Free account",
+            value: data.plan === "plus" ? "Plus member" : "Community account",
           },
         ]}
       />

@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
+const productionServer = process.env.PLAYWRIGHT_E2E_PRODUCTION === "true";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -23,7 +24,9 @@ export default defineConfig({
   webServer: externalBaseUrl
     ? undefined
     : {
-        command: "pnpm dev --port 3100",
+        command: productionServer
+          ? "pnpm start --port 3100"
+          : "pnpm dev --port 3100",
         url: "http://127.0.0.1:3100",
         reuseExistingServer: !process.env.CI,
       },

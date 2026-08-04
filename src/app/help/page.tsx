@@ -3,7 +3,10 @@ import Link from "next/link";
 
 import { ContentPage } from "@/components/marketing/content-page";
 
-export const metadata: Metadata = { title: "Help" };
+export const metadata: Metadata = {
+  title: "Help",
+  alternates: { canonical: "/help" },
+};
 
 const questions = [
   [

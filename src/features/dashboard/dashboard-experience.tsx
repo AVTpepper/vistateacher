@@ -303,13 +303,9 @@ export function DashboardExperience({
               <div>
                 <h2 className="font-serif text-lg">Plan and usage</h2>
                 <p className="text-muted-foreground text-xs">
-                  {dashboard.plan === "plus" &&
-                  dashboard.subscription.status !== "active" &&
-                  dashboard.subscription.status !== "trialing"
-                    ? "Plus trial"
-                    : dashboard.plan === "plus"
-                      ? "Plus membership"
-                      : "Free membership"}
+                  {dashboard.plan === "plus"
+                    ? "Plus membership"
+                    : "Community membership"}
                 </p>
               </div>
               <LayoutDashboard className="text-primary size-5" />

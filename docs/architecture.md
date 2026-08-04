@@ -17,7 +17,7 @@ Pages compose domain components and do not own persistence logic. Product code b
 
 Client auth state improves UX but never authorizes server operations. Administration additionally requires a server-verified `platform_admin` custom claim or trusted role.
 
-Session, logout, and onboarding mutations require the configured same-origin request. Onboarding validates a bounded educator profile with Zod, then an Admin SDK transaction creates the public profile, private preferences, and Free subscription record together. Firestore rules deny direct client creation of these identity records.
+Session, logout, and onboarding mutations require the configured same-origin request. Onboarding validates a bounded educator profile with Zod, then an Admin SDK transaction creates the public profile, private preferences, and Community subscription record together. Firestore rules deny direct client creation of these identity records.
 
 ## Firebase Access
 
@@ -31,9 +31,9 @@ User status, content moderation, report resolution, and verification decisions r
 
 ## Subscription Resolution
 
-`subscriptions/{uid}` is server-owned. Effective entitlements resolve centrally from Stripe status plus the VistaTeacher no-card trial. Payment does not set educator verification. Stripe events are signature-verified, deduplicated by event ID, and safe to retry; checkout redirects never grant access.
+`subscriptions/{uid}` is server-owned. Effective entitlements resolve centrally from Stripe status plus any unexpired legacy temporary-access record. Payment does not set educator verification. Stripe events are signature-verified, deduplicated by event ID, and safe to retry; checkout redirects never grant access.
 
-The trial endpoint transactionally consumes the single fourteen-day trial and derives both timestamps on the server. Checkout accepts only a monthly/yearly choice and derives customer identity, prices, and redirect URLs from trusted state. Customer Portal requires an existing Stripe customer. Webhook reconciliation writes `billingEvents/{eventId}` and the subscription in one transaction; a Stripe creation-time watermark prevents delayed events from replacing newer lifecycle state.
+New temporary Plus access enrollment is retired, and the former endpoint returns HTTP 410. Legacy timestamps remain server-owned so existing access expires correctly. Checkout accepts only a monthly/yearly choice and derives customer identity, prices, and redirect URLs from trusted state. Customer Portal requires an existing Stripe customer. Webhook reconciliation writes `billingEvents/{eventId}` and the subscription in one transaction; a Stripe creation-time watermark prevents delayed events from replacing newer lifecycle state.
 
 ## AI Lesson Flow
 
@@ -49,13 +49,13 @@ Trusted operations create notifications alongside the causing action, skip self-
 
 Normal requests do not scan activity collections. Trusted writes and reconciliation jobs maintain `platformStats/current` and `userAnalytics/{uid}`. The dashboard composes personalized recommendations through existing bounded network, resource, feed, and forum readers, while analytics reads only the educator profile, exact usage periods, subscription state, and one owner aggregate.
 
-All educators receive basic aggregate totals. Full follower, profile-view, resource-download, and engagement series are projected only after effective Plus entitlement resolution. Recharts is isolated in a client-only dynamic bundle and is not requested for Free dashboards. Daily messaging and monthly resource/AI quota states come from exact `usage` documents rather than browser counters.
+All educators receive basic aggregate totals. Full follower, profile-view, resource-download, and engagement series are projected only after effective Plus entitlement resolution. Recharts is isolated in a client-only dynamic bundle and is not requested for Community dashboards. Daily messaging and monthly resource/AI quota states come from exact `usage` documents rather than browser counters.
 
 ## Messaging
 
 Conversation IDs sort the two participant UIDs, guaranteeing one one-to-one thread per educator pair. The messages page server-renders a bounded conversation list and initial history; the authenticated Firebase client listens only to the selected participant-readable message collection for real-time delivery. Older history uses an opaque timestamp and document-ID cursor.
 
-Message sends run through Firebase Admin transactions. Each transaction verifies both active participants, both block directions, conversation membership, the effective subscription, and daily usage before creating the message, updating unread summary state, incrementing `usage/{uid}_{YYYY-MM-DD}.messages`, and creating the recipient notification. Free accounts stop at ten messages per UTC day; Plus accounts are unlimited.
+Message sends run through Firebase Admin transactions. Each transaction verifies both active participants, both block directions, conversation membership, the effective subscription, and daily usage before creating the message, updating unread summary state, incrementing `usage/{uid}_{YYYY-MM-DD}.messages`, and creating the recipient notification. Community accounts stop at ten messages per UTC day; Plus accounts are unlimited.
 
 Attachments use a server reservation with generated paths and exact MIME/size metadata. Storage rules accept only the matching active owner upload. The send operation verifies object metadata before consuming the reservation, while failed sends cancel the object and reservation. Direct object reads are denied; participant-authorized downloads use the server route with attachment headers.
 
@@ -73,7 +73,7 @@ Public profile routes read `users/{uid}` and join subscription state on the serv
 
 Educator discovery performs a bounded active-profile read and applies normalized name, subject, grade, location, and verification filters on the server. Suggestions rank unfollowed educators by shared subjects, grade level, and city without fabricating recommendation data.
 
-Follow IDs are deterministic (`followerUid_followingUid`). A same-origin authenticated route runs follow and unfollow through an Admin SDK transaction that reads both profiles, the relationship, and server-owned subscription state before writing. The transaction enforces active status, prevents self-follow and duplicates, resolves the effective plan centrally, applies the Free connection limit, and updates both profile counters atomically.
+Follow IDs are deterministic (`followerUid_followingUid`). A same-origin authenticated route runs follow and unfollow through an Admin SDK transaction that reads both profiles, the relationship, and server-owned subscription state before writing. The transaction enforces active status, prevents self-follow and duplicates, resolves the effective plan centrally, applies the Community connection limit, and updates both profile counters atomically.
 
 ## Feed
 

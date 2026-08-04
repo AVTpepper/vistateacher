@@ -77,7 +77,7 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 10 - Billing
 
-- [x] Implement the server-owned fourteen-day Plus trial.
+- [x] Retire temporary Plus access enrollment while preserving legacy expiry state.
 - [x] Implement Stripe Checkout and Customer Portal routes.
 - [x] Implement verified, idempotent webhook reconciliation.
 - [x] Implement pricing and billing lifecycle states.
@@ -90,11 +90,11 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 12 - Hardening and Release
 
-- [ ] Complete Firestore and Storage rule coverage.
-- [ ] Complete required Playwright workflows against emulators.
-- [ ] Audit accessibility, responsiveness, performance, and SEO.
-- [ ] Verify App Hosting deployment configuration and documentation.
-- [ ] Pass the complete locked-install CI pipeline.
+- [x] Complete Firestore and Storage rule coverage.
+- [x] Complete required Playwright workflows against emulators.
+- [x] Audit accessibility, responsiveness, performance, and SEO.
+- [x] Verify App Hosting deployment configuration and documentation.
+- [x] Pass the complete locked-install CI pipeline.
 
 ## Release Gates
 

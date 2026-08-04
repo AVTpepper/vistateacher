@@ -22,7 +22,7 @@ export function BillingPanel({ billing }: { billing: BillingView }) {
             <h2 className="mt-2 font-serif text-2xl">
               {billing.effectivePlan === "plus"
                 ? "VistaTeacher Plus"
-                : "VistaTeacher Free"}
+                : "VistaTeacher Community"}
             </h2>
           </div>
           <span className="bg-primary/10 grid size-11 place-items-center rounded-lg">
@@ -41,8 +41,8 @@ export function BillingPanel({ billing }: { billing: BillingView }) {
           ],
           [
             CalendarDays,
-            "Fourteen days",
-            "The Plus trial starts once and ends automatically.",
+            "Flexible access",
+            "Choose Plus whenever its expanded tools fit your work.",
           ],
           [
             CreditCard,

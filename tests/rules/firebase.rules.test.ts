@@ -15,7 +15,7 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { ref, uploadBytes } from "firebase/storage";
+import { getBytes, ref, uploadBytes } from "firebase/storage";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -342,7 +342,7 @@ describe("Firestore rules", () => {
     });
   });
 
-  it("enforces the Free daily message limit inside the transaction", async () => {
+  it("enforces the Community daily message limit inside the transaction", async () => {
     await seedNetworkUser("sender");
     await seedNetworkUser("recipient");
     const conversationId = "recipient_sender";
@@ -634,7 +634,7 @@ describe("Firestore rules", () => {
     });
   });
 
-  it("enforces the Free connection limit inside the transaction", async () => {
+  it("enforces the Community connection limit inside the transaction", async () => {
     await seedNetworkUser("follower", { followingCount: 5 });
     await seedNetworkUser("educator");
 
@@ -1266,6 +1266,62 @@ describe("Storage rules", () => {
         ref(ownerStorage, "users/owner/avatar/avatar.svg"),
         new Uint8Array([1]),
         { contentType: "image/svg+xml" },
+      ),
+    );
+  });
+
+  it("limits post media writes to active owners and reads to signed-in users", async () => {
+    await seedActiveUser("owner");
+    const ownerStorage = testEnv.authenticatedContext("owner").storage();
+    const otherStorage = testEnv.authenticatedContext("other").storage();
+    const postPath = "posts/owner/post-one/classroom.webp";
+
+    await assertSucceeds(
+      uploadBytes(ref(ownerStorage, postPath), new Uint8Array([1]), {
+        contentType: "image/webp",
+      }),
+    );
+    await assertSucceeds(getBytes(ref(otherStorage, postPath)));
+    await assertFails(
+      uploadBytes(
+        ref(otherStorage, "posts/owner/post-two/classroom.webp"),
+        new Uint8Array([1]),
+        { contentType: "image/webp" },
+      ),
+    );
+    await assertFails(
+      getBytes(ref(testEnv.unauthenticatedContext().storage(), postPath)),
+    );
+  });
+
+  it("accepts safe owner verification evidence but denies every direct read", async () => {
+    await seedActiveUser("owner");
+    const ownerStorage = testEnv.authenticatedContext("owner").storage();
+    const otherStorage = testEnv.authenticatedContext("other").storage();
+    const adminStorage = testEnv
+      .authenticatedContext("admin", { role: "platform_admin" })
+      .storage();
+    const evidencePath = "verification/owner/evidence.pdf";
+
+    await assertSucceeds(
+      uploadBytes(ref(ownerStorage, evidencePath), new Uint8Array([1]), {
+        contentType: "application/pdf",
+      }),
+    );
+    await assertFails(getBytes(ref(ownerStorage, evidencePath)));
+    await assertFails(getBytes(ref(adminStorage, evidencePath)));
+    await assertFails(
+      uploadBytes(
+        ref(otherStorage, "verification/owner/forged.pdf"),
+        new Uint8Array([1]),
+        { contentType: "application/pdf" },
+      ),
+    );
+    await assertFails(
+      uploadBytes(
+        ref(ownerStorage, "verification/owner/evidence.html"),
+        new Uint8Array([1]),
+        { contentType: "text/html" },
       ),
     );
   });

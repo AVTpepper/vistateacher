@@ -11,8 +11,9 @@ test("renders the VistaTeacher marketing foundation", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByAltText("A bright, active classroom")).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Join free today" }),
+    page.getByRole("link", { name: "Create account" }).first(),
   ).toBeVisible();
+  await expect(page.getByText(/\bfree\b/i)).toHaveCount(0);
   await expect(page).toHaveTitle(/VistaTeacher/);
   expect(
     await page.evaluate(
@@ -37,6 +38,89 @@ test("renders the VistaTeacher marketing foundation", async ({ page }) => {
   await expect(page.getByText("$9")).toBeVisible();
 });
 
+test("opens the marketing navigation on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  const menuButton = page.getByRole("button", { name: "Open main menu" });
+  const mainNavigation = page.getByRole("navigation", {
+    name: "Main navigation",
+  });
+
+  await expect(menuButton).toBeVisible();
+  await expect(
+    mainNavigation.getByRole("link", { name: "About" }),
+  ).toBeHidden();
+  await expect(
+    mainNavigation.getByRole("link", { name: "Create account" }),
+  ).toBeHidden();
+
+  await page.evaluate(() => window.scrollTo(0, 500));
+  await expect
+    .poll(() =>
+      page
+        .getByRole("banner")
+        .evaluate((header) => Math.round(header.getBoundingClientRect().top)),
+    )
+    .toBe(0);
+  await page.evaluate(() => window.scrollTo(0, 0));
+
+  await menuButton.click();
+
+  await expect(
+    page.getByRole("button", { name: "Close main menu" }),
+  ).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    mainNavigation.getByRole("link", { name: "About" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Close navigation overlay" }),
+  ).toBeVisible();
+  await expect(page.locator("#mobile-navigation")).toHaveCSS(
+    "max-width",
+    "320px",
+  );
+  await expect(page.locator("#mobile-navigation")).toHaveCSS(
+    "max-height",
+    "780px",
+  );
+  expect(
+    await page
+      .locator("#mobile-navigation")
+      .evaluate((menu) => menu.getBoundingClientRect().width),
+  ).toBeLessThanOrEqual(320);
+  expect(
+    await page
+      .locator("#mobile-navigation")
+      .evaluate((menu) => menu.getBoundingClientRect().height),
+  ).toBeLessThan(844 - 64);
+  await expect(
+    mainNavigation.getByRole("link", { name: "Create account" }),
+  ).toBeVisible();
+  await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
+
+  await page
+    .getByRole("button", { name: "Close navigation overlay" })
+    .click({ position: { x: 20, y: 100 } });
+
+  await expect(
+    page.getByRole("button", { name: "Open main menu" }),
+  ).toHaveAttribute("aria-expanded", "false");
+  await expect(
+    mainNavigation.getByRole("link", { name: "About" }),
+  ).toBeHidden();
+  await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+
+  await menuButton.click();
+
+  await mainNavigation.getByRole("link", { name: "About" }).click();
+
+  await expect(page).toHaveURL(/\/about$/);
+  await expect(
+    page.getByRole("button", { name: "Open main menu" }),
+  ).toHaveAttribute("aria-expanded", "false");
+});
+
 test("protects the platform shell without a server session", async ({
   page,
 }) => {
@@ -59,6 +143,9 @@ test("exposes accessible account entry and recovery routes", async ({
   ).toBeVisible();
   await expect(page.getByLabel("Email address")).toBeVisible();
   await expect(page.getByLabel("Password")).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Main navigation" }),
+  ).toBeVisible();
 
   await expect(
     page.getByRole("link", { name: "Forgot password?" }),
@@ -68,6 +155,9 @@ test("exposes accessible account entry and recovery routes", async ({
     page.getByRole("heading", { name: "Reset your password" }),
   ).toBeVisible();
   await expect(page.getByLabel("Email address")).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Main navigation" }),
+  ).toBeVisible();
 });
 
 test("publishes help and legal pages", async ({ page }) => {

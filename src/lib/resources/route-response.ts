@@ -9,7 +9,7 @@ export function resourceErrorResponse(error: unknown): NextResponse | null {
   const responses = {
     inactive: ["Your account cannot perform this action.", 403],
     "limit-reached": [
-      "Your Free plan includes five resource uploads per month.",
+      "Your Community plan includes five resource uploads per month.",
       403,
     ],
     "not-found": ["Resource not found.", 404],

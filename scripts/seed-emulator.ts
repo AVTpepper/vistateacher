@@ -20,7 +20,7 @@ const db = getFirestore(app);
 const educators = [
   {
     uid: "free-educator",
-    email: "free@vista.local",
+    email: "community@vista.local",
     displayName: "Alex Rivera",
     role: "educator",
     plan: "free",

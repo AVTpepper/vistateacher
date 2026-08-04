@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, LoaderCircle, Sparkles } from "lucide-react";
+import { CreditCard, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -47,11 +47,9 @@ export function BillingControls({
   const [interval, setInterval] = useState<BillingInterval>(
     billing.billingInterval ?? "month",
   );
-  const [pending, setPending] = useState<
-    "trial" | "checkout" | "portal" | null
-  >(null);
+  const [pending, setPending] = useState<"checkout" | "portal" | null>(null);
 
-  async function action(kind: "trial" | "checkout" | "portal"): Promise<void> {
+  async function action(kind: "checkout" | "portal"): Promise<void> {
     setPending(kind);
     const response = await fetch(`/api/billing/${kind}`, {
       method: "POST",
@@ -74,8 +72,7 @@ export function BillingControls({
       window.location.assign(result.url);
       return;
     }
-    toast.success("Your fourteen-day Plus trial has started.");
-    window.location.reload();
+    toast.error("Billing did not return a destination. Please try again.");
   }
 
   const periodEnd = formattedDate(billing.currentPeriodEnd);
@@ -112,22 +109,6 @@ export function BillingControls({
       )}
 
       <div className={cn("flex flex-wrap gap-2", compact && "flex-col")}>
-        {billing.canStartTrial && (
-          <Button
-            className={cn(compact && "w-full")}
-            variant="accent"
-            size={compact ? "lg" : "default"}
-            disabled={pending !== null}
-            onClick={() => action("trial")}
-          >
-            {pending === "trial" ? (
-              <LoaderCircle className="animate-spin" />
-            ) : (
-              <Sparkles />
-            )}
-            Start 14-day trial
-          </Button>
-        )}
         {billing.canCheckout && (
           <Button
             className={cn(compact && "w-full")}
@@ -160,11 +141,6 @@ export function BillingControls({
           </Button>
         )}
       </div>
-      {billing.canStartTrial && (
-        <p className="text-muted-foreground text-xs leading-5">
-          No card required. Trial access ends automatically after fourteen days.
-        </p>
-      )}
     </div>
   );
 }
@@ -179,12 +155,12 @@ function LifecycleMessage({
   trialEnd: string | null;
 }) {
   const messages: Record<BillingView["lifecycle"], string> = {
-    free: "You are using VistaTeacher Free.",
-    vista_trial: `Your Plus trial is active${trialEnd ? ` through ${trialEnd}` : ""}.`,
+    free: "You are using VistaTeacher Community.",
+    vista_trial: `Your temporary Plus access is active${trialEnd ? ` through ${trialEnd}` : ""}.`,
     active: billing.cancelAtPeriodEnd
       ? `Your Plus access continues${periodEnd ? ` through ${periodEnd}` : " until the billing period ends"}.`
       : `Your Plus membership is active${periodEnd ? ` and renews on ${periodEnd}` : ""}.`,
-    trialing: `Your Stripe trial is active${periodEnd ? ` through ${periodEnd}` : ""}.`,
+    trialing: `Your Plus membership is active${periodEnd ? ` through ${periodEnd}` : ""}.`,
     past_due:
       "Your latest payment needs attention. Update it in the billing portal.",
     canceled:

@@ -109,8 +109,7 @@ function billingState(
     currentPeriodEnd: subscription.currentPeriodEnd,
     cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
     trialEndsAt: subscription.trialEndsAt,
-    canStartTrial:
-      !subscription.trialConsumed && subscription.stripeSubscriptionId === null,
+    canStartTrial: false,
     canCheckout: !stripeActive,
     canManageBilling: subscription.stripeCustomerId !== null,
   };

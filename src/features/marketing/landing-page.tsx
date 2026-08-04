@@ -44,7 +44,7 @@ const features = [
 
 export function LandingPage() {
   return (
-    <div className="bg-background min-h-screen overflow-x-hidden">
+    <div className="bg-background min-h-screen overflow-x-clip">
       <MarketingHeader />
       <main>
         <section className="relative overflow-hidden">
@@ -69,7 +69,7 @@ export function LandingPage() {
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Button asChild size="lg">
                 <Link href="/sign-up">
-                  Join free today <ArrowRight aria-hidden="true" />
+                  Create account <ArrowRight aria-hidden="true" />
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
@@ -171,12 +171,13 @@ export function LandingPage() {
                 Simple, honest pricing
               </h2>
               <p className="text-muted-foreground mt-3">
-                Start free. Upgrade when the extra tools earn their place.
+                Start with the community. Add Plus when the extra tools earn
+                their place.
               </p>
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
               <Plan
-                name="Free"
+                name="Community"
                 price="$0"
                 detail="For joining the educator community"
                 features={[
@@ -274,7 +275,7 @@ function Plan({
         className="mt-8 w-full"
         variant={featured ? "accent" : "outline"}
       >
-        <Link href="/sign-up">Start free</Link>
+        <Link href="/sign-up">Create account</Link>
       </Button>
     </article>
   );
