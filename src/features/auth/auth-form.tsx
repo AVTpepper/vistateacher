@@ -83,7 +83,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     mode === "sign-up"
       ? String((form.watch("password" as const) ?? ""))
       : "";
-  const showPasswordRequirements = mode === "sign-up" && isPasswordFocused;
+  const showPasswordRequirements =
+    mode === "sign-up" && (isPasswordFocused || passwordValue.length > 0);
   const passwordRequirements = [
     {
       label: "Use at least 10 characters.",
@@ -202,7 +203,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           id="password"
           label="Password"
           error={
-            mode === "sign-up" && isPasswordFocused
+            mode === "sign-up" && showPasswordRequirements
               ? undefined
               : fieldErrors.password?.message
           }
