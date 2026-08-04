@@ -49,6 +49,8 @@ Message attachment uploads require an active account and a matching server-owned
 
 The browser cannot set plans or trials. Stripe signatures and event IDs provide authenticity and idempotency. Quota checks and increments use transactions; failed operations do not consume quota. Free messaging is limited to ten sends per UTC day using the sender's server-owned daily usage record; Plus messaging is unlimited. Plus AI generation is limited to 50 successful lessons per UTC month. Production rate limits use persistent usage records, never instance memory.
 
+The no-card trial can be consumed once and uses server-derived start/end timestamps. Checkout and Portal require an active session and trusted origin; redirect URLs, customer IDs, and price IDs are never accepted from the browser. Webhooks read the raw request body, verify the Stripe signature, persist a private event-ID receipt, and ignore events older than the subscription watermark. Configure both Plus price IDs and the webhook endpoint `/api/billing/webhook` before enabling production billing.
+
 ## Privacy and Moderation
 
 Private contact data is fetched only when the viewer owns the profile or the educator has explicitly opted into public contact sharing. Account deletion requires an exact confirmation and records a server timestamp for review. Blocking is checked across follows, messaging, discovery, and notifications. Reports disclose only necessary target context. Reported-message review is narrowly scoped and creates an audit log.

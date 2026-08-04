@@ -4,6 +4,12 @@ import Link from "next/link";
 
 import { ContentPage } from "@/components/marketing/content-page";
 import { Button } from "@/components/ui/button";
+import {
+  BillingControls,
+  type BillingView,
+} from "@/features/billing/billing-controls";
+import { getCurrentAccount } from "@/lib/auth/session";
+import { getBillingState } from "@/lib/billing/server";
 
 export const metadata: Metadata = { title: "Pricing" };
 
@@ -33,7 +39,18 @@ const plans = [
   },
 ];
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const account = await getCurrentAccount();
+  const state = account?.onboarded
+    ? await getBillingState(account.uid).catch(() => null)
+    : null;
+  const billing: BillingView | null = state
+    ? {
+        ...state,
+        currentPeriodEnd: state.currentPeriodEnd?.toISOString() ?? null,
+        trialEndsAt: state.trialEndsAt?.toISOString() ?? null,
+      }
+    : null;
   return (
     <ContentPage
       eyebrow="Simple plans"
@@ -62,20 +79,26 @@ export default function PricingPage() {
                 </li>
               ))}
             </ul>
-            <Button
-              asChild
-              className="mt-8 w-full"
-              size="lg"
-              variant={plan.name === "Plus" ? "accent" : "default"}
-            >
-              <Link href="/sign-up">Start free</Link>
-            </Button>
+            {plan.name === "Plus" && billing ? (
+              <BillingControls billing={billing} compact />
+            ) : (
+              <Button
+                asChild
+                className="mt-8 w-full"
+                size="lg"
+                variant={plan.name === "Plus" ? "accent" : "default"}
+              >
+                <Link href={account ? "/app" : "/sign-up"}>
+                  {account ? "Current plan" : "Start free"}
+                </Link>
+              </Button>
+            )}
           </section>
         ))}
       </div>
       <p className="text-muted-foreground mt-6 text-sm">
-        Plus billing is not activated until checkout is available. Creating an
-        account does not start a paid subscription.
+        The fourteen-day Plus trial requires no card. Paid memberships are
+        processed securely by Stripe and can be managed from account settings.
       </p>
     </ContentPage>
   );

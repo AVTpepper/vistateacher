@@ -77,10 +77,10 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 10 - Billing
 
-- [ ] Implement the server-owned fourteen-day Plus trial.
-- [ ] Implement Stripe Checkout and Customer Portal routes.
-- [ ] Implement verified, idempotent webhook reconciliation.
-- [ ] Implement pricing and billing lifecycle states.
+- [x] Implement the server-owned fourteen-day Plus trial.
+- [x] Implement Stripe Checkout and Customer Portal routes.
+- [x] Implement verified, idempotent webhook reconciliation.
+- [x] Implement pricing and billing lifecycle states.
 
 ## Phase 11 - Administration
 

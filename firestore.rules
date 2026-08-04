@@ -49,6 +49,10 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /billingEvents/{eventId} {
+      allow read, write: if false;
+    }
+
     match /usage/{usageId} {
       allow read: if signedIn() && usageId.matches('^' + request.auth.uid + '_.*$');
       allow write: if false;

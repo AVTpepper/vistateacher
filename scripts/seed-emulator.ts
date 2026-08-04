@@ -131,15 +131,20 @@ for (const educator of educators) {
   batch.set(db.doc(`subscriptions/${educator.uid}`), {
     plan: educator.plan,
     status: educator.plan === "plus" ? "active" : "free",
-    stripeCustomerId: null,
-    stripeSubscriptionId: null,
-    stripePriceId: null,
-    billingInterval: null,
-    currentPeriodEnd: null,
+    stripeCustomerId:
+      educator.plan === "plus" ? `cus_demo_${educator.uid}` : null,
+    stripeSubscriptionId:
+      educator.plan === "plus" ? `sub_demo_${educator.uid}` : null,
+    stripePriceId: educator.plan === "plus" ? "price_demo_plus_monthly" : null,
+    billingInterval: educator.plan === "plus" ? "month" : null,
+    currentPeriodEnd:
+      educator.plan === "plus" ? new Date("2026-09-04T12:00:00.000Z") : null,
     cancelAtPeriodEnd: false,
     trialStartedAt: null,
     trialEndsAt: null,
     trialConsumed: false,
+    stripeEventCreatedAt:
+      educator.plan === "plus" ? new Date("2026-08-04T12:00:00.000Z") : null,
     updatedAt: FieldValue.serverTimestamp(),
   });
 }

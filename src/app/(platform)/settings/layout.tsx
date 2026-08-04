@@ -1,4 +1,4 @@
-import { LockKeyhole, UserRound } from "lucide-react";
+import { CreditCard, LockKeyhole, UserRound } from "lucide-react";
 import Link from "next/link";
 
 export default function SettingsLayout({
@@ -32,6 +32,13 @@ export default function SettingsLayout({
           >
             <LockKeyhole aria-hidden="true" className="text-primary size-4" />
             Privacy & account
+          </Link>
+          <Link
+            href="/settings/billing"
+            className="hover:bg-muted flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold"
+          >
+            <CreditCard aria-hidden="true" className="text-primary size-4" />
+            Plan & billing
           </Link>
         </nav>
         <div className="min-w-0">{children}</div>

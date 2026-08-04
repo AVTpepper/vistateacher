@@ -60,6 +60,11 @@ import {
   regenerateLesson,
   updateLesson,
 } from "@/lib/lessons/server";
+import {
+  BillingError,
+  reconcileBillingEvent,
+  startVistaTrial,
+} from "@/lib/billing/server";
 
 const projectId = "demo-vista-teacher";
 let testEnv: RulesTestEnvironment;
@@ -85,6 +90,25 @@ async function seedActiveUser(uid: string, status = "active") {
       uid,
       status,
       role: "educator",
+    });
+  });
+}
+
+async function seedSubscription(uid: string) {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "subscriptions", uid), {
+      plan: "free",
+      status: "free",
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      stripePriceId: null,
+      billingInterval: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      trialStartedAt: null,
+      trialEndsAt: null,
+      trialConsumed: false,
+      updatedAt: new Date("2026-08-04T00:00:00.000Z"),
     });
   });
 }
@@ -616,6 +640,75 @@ describe("Firestore rules", () => {
     await expect(followEducator("follower", "educator")).rejects.toMatchObject({
       code: "limit-reached",
     } satisfies Partial<NetworkActionError>);
+  });
+
+  it("starts the server-owned trial once and denies direct billing writes", async () => {
+    await seedActiveUser("trial-owner");
+    await seedSubscription("trial-owner");
+    const now = new Date("2026-08-04T12:00:00.000Z");
+
+    const state = await startVistaTrial("trial-owner", now);
+    expect(state.effectivePlan).toBe("plus");
+    expect(state.lifecycle).toBe("vista_trial");
+    expect(state.trialEndsAt?.toISOString()).toBe("2026-08-18T12:00:00.000Z");
+    await expect(startVistaTrial("trial-owner", now)).rejects.toMatchObject({
+      code: "trial-unavailable",
+    } satisfies Partial<BillingError>);
+
+    const ownerDb = testEnv.authenticatedContext("trial-owner").firestore();
+    await assertSucceeds(getDoc(doc(ownerDb, "subscriptions", "trial-owner")));
+    await assertFails(
+      updateDoc(doc(ownerDb, "subscriptions", "trial-owner"), {
+        plan: "plus",
+      }),
+    );
+    await assertFails(
+      setDoc(doc(ownerDb, "billingEvents", "forged-event"), {
+        uid: "trial-owner",
+        applied: true,
+      }),
+    );
+    await assertFails(getDoc(doc(ownerDb, "billingEvents", "forged-event")));
+  });
+
+  it("deduplicates Stripe events and ignores older lifecycle updates", async () => {
+    await seedActiveUser("billing-owner");
+    await seedSubscription("billing-owner");
+    const currentEvent = {
+      id: "evt-current",
+      type: "subscription.updated" as const,
+      uid: "billing-owner",
+      createdAt: new Date("2026-08-04T12:00:00.000Z"),
+      customerId: "cus_owner",
+      subscriptionId: "sub_owner",
+      priceId: "price_plus_monthly",
+      interval: "month" as const,
+      status: "active" as const,
+      currentPeriodEnd: new Date("2026-09-04T12:00:00.000Z"),
+      cancelAtPeriodEnd: false,
+    };
+
+    await expect(reconcileBillingEvent(currentEvent)).resolves.toBe(true);
+    await expect(reconcileBillingEvent(currentEvent)).resolves.toBe(false);
+    await expect(
+      reconcileBillingEvent({
+        ...currentEvent,
+        id: "evt-stale",
+        createdAt: new Date("2026-08-04T11:59:59.000Z"),
+        status: "canceled",
+      }),
+    ).resolves.toBe(false);
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [subscription, current, stale] = await Promise.all([
+        getDoc(doc(context.firestore(), "subscriptions", "billing-owner")),
+        getDoc(doc(context.firestore(), "billingEvents", "evt-current")),
+        getDoc(doc(context.firestore(), "billingEvents", "evt-stale")),
+      ]);
+      expect(subscription.data()?.status).toBe("active");
+      expect(current.data()?.applied).toBe(true);
+      expect(stale.data()?.applied).toBe(false);
+    });
   });
 
   it("prevents suspended users from creating posts", async () => {

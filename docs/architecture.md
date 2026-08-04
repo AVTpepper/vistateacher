@@ -27,6 +27,8 @@ The web SDK handles permitted reads, real-time listeners, authentication, and ow
 
 `subscriptions/{uid}` is server-owned. Effective entitlements resolve centrally from Stripe status plus the VistaTeacher no-card trial. Payment does not set educator verification. Stripe events are signature-verified, deduplicated by event ID, and safe to retry; checkout redirects never grant access.
 
+The trial endpoint transactionally consumes the single fourteen-day trial and derives both timestamps on the server. Checkout accepts only a monthly/yearly choice and derives customer identity, prices, and redirect URLs from trusted state. Customer Portal requires an existing Stripe customer. Webhook reconciliation writes `billingEvents/{eventId}` and the subscription in one transaction; a Stripe creation-time watermark prevents delayed events from replacing newer lifecycle state.
+
 ## AI Lesson Flow
 
 The server verifies session/status, validates bounded source parameters, resolves Plus access, and reserves monthly quota plus lesson generation state in one Admin transaction. A trusted timestamp on the monthly usage record provides a cross-instance generation cooldown. The browser never receives an OpenAI credential.

@@ -303,7 +303,9 @@ export function DashboardExperience({
               <div>
                 <h2 className="font-serif text-lg">Plan and usage</h2>
                 <p className="text-muted-foreground text-xs">
-                  {dashboard.subscription.status === "trialing"
+                  {dashboard.plan === "plus" &&
+                  dashboard.subscription.status !== "active" &&
+                  dashboard.subscription.status !== "trialing"
                     ? "Plus trial"
                     : dashboard.plan === "plus"
                       ? "Plus membership"
@@ -324,6 +326,14 @@ export function DashboardExperience({
               >
                 <Sparkles className="size-4" />
                 Upgrade to Plus
+              </Link>
+            )}
+            {dashboard.plan === "plus" && (
+              <Link
+                href="/settings/billing"
+                className="text-primary mt-5 flex h-10 items-center justify-center rounded-lg border text-xs font-bold"
+              >
+                Manage plan
               </Link>
             )}
             {dashboard.subscription.cancelAtPeriodEnd && (
