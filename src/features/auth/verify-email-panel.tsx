@@ -14,16 +14,24 @@ export function VerifyEmailPanel() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [requiresSignIn, setRequiresSignIn] = useState(false);
 
   async function checkVerification() {
-    const user = getFirebaseClient().auth.currentUser;
+    const { auth } = getFirebaseClient();
+    setIsChecking(true);
+    setError(null);
+    setRequiresSignIn(false);
+    await auth.authStateReady();
+    const user = auth.currentUser;
     if (!user) {
-      setError("Your sign-in has expired. Sign in again to continue.");
+      setError(
+        "Your email may already be verified. Sign in to continue setting up your account.",
+      );
+      setRequiresSignIn(true);
+      setIsChecking(false);
       return;
     }
 
-    setIsChecking(true);
-    setError(null);
     try {
       await user.reload();
       if (!user.emailVerified) {
@@ -43,7 +51,10 @@ export function VerifyEmailPanel() {
       };
       if (!response.ok || !result.next) {
         if (response.status === 401) {
-          setError("Your sign-in has expired. Sign in again to continue.");
+          setError(
+            "Your email is verified. Sign in again to continue setting up your account.",
+          );
+          setRequiresSignIn(true);
           return;
         }
         if (response.status === 403) {
@@ -101,7 +112,7 @@ export function VerifyEmailPanel() {
       <Button
         className="w-full"
         size="lg"
-        onClick={checkVerification}
+        onClick={requiresSignIn ? () => router.push("/sign-in") : checkVerification}
         disabled={isChecking}
       >
         {isChecking ? (
@@ -109,7 +120,7 @@ export function VerifyEmailPanel() {
         ) : (
           <CheckCircle2 aria-hidden="true" />
         )}
-        I verified my email
+        {requiresSignIn ? "Sign in to continue" : "I verified my email"}
       </Button>
       <div className="flex justify-center gap-5 text-sm font-bold">
         <button
