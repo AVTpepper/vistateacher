@@ -40,12 +40,13 @@ test("renders the VistaTeacher marketing foundation", async ({ page }) => {
 test("protects the platform shell without a server session", async ({
   page,
 }) => {
-  await page.goto("/app");
-
-  await expect(page).toHaveURL(/\/sign-in$/);
-  await expect(
-    page.getByRole("heading", { name: "Welcome back" }),
-  ).toBeVisible();
+  for (const path of ["/app", "/discover", "/network"]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/sign-in$/);
+    await expect(
+      page.getByRole("heading", { name: "Welcome back" }),
+    ).toBeVisible();
+  }
 });
 
 test("exposes accessible account entry and recovery routes", async ({

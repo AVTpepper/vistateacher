@@ -15,7 +15,7 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 
 | Path                                        | Ownership and purpose        | Important fields                                                                        |
 | ------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------- |
-| `follows/{followerUid_followingUid}`        | Server transaction           | follower, following, timestamp                                                          |
+| `follows/{followerUid_followingUid}`        | Server transaction           | `followerUid`, `followingUid`, `createdAt`                                              |
 | `posts/{postId}`                            | Author content               | type/content/images/tags, visibility/moderation, counters, timestamps                   |
 | `posts/{postId}/comments/{commentId}`       | Comment author               | author, content, moderation, timestamps                                                 |
 | `postLikes/{postId_uid}`                    | User reaction                | post, user, timestamp                                                                   |
@@ -50,3 +50,5 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 Soft deletion precedes permanent deletion. Retention policies must minimize private/payment data while preserving legally required billing and audit records. Administrators do not receive blanket message access; reported-message review is narrowly scoped and audited.
 
 Public educator discovery uses bounded `searchKeywords` arrays derived by trusted profile mutations. Private contact fields never enter public profile documents or search indexes. A deletion request is stored under `userPrivate/{uid}.accountDeletion.requestedAt`; a later reviewed workflow performs soft and permanent deletion.
+
+Follow transactions create or remove the deterministic relationship document and update `users/{followerUid}.followingCount` plus `users/{followingUid}.followerCount` atomically. Relationship queries use the single-field `followerUid` and `followingUid` indexes; no client may write these records or counters directly.

@@ -6,9 +6,21 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { ref, uploadBytes } from "firebase/storage";
-import { afterAll, afterEach, beforeAll, describe, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+
+import {
+  followEducator,
+  NetworkActionError,
+  unfollowEducator,
+} from "@/lib/network/server";
 
 const projectId = "demo-vista-teacher";
 let testEnv: RulesTestEnvironment;
@@ -34,6 +46,45 @@ async function seedActiveUser(uid: string, status = "active") {
       uid,
       status,
       role: "educator",
+    });
+  });
+}
+
+async function seedNetworkUser(
+  uid: string,
+  overrides: Record<string, unknown> = {},
+) {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "users", uid), {
+      uid,
+      displayName: uid,
+      gradeLevel: "Middle School",
+      subjects: ["Science"],
+      country: "United States",
+      city: "Portland",
+      school: "Vista School",
+      yearsOfExperience: 5,
+      bio: "",
+      website: null,
+      interests: [],
+      photoURL: null,
+      coverImageURL: null,
+      role: "educator",
+      isVerified: false,
+      followerCount: 0,
+      followingCount: 0,
+      resourceCount: 0,
+      postCount: 0,
+      status: "active",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      ...overrides,
+    });
+    await setDoc(doc(context.firestore(), "subscriptions", uid), {
+      plan: "free",
+      status: "free",
+      trialConsumed: false,
+      updatedAt: serverTimestamp(),
     });
   });
 }
@@ -121,6 +172,59 @@ describe("Firestore rules", () => {
         email: "new@example.test",
       }),
     );
+  });
+
+  it("keeps follow documents server-owned", async () => {
+    await seedActiveUser("follower");
+    await seedActiveUser("educator");
+    await assertFails(
+      setDoc(
+        doc(
+          testEnv.authenticatedContext("follower").firestore(),
+          "follows",
+          "follower_educator",
+        ),
+        { followerUid: "follower", followingUid: "educator" },
+      ),
+    );
+  });
+
+  it("updates both counters transactionally when following and unfollowing", async () => {
+    await seedNetworkUser("follower");
+    await seedNetworkUser("educator");
+
+    await followEducator("follower", "educator");
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [follower, educator, relationship] = await Promise.all([
+        getDoc(doc(context.firestore(), "users", "follower")),
+        getDoc(doc(context.firestore(), "users", "educator")),
+        getDoc(doc(context.firestore(), "follows", "follower_educator")),
+      ]);
+      expect(follower.data()?.followingCount).toBe(1);
+      expect(educator.data()?.followerCount).toBe(1);
+      expect(relationship.exists()).toBe(true);
+    });
+
+    await unfollowEducator("follower", "educator");
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [follower, educator, relationship] = await Promise.all([
+        getDoc(doc(context.firestore(), "users", "follower")),
+        getDoc(doc(context.firestore(), "users", "educator")),
+        getDoc(doc(context.firestore(), "follows", "follower_educator")),
+      ]);
+      expect(follower.data()?.followingCount).toBe(0);
+      expect(educator.data()?.followerCount).toBe(0);
+      expect(relationship.exists()).toBe(false);
+    });
+  });
+
+  it("enforces the Free connection limit inside the transaction", async () => {
+    await seedNetworkUser("follower", { followingCount: 5 });
+    await seedNetworkUser("educator");
+
+    await expect(followEducator("follower", "educator")).rejects.toMatchObject({
+      code: "limit-reached",
+    } satisfies Partial<NetworkActionError>);
   });
 
   it("prevents suspended users from creating posts", async () => {

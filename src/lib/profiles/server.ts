@@ -3,6 +3,7 @@ import "server-only";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { adminDb } from "@/lib/firebase/admin";
+import { getFollowId } from "@/lib/network/server";
 import { canViewContactDetails } from "@/lib/profiles/privacy";
 import {
   createSearchKeywords,
@@ -24,6 +25,7 @@ export interface ProfileView {
   plan: Plan;
   contactDetails: PrivateSettings["contactDetails"] | null;
   isOwner: boolean;
+  isFollowing: boolean | null;
 }
 
 function joinedLabel(value: unknown): string {
@@ -54,6 +56,10 @@ export async function getProfileView(
     ? privateUserDocumentSchema.parse(privateSnapshot.data())
     : null;
   const isOwner = viewerUid === uid;
+  const relationshipSnapshot =
+    viewerUid && !isOwner
+      ? await db.doc(`follows/${getFollowId(viewerUid, uid)}`).get()
+      : null;
   const canViewContact = canViewContactDetails(
     uid,
     viewerUid,
@@ -67,6 +73,7 @@ export async function getProfileView(
     contactDetails:
       canViewContact && privateUser ? privateUser.contactDetails : null,
     isOwner,
+    isFollowing: relationshipSnapshot?.exists ?? null,
   };
 }
 

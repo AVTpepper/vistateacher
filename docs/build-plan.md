@@ -30,10 +30,10 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 3 - Discover and Network
 
-- [ ] Build normalized educator discovery and filters.
-- [ ] Implement transactional follow and unfollow operations.
-- [ ] Enforce connection entitlements on the server.
-- [ ] Build followers, following, and suggestions views.
+- [x] Build normalized educator discovery and filters.
+- [x] Implement transactional follow and unfollow operations.
+- [x] Enforce connection entitlements on the server.
+- [x] Build followers, following, and suggestions views.
 
 ## Phase 4 - Feed
 

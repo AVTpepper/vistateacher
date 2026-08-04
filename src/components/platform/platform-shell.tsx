@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Settings,
   Sparkles,
+  UsersRound,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -28,6 +29,7 @@ import type { Plan } from "@/types/models";
 const navigation = [
   { label: "Home Feed", icon: Home, href: "/app" },
   { label: "Discover", icon: Compass, href: "/discover" },
+  { label: "Network", icon: UsersRound, href: "/network" },
   { label: "Resources", icon: BookOpen, href: "/resources" },
   { label: "Forum", icon: MessageSquare, href: "/forum" },
   {

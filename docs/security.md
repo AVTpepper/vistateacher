@@ -9,6 +9,7 @@ The browser is untrusted. Firebase ID tokens prove authentication only after Adm
 - Admin access requires a verified `platform_admin` custom claim or trusted role.
 - Suspended users cannot create content, follow, upload, message, or generate lessons.
 - Subscription, usage, notification, message-send, aggregate, and audit writes are server-owned.
+- Follow relationships and profile connection counters are server-owned and transactional.
 - Teacher verification is an independent administrator decision, never a payment benefit.
 
 ## Rules and Secrets
@@ -16,6 +17,8 @@ The browser is untrusted. Firebase ID tokens prove authentication only after Adm
 Rules are deny-by-default. Public profile and private settings mutations are server-only, while private documents are owner/admin readable. Validated route handlers exclude role, status, verification, counters, and arbitrary deletion metadata from educator-controlled input. Conversation reads require membership; lessons are owner-only; admin collections require claims.
 
 Initial profile, private preference, and subscription documents are created only by the transactional server onboarding endpoint. Clients cannot create partial identity records directly.
+
+Clients cannot create or delete follow documents or alter connection counters. The follow endpoint re-verifies active account state, trusted origin, target state, existing relationship, effective plan, and current count inside the transaction. Free accounts stop at five following connections; Plus accounts use the centralized unlimited entitlement.
 
 Firebase Admin credentials, Stripe secrets, webhook secrets, and OpenAI keys remain in `server-only` modules and managed App Hosting secrets. Logs redact tokens, keys, contacts, private lesson content, and unnecessary payment payloads.
 

@@ -15,6 +15,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { FollowButton } from "@/features/network/follow-button";
 import { ProfileTabs } from "@/features/profiles/profile-tabs";
 import type { ProfileView as ProfileViewData } from "@/lib/profiles/server";
 
@@ -28,10 +29,25 @@ export function ProfileView({
   const { profile } = data;
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
   const stats = [
-    { icon: Users, value: profile.followerCount, label: "Followers" },
-    { icon: UserPlus, value: profile.followingCount, label: "Following" },
-    { icon: BookOpen, value: profile.resourceCount, label: "Resources" },
-    { icon: FileText, value: profile.postCount, label: "Posts" },
+    {
+      icon: Users,
+      value: profile.followerCount,
+      label: "Followers",
+      href: `/network?view=followers&uid=${profile.uid}`,
+    },
+    {
+      icon: UserPlus,
+      value: profile.followingCount,
+      label: "Following",
+      href: `/network?view=following&uid=${profile.uid}`,
+    },
+    {
+      icon: BookOpen,
+      value: profile.resourceCount,
+      label: "Resources",
+      href: null,
+    },
+    { icon: FileText, value: profile.postCount, label: "Posts", href: null },
   ];
 
   return (
@@ -86,15 +102,18 @@ export function ProfileView({
                       Edit profile
                     </Link>
                   </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    disabled
-                    title="Connections arrive in Phase 3"
-                  >
-                    <UserPlus aria-hidden="true" />
-                    Follow
+                ) : data.isFollowing === null ? (
+                  <Button asChild size="sm">
+                    <Link href="/sign-in">
+                      <UserPlus aria-hidden="true" />
+                      Sign in to follow
+                    </Link>
                   </Button>
+                ) : (
+                  <FollowButton
+                    targetUid={profile.uid}
+                    initialFollowing={data.isFollowing}
+                  />
                 )}
               </div>
             </div>
@@ -152,7 +171,7 @@ export function ProfileView({
             </div>
           )}
         <dl className="mt-5 grid grid-cols-2 gap-4 border-t pt-5 sm:grid-cols-4">
-          {stats.map(({ icon: Icon, value, label }) => (
+          {stats.map(({ icon: Icon, value, label, href }) => (
             <div className="text-center" key={label}>
               <dt className="flex items-center justify-center gap-1.5">
                 <Icon aria-hidden="true" className="text-primary size-3.5" />
@@ -160,7 +179,18 @@ export function ProfileView({
                   {value.toLocaleString()}
                 </span>
               </dt>
-              <dd className="text-muted-foreground text-xs">{label}</dd>
+              <dd className="text-muted-foreground text-xs">
+                {href ? (
+                  <Link
+                    href={href}
+                    className="hover:text-primary hover:underline"
+                  >
+                    {label}
+                  </Link>
+                ) : (
+                  label
+                )}
+              </dd>
             </div>
           ))}
         </dl>

@@ -10,6 +10,15 @@ import { getFirebaseAdminEnv } from "@/lib/env/server";
 function getAdminApp() {
   if (getApps().length) return getApp();
 
+  const emulatorProjectId =
+    process.env.GCLOUD_PROJECT ?? process.env.FIREBASE_PROJECT_ID;
+  if (
+    process.env.FIRESTORE_EMULATOR_HOST &&
+    emulatorProjectId?.startsWith("demo-")
+  ) {
+    return initializeApp({ projectId: emulatorProjectId });
+  }
+
   const env = getFirebaseAdminEnv();
   return initializeApp({
     credential: cert({

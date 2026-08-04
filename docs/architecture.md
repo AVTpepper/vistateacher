@@ -44,3 +44,9 @@ The Firebase MVP uses normalized fields, keyword arrays, and bounded parallel qu
 ## Profiles and Settings
 
 Public profile routes read `users/{uid}` and join subscription state on the server. Contact details are loaded from `userPrivate/{uid}` only for the owner or when the owner explicitly enables public sharing. Profile and settings forms submit bounded Zod contracts to same-origin route handlers; Firestore rules deny direct identity-document mutations so clients cannot bypass server validation. Account deletion records a reviewable request rather than deleting data synchronously.
+
+## Discovery and Network
+
+Educator discovery performs a bounded active-profile read and applies normalized name, subject, grade, location, and verification filters on the server. Suggestions rank unfollowed educators by shared subjects, grade level, and city without fabricating recommendation data.
+
+Follow IDs are deterministic (`followerUid_followingUid`). A same-origin authenticated route runs follow and unfollow through an Admin SDK transaction that reads both profiles, the relationship, and server-owned subscription state before writing. The transaction enforces active status, prevents self-follow and duplicates, resolves the effective plan centrally, applies the Free connection limit, and updates both profile counters atomically.
