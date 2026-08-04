@@ -46,12 +46,6 @@ env:
     availability:
       - BUILD
       - RUNTIME
-  - variable: FIREBASE_PROJECT_ID
-    secret: FIREBASE_PROJECT_ID
-  - variable: FIREBASE_CLIENT_EMAIL
-    secret: FIREBASE_CLIENT_EMAIL
-  - variable: FIREBASE_PRIVATE_KEY
-    secret: FIREBASE_PRIVATE_KEY
   - variable: STRIPE_SECRET_KEY
     secret: STRIPE_SECRET_KEY
   - variable: STRIPE_WEBHOOK_SECRET

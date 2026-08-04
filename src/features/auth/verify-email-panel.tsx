@@ -4,7 +4,7 @@ import { sendEmailVerification } from "firebase/auth";
 import { CheckCircle2, LoaderCircle, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -14,18 +14,20 @@ export function VerifyEmailPanel() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [requiresSignIn, setRequiresSignIn] = useState(false);
 
-  async function checkVerification() {
+  async function checkVerification(silent = false) {
     const { auth } = getFirebaseClient();
     setIsChecking(true);
     setError(null);
+    setNotice(null);
     setRequiresSignIn(false);
     await auth.authStateReady();
     const user = auth.currentUser;
     if (!user) {
-      setError(
-        "Your email may already be verified. Sign in to continue setting up your account.",
+      setNotice(
+        "To continue in this browser, sign in with the account you just verified.",
       );
       setRequiresSignIn(true);
       setIsChecking(false);
@@ -35,9 +37,11 @@ export function VerifyEmailPanel() {
     try {
       await user.reload();
       if (!user.emailVerified) {
-        setError(
-          "That email is not verified yet. Open the link in your inbox first.",
-        );
+        if (!silent) {
+          setNotice(
+            "We haven't detected verification yet. Open the link in your inbox, then return here.",
+          );
+        }
         return;
       }
       const response = await fetch("/api/auth/session", {
@@ -51,7 +55,7 @@ export function VerifyEmailPanel() {
       };
       if (!response.ok || !result.next) {
         if (response.status === 401) {
-          setError(
+          setNotice(
             "Your email is verified. Sign in again to continue setting up your account.",
           );
           setRequiresSignIn(true);
@@ -75,6 +79,25 @@ export function VerifyEmailPanel() {
       setIsChecking(false);
     }
   }
+
+  const checkAfterReturn = useEffectEvent(() => {
+    void checkVerification(true);
+  });
+
+  useEffect(() => {
+    queueMicrotask(checkAfterReturn);
+
+    function checkWhenVisible() {
+      if (document.visibilityState === "visible") checkAfterReturn();
+    }
+
+    window.addEventListener("focus", checkAfterReturn);
+    document.addEventListener("visibilitychange", checkWhenVisible);
+    return () => {
+      window.removeEventListener("focus", checkAfterReturn);
+      document.removeEventListener("visibilitychange", checkWhenVisible);
+    };
+  }, []);
 
   async function resend() {
     const user = getFirebaseClient().auth.currentUser;
@@ -109,10 +132,19 @@ export function VerifyEmailPanel() {
           {error}
         </p>
       )}
+      {notice && (
+        <p className="text-muted-foreground text-sm" role="status">
+          {notice}
+        </p>
+      )}
       <Button
         className="w-full"
         size="lg"
-        onClick={requiresSignIn ? () => router.push("/sign-in") : checkVerification}
+        onClick={
+          requiresSignIn
+            ? () => router.push("/sign-in")
+            : () => void checkVerification()
+        }
         disabled={isChecking}
       >
         {isChecking ? (
@@ -120,7 +152,7 @@ export function VerifyEmailPanel() {
         ) : (
           <CheckCircle2 aria-hidden="true" />
         )}
-        {requiresSignIn ? "Sign in to continue" : "I verified my email"}
+        {requiresSignIn ? "Sign in to continue" : "Check verification"}
       </Button>
       <div className="flex justify-center gap-5 text-sm font-bold">
         <button

@@ -47,6 +47,12 @@ function authErrorMessage(error: unknown): string {
   if (code.includes("popup-closed")) return "Google sign-in was canceled.";
   if (code.includes("too-many-requests"))
     return "Too many attempts. Try again later.";
+  if (error instanceof Error && error.message === "Unable to create session.")
+    return "Sign-in succeeded, but the server could not create your session. Please try again shortly.";
+  if (error instanceof Error && error.message === "Invalid request origin.")
+    return "This site URL is not configured for sign-in.";
+  if (error instanceof Error && error.message === "Verify your email first.")
+    return "Verify your email before signing in.";
   return "We couldn't complete that request. Please try again.";
 }
 
