@@ -201,11 +201,37 @@ const categoryNames = [
   "New Teacher Questions",
   "AI in Education",
 ];
+const categoryIcons = [
+  "LayoutGrid",
+  "BookOpen",
+  "Zap",
+  "Monitor",
+  "Heart",
+  "Users",
+  "MessageCircle",
+  "HelpCircle",
+  "Sparkles",
+];
+const categoryColors = [
+  "#3B6B5C",
+  "#3D70A2",
+  "#D18B34",
+  "#6F5A98",
+  "#B95D65",
+  "#3C8A78",
+  "#A36A42",
+  "#58799B",
+  "#8A5C9E",
+];
 for (const [order, name] of categoryNames.entries()) {
   const id = name.toLocaleLowerCase("en-US").replaceAll(" ", "-");
   batch.set(db.doc(`forumCategories/${id}`), {
     name,
     description: `Development-only ${name.toLocaleLowerCase("en-US")} discussions.`,
+    icon: categoryIcons[order],
+    color: categoryColors[order],
+    threadCount: id === "student-engagement" ? 1 : 0,
+    postCount: id === "student-engagement" ? 2 : 0,
     order,
     active: true,
   });
@@ -224,6 +250,7 @@ batch.set(db.doc("forumThreads/demo-thread"), {
   viewCount: 4,
   likeCount: 0,
   replyCount: 1,
+  reportCount: 0,
   moderationStatus: "approved",
   lastActivityAt: FieldValue.serverTimestamp(),
   createdAt: FieldValue.serverTimestamp(),
@@ -233,6 +260,8 @@ batch.set(db.doc("forumThreads/demo-thread/replies/demo-reply"), {
   authorId: "free-educator",
   content: "Silent writing before partner talk has worked well for us.",
   likeCount: 0,
+  reportCount: 0,
+  accepted: false,
   moderationStatus: "approved",
   createdAt: FieldValue.serverTimestamp(),
   updatedAt: FieldValue.serverTimestamp(),

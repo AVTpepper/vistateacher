@@ -22,9 +22,10 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 | `postBookmarks/{uid_postId}`                | Server-owned private save     | post, user, timestamp                                                                   |
 | `resources/{resourceId}`                    | Server-owned upload workflow  | taxonomy/access, private Storage path, safe file metadata, status, counters, moderation |
 | `resourceReviews/{resourceId_uid}`          | Server-owned review upsert    | resource, author, rating, review, timestamps                                            |
-| `forumCategories/{categoryId}`              | Server/admin taxonomy         | name, description, icon, order, active                                                  |
-| `forumThreads/{threadId}`                   | Author discussion             | category/content/tags, pin/lock/solved, accepted reply, counters/activity               |
-| `forumThreads/{threadId}/replies/{replyId}` | Reply author                  | author, content, likes, moderation, timestamps                                          |
+| `forumCategories/{categoryId}`              | Server/admin taxonomy         | name, description, icon/color, order, active, thread/post counters                      |
+| `forumThreads/{threadId}`                   | Server-owned discussion       | category/content/tags, pin/lock/solved, accepted reply, counters/activity               |
+| `forumThreads/{threadId}/replies/{replyId}` | Server-owned reply            | author, content, accepted state, trusted counters, moderation, timestamps               |
+| `forumLikes/{target_uid}`                   | Server-owned reaction         | thread/reply target, user, timestamp                                                    |
 
 ## Messaging and Lessons
 
@@ -56,3 +57,5 @@ Follow transactions create or remove the deterministic relationship document and
 Feed writes are server-only. Post creation initializes moderation and counters and increments the author's `postCount` in one transaction. Like and bookmark IDs are deterministic for idempotent retries; comments update `commentCount` transactionally. Report IDs combine target and reporter to prevent duplicate reports. Owner deletion decrements `postCount` and removes comments, reactions, bookmarks, and report records. Feed and bookmark pagination order by server timestamp plus document ID for stable opaque cursors.
 
 Resource reservations store `status: uploading`, the generated `filePath`, expected MIME and size, `usagePeriod`, and pending moderation state while incrementing `usage/{uid}_{YYYY-MM}.resourceUploads`. Finalization verifies the private object and changes status to `active` with approved moderation. Reviews use `{resourceId}_{uid}` IDs and transactionally maintain `ratingTotal`, `ratingCount`, and `ratingAverage`. Resource objects remain private in Storage and are served only by the entitlement-checked attachment route.
+
+Forum threads page by `lastActivityAt` plus document ID. Thread creation increments category thread and post counts; each reply increments the thread reply count and category post count. Like IDs encode target and user. Forum report IDs encode target and reporter. Accepting an answer sets `forumThreads.acceptedReplyId` and the matching reply's `accepted` flag in one transaction. Deletion reverses aggregates and removes child replies, reactions, and reports.

@@ -96,31 +96,20 @@ service cloud.firestore {
     }
 
     match /forumThreads/{threadId} {
-      allow read: if signedIn();
-      allow create: if isActive()
-        && ownsIncoming("authorId")
-        && request.resource.data.pinned == false
-        && request.resource.data.locked == false
-        && request.resource.data.solved == false
-        && request.resource.data.acceptedReplyId == null
-        && request.resource.data.viewCount == 0
-        && request.resource.data.likeCount == 0
-        && request.resource.data.replyCount == 0
-        && request.resource.data.moderationStatus == "pending";
-      allow update: if isActive() && ownsExisting("authorId")
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "title", "content", "tags", "solved", "acceptedReplyId", "updatedAt", "lastActivityAt"
-        ]);
-      allow delete: if ownsExisting("authorId") || isAdmin();
+      allow read: if signedIn()
+        && (resource.data.moderationStatus == "approved" || ownsExisting("authorId") || isAdmin());
+      allow write: if false;
 
       match /replies/{replyId} {
-        allow read: if signedIn();
-        allow create: if isActive()
-          && ownsIncoming("authorId")
-          && request.resource.data.likeCount == 0
-          && request.resource.data.moderationStatus == "pending";
-        allow update, delete: if ownsExisting("authorId") || isAdmin();
+        allow read: if signedIn()
+          && (resource.data.moderationStatus == "approved" || ownsExisting("authorId") || isAdmin());
+        allow write: if false;
       }
+    }
+
+    match /forumLikes/{likeId} {
+      allow read: if ownsExisting("uid") || isAdmin();
+      allow write: if false;
     }
 
     match /conversations/{conversationId} {

@@ -35,6 +35,15 @@ import {
   ResourceActionError,
   reviewResource,
 } from "@/lib/resources/server";
+import {
+  acceptForumReply,
+  addForumReply,
+  createForumThread,
+  ForumActionError,
+  moderateForumThread,
+  reportForumContent,
+  setForumLiked,
+} from "@/lib/forum/server";
 
 const projectId = "demo-vista-teacher";
 let testEnv: RulesTestEnvironment;
@@ -435,8 +444,65 @@ describe("Firestore rules", () => {
     );
   });
 
-  it("prevents thread authors from granting moderation fields", async () => {
-    await seedActiveUser("author");
+  it("keeps forum documents server-owned and updates trusted counters", async () => {
+    await seedNetworkUser("author");
+    await seedNetworkUser("reviewer");
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), "forumCategories", "student-engagement"),
+        {
+          name: "Student Engagement",
+          active: true,
+          threadCount: 0,
+          postCount: 0,
+          order: 0,
+        },
+      );
+    });
+    const threadId = await createForumThread("author", {
+      categoryId: "student-engagement",
+      title: "How do you structure student-led discussion?",
+      content:
+        "I am looking for routines that make space for every learner to contribute.",
+      tags: ["discussion"],
+    });
+    const replyId = await addForumReply("reviewer", {
+      threadId,
+      content: "Silent writing before partner talk has worked well for us.",
+    });
+    await setForumLiked("reviewer", threadId, null, true);
+    await setForumLiked("reviewer", threadId, replyId, true);
+    await acceptForumReply("author", "educator", threadId, replyId);
+    await moderateForumThread("author", "educator", {
+      threadId,
+      action: "lock",
+    });
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [category, thread, reply] = await Promise.all([
+        getDoc(
+          doc(context.firestore(), "forumCategories", "student-engagement"),
+        ),
+        getDoc(doc(context.firestore(), "forumThreads", threadId)),
+        getDoc(
+          doc(
+            context.firestore(),
+            "forumThreads",
+            threadId,
+            "replies",
+            replyId,
+          ),
+        ),
+      ]);
+      expect(category.data()).toMatchObject({ threadCount: 1, postCount: 2 });
+      expect(thread.data()).toMatchObject({
+        likeCount: 1,
+        replyCount: 1,
+        solved: true,
+        acceptedReplyId: replyId,
+        locked: true,
+      });
+      expect(reply.data()).toMatchObject({ likeCount: 1, accepted: true });
+    });
     await assertFails(
       setDoc(
         doc(
@@ -457,6 +523,34 @@ describe("Firestore rules", () => {
         },
       ),
     );
+  });
+
+  it("creates one deterministic forum report per educator", async () => {
+    await seedNetworkUser("author");
+    await seedNetworkUser("reporter");
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "forumThreads", "thread-one"), {
+        authorId: "author",
+        moderationStatus: "approved",
+        reportCount: 0,
+      });
+    });
+    const report = {
+      threadId: "thread-one",
+      replyId: null,
+      reason: "spam" as const,
+      details: "Repeated promotional links.",
+    };
+    await reportForumContent("reporter", report);
+    await expect(reportForumContent("reporter", report)).rejects.toMatchObject({
+      code: "already-reported",
+    } satisfies Partial<ForumActionError>);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const thread = await getDoc(
+        doc(context.firestore(), "forumThreads", "thread-one"),
+      );
+      expect(thread.data()?.reportCount).toBe(1);
+    });
   });
 
   it("requires conversation membership", async () => {

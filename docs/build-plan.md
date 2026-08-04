@@ -51,9 +51,9 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 6 - Forum
 
-- [ ] Build categories, paginated threads, replies, likes, and reports.
-- [ ] Implement solved answers and accepted replies.
-- [ ] Implement owner and administrator moderation controls.
+- [x] Build categories, paginated threads, replies, likes, and reports.
+- [x] Implement solved answers and accepted replies.
+- [x] Implement owner and administrator moderation controls.
 
 ## Phase 7 - Messaging and Notifications
 

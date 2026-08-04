@@ -12,6 +12,7 @@ The browser is untrusted. Firebase ID tokens prove authentication only after Adm
 - Follow relationships and profile connection counters are server-owned and transactional.
 - Feed content, interactions, reports, moderation state, and counters are server-owned.
 - Resource metadata, upload quota, reviews, download counters, and object reads are server-owned.
+- Forum discussions, replies, reactions, reports, moderation state, and counters are server-owned.
 - Teacher verification is an independent administrator decision, never a payment benefit.
 
 ## Rules and Secrets
@@ -25,6 +26,8 @@ Clients cannot create or delete follow documents or alter connection counters. T
 Clients cannot write posts, comments, reactions, bookmarks, or reports directly. Feed routes validate bounded payloads, re-verify active sessions, derive every owner ID, initialize moderation and counters, and enforce post visibility or ownership inside Admin transactions. Like, bookmark, comment, report, and delete requests never accept counters or owner fields from the browser.
 
 Resource reservations validate taxonomy, access tier, file name, MIME, and size before allocating quota. Storage accepts an upload only when an `uploading` Firestore reservation matches the authenticated owner, complete object path, MIME, and exact byte size. Clients cannot write resource or review documents, choose counters, read private objects, or bypass the monthly Free upload limit.
+
+Clients cannot write forum categories, threads, replies, reactions, reports, solved state, or counters directly. Forum routes validate bounded content and trusted origins, derive actor IDs from the session, reject inactive accounts and locked discussions, and update related counters transactionally. Thread owners may lock or delete their discussions and moderate replies; only platform administrators may pin discussions. Accepted answers must belong to the selected visible thread.
 
 Firebase Admin credentials, Stripe secrets, webhook secrets, and OpenAI keys remain in `server-only` modules and managed App Hosting secrets. Logs redact tokens, keys, contacts, private lesson content, and unnecessary payment payloads.
 

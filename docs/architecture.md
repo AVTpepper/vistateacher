@@ -66,3 +66,11 @@ Resource uploads use a reservation and finalization workflow. A same-origin rout
 The library performs a bounded approved-resource read and provides search, type and subject filters, sorting, and grid/list views. Detail reads join author, viewer entitlement, and deterministic review records. Review transactions maintain rating total, count, and average without trusting browser aggregates.
 
 Resource objects deny direct reads. The download route re-resolves account status and plan, enforces Plus-only access, reads the private object through Admin Storage, increments the download counter, and returns an attachment with MIME sniffing disabled. Owner deletion removes metadata, reviews, private objects, and the profile counter; unfinished deletion also restores quota.
+
+## Forum
+
+The forum renders active category aggregates and the first approved discussion page in Server Components. Later pages use an authenticated route and an opaque cursor containing only the last activity timestamp and document ID. Category filtering, stable ordering, and bounded reply reads use committed compound indexes.
+
+Thread, reply, like, report, accepted-answer, and moderation writes are server-owned. Transactions verify active users and visible targets, initialize trusted counters, update category/thread aggregates, and use deterministic reaction and report IDs for idempotency. Only a thread owner or platform administrator can lock or delete a discussion; pinning is platform-administrator-only. Thread owners and administrators can select one approved reply as the accepted answer.
+
+Deletion reconciles category counts and removes replies, reactions, and reports. Accepted-answer deletion clears the solved state atomically. Client interactions refresh from trusted DTOs after mutations and optimistic helpful votes restore server state after failure.
