@@ -39,7 +39,9 @@ Manual edits and duplication also create immutable versions transactionally. PDF
 
 Trusted operations create notifications alongside the causing action, skip self-notifications, and expose only recipient-owned read state. Clients cannot create notifications.
 
-Normal requests do not scan activity collections. Trusted writes and reconciliation jobs maintain `platformStats/current` and `userAnalytics/{uid}`. Dashboard charts read these bounded aggregates.
+Normal requests do not scan activity collections. Trusted writes and reconciliation jobs maintain `platformStats/current` and `userAnalytics/{uid}`. The dashboard composes personalized recommendations through existing bounded network, resource, feed, and forum readers, while analytics reads only the educator profile, exact usage periods, subscription state, and one owner aggregate.
+
+All educators receive basic aggregate totals. Full follower, profile-view, resource-download, and engagement series are projected only after effective Plus entitlement resolution. Recharts is isolated in a client-only dynamic bundle and is not requested for Free dashboards. Daily messaging and monthly resource/AI quota states come from exact `usage` documents rather than browser counters.
 
 ## Messaging
 

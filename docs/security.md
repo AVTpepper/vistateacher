@@ -35,6 +35,8 @@ Firebase Admin credentials, Stripe secrets, webhook secrets, and OpenAI keys rem
 
 Clients cannot write lessons, versions, AI usage, generation status, or source parameters directly. Lesson routes derive ownership from the session and require an active account. Generation and regeneration additionally require effective Plus access, available monthly quota, and the persistent cooldown. Structured model output is schema-validated before persistence; a failed repair releases quota. Export routes re-check ownership and current Plus access before producing private, non-cached PDF or DOCX attachments.
 
+Analytics documents are owner/admin-readable and server-write-only. The dashboard validates bounded aggregate shapes and resolves the effective plan before projecting full trend series. Free users receive summary totals but never Plus series. Browser-provided counts, subscription labels, and quota values are ignored; the server joins trusted profile, subscription, and exact usage documents.
+
 ## Uploads
 
 Generated object names prevent path injection. Feed images use direct authenticated uploads only under `posts/{uid}/{generatedId}/{generatedName}`; browser checks are repeated by Storage rules that enforce active ownership, image MIME type, and a 10 MB limit. The server validates MIME, extension, size, ownership, and resource type for trusted workflows. Unsafe documents download with `Content-Disposition: attachment` and are never executed inline. Paid resources, messages, and verification evidence deny direct Storage reads; trusted endpoints provide short-lived authorized downloads. Deletion workflows clean orphaned files idempotently.

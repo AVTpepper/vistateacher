@@ -71,9 +71,9 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 9 - Dashboard and Analytics
 
-- [ ] Build the personalized dashboard and recommendations.
-- [ ] Build basic and Plus analytics from aggregate documents.
-- [ ] Add lazy Recharts visualizations and quota/subscription states.
+- [x] Build the personalized dashboard and recommendations.
+- [x] Build basic and Plus analytics from aggregate documents.
+- [x] Add lazy Recharts visualizations and quota/subscription states.
 
 ## Phase 10 - Billing
 

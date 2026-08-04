@@ -319,10 +319,78 @@ batch.set(db.doc("platformStats/current"), {
 });
 batch.set(db.doc("userAnalytics/plus-educator"), {
   demoData: true,
-  resourceDownloads: [{ period: "2026-08", value: 2 }],
-  followerGrowth: [{ period: "2026-08", value: 1 }],
+  profileViews: 384,
+  postEngagements: 126,
+  resourceDownloadsTotal: 218,
+  forumContributions: 17,
+  lessonsGeneratedTotal: 12,
+  resourceDownloads: [
+    { period: "Mar", value: 22 },
+    { period: "Apr", value: 31 },
+    { period: "May", value: 28 },
+    { period: "Jun", value: 44 },
+    { period: "Jul", value: 39 },
+    { period: "Aug", value: 54 },
+  ],
+  followerGrowth: [
+    { period: "Mar", value: 3 },
+    { period: "Apr", value: 5 },
+    { period: "May", value: 8 },
+    { period: "Jun", value: 11 },
+    { period: "Jul", value: 15 },
+    { period: "Aug", value: 19 },
+  ],
+  profileViewTrend: [
+    { period: "Mar", value: 38 },
+    { period: "Apr", value: 49 },
+    { period: "May", value: 55 },
+    { period: "Jun", value: 72 },
+    { period: "Jul", value: 78 },
+    { period: "Aug", value: 92 },
+  ],
+  engagementTrend: [
+    { period: "Mar", value: 12 },
+    { period: "Apr", value: 18 },
+    { period: "May", value: 17 },
+    { period: "Jun", value: 24 },
+    { period: "Jul", value: 26 },
+    { period: "Aug", value: 29 },
+  ],
   updatedAt: FieldValue.serverTimestamp(),
 });
+batch.set(db.doc("userAnalytics/free-educator"), {
+  demoData: true,
+  profileViews: 42,
+  postEngagements: 18,
+  resourceDownloadsTotal: 0,
+  forumContributions: 4,
+  lessonsGeneratedTotal: 0,
+  followerGrowth: [{ period: "Aug", value: 2 }],
+  resourceDownloads: [],
+  profileViewTrend: [{ period: "Aug", value: 42 }],
+  engagementTrend: [{ period: "Aug", value: 18 }],
+  updatedAt: FieldValue.serverTimestamp(),
+});
+batch.set(
+  db.doc(`usage/free-educator_${new Date().toISOString().slice(0, 10)}`),
+  {
+    uid: "free-educator",
+    period: new Date().toISOString().slice(0, 10),
+    messages: 3,
+    updatedAt: FieldValue.serverTimestamp(),
+  },
+  { merge: true },
+);
+batch.set(
+  db.doc(`usage/free-educator_${new Date().toISOString().slice(0, 7)}`),
+  {
+    uid: "free-educator",
+    period: new Date().toISOString().slice(0, 7),
+    resourceUploads: 2,
+    updatedAt: FieldValue.serverTimestamp(),
+  },
+  { merge: true },
+);
 const demoLessonContent = {
   title: "Investigating Local Ecosystems",
   subject: "Science",

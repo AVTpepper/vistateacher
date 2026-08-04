@@ -195,6 +195,42 @@ describe("Firestore rules", () => {
     );
   });
 
+  it("keeps analytics owner-scoped and all aggregate writes server-owned", async () => {
+    await seedActiveUser("analytics-owner");
+    await seedActiveUser("analytics-outsider");
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), "userAnalytics", "analytics-owner"),
+        { profileViews: 12 },
+      );
+      await setDoc(doc(context.firestore(), "platformStats", "current"), {
+        totalUsers: 2,
+      });
+    });
+    const ownerDb = testEnv.authenticatedContext("analytics-owner").firestore();
+    const outsiderDb = testEnv
+      .authenticatedContext("analytics-outsider")
+      .firestore();
+
+    await assertSucceeds(
+      getDoc(doc(ownerDb, "userAnalytics", "analytics-owner")),
+    );
+    await assertFails(
+      getDoc(doc(outsiderDb, "userAnalytics", "analytics-owner")),
+    );
+    await assertSucceeds(getDoc(doc(ownerDb, "platformStats", "current")));
+    await assertFails(
+      updateDoc(doc(ownerDb, "userAnalytics", "analytics-owner"), {
+        profileViews: 99_999,
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(ownerDb, "platformStats", "current"), {
+        totalUsers: 99_999,
+      }),
+    );
+  });
+
   it("keeps onboarding profile creation server-owned", async () => {
     const newUserDb = testEnv.authenticatedContext("new-user").firestore();
 
