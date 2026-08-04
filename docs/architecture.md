@@ -58,3 +58,11 @@ The home feed renders its first bounded page in a Server Component and loads lat
 Post, question, and resource-share payloads use one Zod contract. Same-origin route handlers create content and run likes, bookmarks, comments, reports, counter updates, and owner deletion through Firebase Admin. Deterministic like, bookmark, and report IDs make retries idempotent. Client interactions update immediately and restore prior state when a trusted mutation fails.
 
 Feed images use generated owner-scoped Storage paths. The browser validates image type and size before upload, and Storage rules independently require an active matching owner, an approved image MIME type, and a 10 MB maximum. Feed document writes remain server-only so uploaded URLs cannot be used to alter moderation or counters directly.
+
+## Resources
+
+Resource uploads use a reservation and finalization workflow. A same-origin route validates bounded metadata, resolves the effective plan, checks monthly usage, increments quota, and creates an `uploading` resource with a generated owner-scoped Storage path in one transaction. Storage rules require that exact reservation, owner, path, MIME type, and byte size. The server verifies object metadata before activating and approving the resource and incrementing the profile resource count. Cancellation reverses an unfinished reservation.
+
+The library performs a bounded approved-resource read and provides search, type and subject filters, sorting, and grid/list views. Detail reads join author, viewer entitlement, and deterministic review records. Review transactions maintain rating total, count, and average without trusting browser aggregates.
+
+Resource objects deny direct reads. The download route re-resolves account status and plan, enforces Plus-only access, reads the private object through Admin Storage, increments the download counter, and returns an attachment with MIME sniffing disabled. Owner deletion removes metadata, reviews, private objects, and the profile counter; unfinished deletion also restores quota.

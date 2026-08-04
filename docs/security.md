@@ -11,6 +11,7 @@ The browser is untrusted. Firebase ID tokens prove authentication only after Adm
 - Subscription, usage, notification, message-send, aggregate, and audit writes are server-owned.
 - Follow relationships and profile connection counters are server-owned and transactional.
 - Feed content, interactions, reports, moderation state, and counters are server-owned.
+- Resource metadata, upload quota, reviews, download counters, and object reads are server-owned.
 - Teacher verification is an independent administrator decision, never a payment benefit.
 
 ## Rules and Secrets
@@ -23,11 +24,15 @@ Clients cannot create or delete follow documents or alter connection counters. T
 
 Clients cannot write posts, comments, reactions, bookmarks, or reports directly. Feed routes validate bounded payloads, re-verify active sessions, derive every owner ID, initialize moderation and counters, and enforce post visibility or ownership inside Admin transactions. Like, bookmark, comment, report, and delete requests never accept counters or owner fields from the browser.
 
+Resource reservations validate taxonomy, access tier, file name, MIME, and size before allocating quota. Storage accepts an upload only when an `uploading` Firestore reservation matches the authenticated owner, complete object path, MIME, and exact byte size. Clients cannot write resource or review documents, choose counters, read private objects, or bypass the monthly Free upload limit.
+
 Firebase Admin credentials, Stripe secrets, webhook secrets, and OpenAI keys remain in `server-only` modules and managed App Hosting secrets. Logs redact tokens, keys, contacts, private lesson content, and unnecessary payment payloads.
 
 ## Uploads
 
 Generated object names prevent path injection. Feed images use direct authenticated uploads only under `posts/{uid}/{generatedId}/{generatedName}`; browser checks are repeated by Storage rules that enforce active ownership, image MIME type, and a 10 MB limit. The server validates MIME, extension, size, ownership, and resource type for trusted workflows. Unsafe documents download with `Content-Disposition: attachment` and are never executed inline. Paid resources, messages, and verification evidence deny direct Storage reads; trusted endpoints provide short-lived authorized downloads. Deletion workflows clean orphaned files idempotently.
+
+Resource files are returned with `Content-Disposition: attachment`, `Cache-Control: private, no-store`, and `X-Content-Type-Options: nosniff`. The route verifies active account state and effective plan before reading bytes; Free accounts cannot download Plus-only files unless they own them. Failed or canceled uploads delete any reserved object, and owner deletion removes every file under the generated resource prefix.
 
 ## Billing, Quotas, and Rate Limits
 

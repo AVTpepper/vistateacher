@@ -116,6 +116,17 @@ body {
   outline-offset: 3px;
 }
 
+.resource-input {
+  width: 100%;
+  min-height: 2.5rem;
+  border-radius: 0.5rem;
+  background: var(--muted);
+  padding: 0.625rem 0.75rem;
+  color: var(--foreground);
+  font-size: 0.875rem;
+  outline: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

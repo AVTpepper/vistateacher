@@ -44,10 +44,10 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 5 - Resources
 
-- [ ] Implement validated Storage uploads and resource metadata.
-- [ ] Build searchable grid, list, detail, rating, and review experiences.
-- [ ] Enforce upload and download entitlements on the server.
-- [ ] Implement safe downloads, counters, moderation, and cleanup.
+- [x] Implement validated Storage uploads and resource metadata.
+- [x] Build searchable grid, list, detail, rating, and review experiences.
+- [x] Enforce upload and download entitlements on the server.
+- [x] Implement safe downloads, counters, moderation, and cleanup.
 
 ## Phase 6 - Forum
 

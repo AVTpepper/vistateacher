@@ -16,7 +16,10 @@ function getAdminApp() {
     process.env.FIRESTORE_EMULATOR_HOST &&
     emulatorProjectId?.startsWith("demo-")
   ) {
-    return initializeApp({ projectId: emulatorProjectId });
+    return initializeApp({
+      projectId: emulatorProjectId,
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    });
   }
 
   const env = getFirebaseAdminEnv();

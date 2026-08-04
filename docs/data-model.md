@@ -9,7 +9,7 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 | `users/{uid}`          | Server-created public educator profile | normalized identity/location, professional fields, role, verification, counters, status, timestamps    |
 | `userPrivate/{uid}`    | Server-written; owner/admin reads      | email, contact details, privacy/notification settings, payment reference, moderation/deletion metadata |
 | `subscriptions/{uid}`  | Server-owned; owner reads safe state   | plan/status, Stripe IDs, interval/end/cancellation, VistaTeacher trial state                           |
-| `usage/{uid}_{period}` | Server-owned monthly or daily counters | messages, uploads, AI lessons, period, timestamp                                                       |
+| `usage/{uid}_{period}` | Server-owned monthly or daily counters | messages, resource uploads, AI lessons, period, timestamp                                              |
 
 ## Community
 
@@ -20,8 +20,8 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 | `posts/{postId}/comments/{commentId}`       | Server-written comment        | author, content, moderation, timestamps                                                 |
 | `postLikes/{postId_uid}`                    | Server-owned user reaction    | post, user, timestamp                                                                   |
 | `postBookmarks/{uid_postId}`                | Server-owned private save     | post, user, timestamp                                                                   |
-| `resources/{resourceId}`                    | Trusted upload workflow       | taxonomy/access, Storage path, safe file metadata, rating/download counters, moderation |
-| `resourceReviews/{resourceId_uid}`          | One review per user/resource  | author, rating, review, timestamps                                                      |
+| `resources/{resourceId}`                    | Server-owned upload workflow  | taxonomy/access, private Storage path, safe file metadata, status, counters, moderation |
+| `resourceReviews/{resourceId_uid}`          | Server-owned review upsert    | resource, author, rating, review, timestamps                                            |
 | `forumCategories/{categoryId}`              | Server/admin taxonomy         | name, description, icon, order, active                                                  |
 | `forumThreads/{threadId}`                   | Author discussion             | category/content/tags, pin/lock/solved, accepted reply, counters/activity               |
 | `forumThreads/{threadId}/replies/{replyId}` | Reply author                  | author, content, likes, moderation, timestamps                                          |
@@ -54,3 +54,5 @@ Public educator discovery uses bounded `searchKeywords` arrays derived by truste
 Follow transactions create or remove the deterministic relationship document and update `users/{followerUid}.followingCount` plus `users/{followingUid}.followerCount` atomically. Relationship queries use the single-field `followerUid` and `followingUid` indexes; no client may write these records or counters directly.
 
 Feed writes are server-only. Post creation initializes moderation and counters and increments the author's `postCount` in one transaction. Like and bookmark IDs are deterministic for idempotent retries; comments update `commentCount` transactionally. Report IDs combine target and reporter to prevent duplicate reports. Owner deletion decrements `postCount` and removes comments, reactions, bookmarks, and report records. Feed and bookmark pagination order by server timestamp plus document ID for stable opaque cursors.
+
+Resource reservations store `status: uploading`, the generated `filePath`, expected MIME and size, `usagePeriod`, and pending moderation state while incrementing `usage/{uid}_{YYYY-MM}.resourceUploads`. Finalization verifies the private object and changes status to `active` with approved moderation. Reviews use `{resourceId}_{uid}` IDs and transactionally maintain `ratingTotal`, `ratingCount`, and `ratingAverage`. Resource objects remain private in Storage and are served only by the entitlement-checked attachment route.

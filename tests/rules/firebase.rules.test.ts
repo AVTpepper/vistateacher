@@ -30,6 +30,11 @@ import {
   setPostBookmarked,
   setPostLiked,
 } from "@/lib/feed/server";
+import {
+  reserveResourceUpload,
+  ResourceActionError,
+  reviewResource,
+} from "@/lib/resources/server";
 
 const projectId = "demo-vista-teacher";
 let testEnv: RulesTestEnvironment;
@@ -347,6 +352,89 @@ describe("Firestore rules", () => {
     });
   });
 
+  it("reserves resource quota transactionally and keeps metadata server-owned", async () => {
+    await seedNetworkUser("author");
+    const input = {
+      title: "Fraction comparison cards",
+      description: "A classroom-ready card activity for comparing fractions.",
+      type: "activity" as const,
+      subject: "Mathematics",
+      gradeLevel: "Grades 3-5",
+      tags: ["Fractions"],
+      accessTier: "free" as const,
+      fileName: "fraction-cards.pdf",
+      fileType: "application/pdf" as const,
+      fileSize: 1024,
+    };
+    for (let index = 0; index < 5; index += 1)
+      await reserveResourceUpload("author", {
+        ...input,
+        title: `${input.title} ${index}`,
+      });
+    await expect(reserveResourceUpload("author", input)).rejects.toMatchObject({
+      code: "limit-reached",
+    } satisfies Partial<ResourceActionError>);
+    await assertFails(
+      setDoc(
+        doc(
+          testEnv.authenticatedContext("author").firestore(),
+          "resources",
+          "unsafe",
+        ),
+        { authorId: "author", status: "active", moderationStatus: "approved" },
+      ),
+    );
+  });
+
+  it("upserts one review per educator and maintains rating aggregates", async () => {
+    await seedNetworkUser("author");
+    await seedNetworkUser("reviewer");
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "resources", "resource-one"), {
+        authorId: "author",
+        status: "active",
+        moderationStatus: "approved",
+        ratingTotal: 0,
+        ratingAverage: 0,
+        ratingCount: 0,
+      });
+    });
+    await reviewResource("reviewer", {
+      resourceId: "resource-one",
+      rating: 4,
+      review: "Clear and useful.",
+    });
+    await reviewResource("reviewer", {
+      resourceId: "resource-one",
+      rating: 5,
+      review: "Even better after a second look.",
+    });
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [resource, review] = await Promise.all([
+        getDoc(doc(context.firestore(), "resources", "resource-one")),
+        getDoc(
+          doc(context.firestore(), "resourceReviews", "resource-one_reviewer"),
+        ),
+      ]);
+      expect(resource.data()).toMatchObject({
+        ratingTotal: 5,
+        ratingAverage: 5,
+        ratingCount: 1,
+      });
+      expect(review.data()?.rating).toBe(5);
+    });
+    await assertFails(
+      setDoc(
+        doc(
+          testEnv.authenticatedContext("reviewer").firestore(),
+          "resourceReviews",
+          "resource-one_other",
+        ),
+        { resourceId: "resource-one", authorId: "reviewer", rating: 5 },
+      ),
+    );
+  });
+
   it("prevents thread authors from granting moderation fields", async () => {
     await seedActiveUser("author");
     await assertFails(
@@ -498,6 +586,41 @@ describe("Storage rules", () => {
         ref(ownerStorage, "users/owner/avatar/avatar.svg"),
         new Uint8Array([1]),
         { contentType: "image/svg+xml" },
+      ),
+    );
+  });
+
+  it("allows only files matching a server-created resource reservation", async () => {
+    await seedActiveUser("owner");
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "resources", "reserved"), {
+        authorId: "owner",
+        status: "uploading",
+        filePath: "resources/owner/reserved/resource.pdf",
+        fileType: "application/pdf",
+        fileSize: 3,
+      });
+    });
+    const storage = testEnv.authenticatedContext("owner").storage();
+    await assertSucceeds(
+      uploadBytes(
+        ref(storage, "resources/owner/reserved/resource.pdf"),
+        new Uint8Array([1, 2, 3]),
+        { contentType: "application/pdf" },
+      ),
+    );
+    await assertFails(
+      uploadBytes(
+        ref(storage, "resources/owner/orphan/resource.pdf"),
+        new Uint8Array([1, 2, 3]),
+        { contentType: "application/pdf" },
+      ),
+    );
+    await assertFails(
+      uploadBytes(
+        ref(storage, "resources/owner/reserved/resource.pdf"),
+        new Uint8Array([1, 2]),
+        { contentType: "application/pdf" },
       ),
     );
   });

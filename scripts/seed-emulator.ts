@@ -170,7 +170,7 @@ batch.set(db.doc("resources/demo-resource"), {
   authorId: "plus-educator",
   title: "Ecosystem Notice and Wonder",
   description: "A development-only discussion routine and organizer.",
-  type: "Activity",
+  type: "activity",
   subject: "Science",
   gradeLevel: "Middle School",
   tags: ["ecosystems"],

@@ -87,8 +87,7 @@ service cloud.firestore {
 
     match /resourceReviews/{reviewId} {
       allow read: if signedIn();
-      allow create: if isActive() && ownsIncoming("authorId");
-      allow update, delete: if ownsExisting("authorId") || isAdmin();
+      allow write: if false;
     }
 
     match /forumCategories/{categoryId} {
