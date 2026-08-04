@@ -31,6 +31,9 @@ pnpm dev -- --port 3002
 ```
 
 Open `http://localhost:3002`. Emulator UI is at `http://localhost:4000`.
+Set `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true` before starting Next.js to use
+the local Auth, Firestore, and Storage emulators. When it is omitted, the app
+uses the configured Firebase project instead.
 
 Seeded accounts all use password `VistaTeacher1!`:
 
@@ -59,9 +62,13 @@ Test once at desktop width and once around 390 px mobile width.
 ## 4. Educator Authentication and Onboarding
 
 - [ ] Create a new account with a unique email.
+- [ ] Confirm the account appears in Firebase Authentication; registration does
+      not create Firestore profile documents yet.
 - [ ] Confirm the verification screen appears before platform access.
 - [ ] Verify the email in the Auth emulator or Firebase console.
 - [ ] Sign in and complete every onboarding field.
+- [ ] Confirm onboarding creates matching `users`, `userPrivate`, and
+      `subscriptions` Firestore documents.
 - [ ] Refresh the page and confirm the session remains active.
 - [ ] Log out and confirm protected pages redirect to sign-in.
 - [ ] Sign in with `community@vista.local` for the remaining Community-plan checks.

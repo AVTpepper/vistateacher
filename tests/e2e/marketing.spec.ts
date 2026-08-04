@@ -142,7 +142,21 @@ test("exposes accessible account entry and recovery routes", async ({
     page.getByRole("heading", { name: "Welcome back" }),
   ).toBeVisible();
   await expect(page.getByLabel("Email address")).toBeVisible();
-  await expect(page.getByLabel("Password")).toBeVisible();
+  await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
+    "type",
+    "password",
+  );
+  await page.getByRole("button", { name: "Show password" }).click();
+  await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
+    "type",
+    "text",
+  );
+  await page.getByRole("button", { name: "Hide password" }).click();
+  await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
+    "type",
+    "password",
+  );
   await expect(
     page.getByRole("navigation", { name: "Main navigation" }),
   ).toBeVisible();
@@ -157,6 +171,11 @@ test("exposes accessible account entry and recovery routes", async ({
   await expect(page.getByLabel("Email address")).toBeVisible();
   await expect(
     page.getByRole("navigation", { name: "Main navigation" }),
+  ).toBeVisible();
+
+  await page.goto("/sign-up");
+  await expect(
+    page.getByRole("button", { name: "Show password" }),
   ).toBeVisible();
 });
 

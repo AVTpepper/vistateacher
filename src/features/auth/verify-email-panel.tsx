@@ -71,7 +71,8 @@ export function VerifyEmailPanel() {
       <div>
         <h1 className="font-serif text-3xl">Check your inbox</h1>
         <p className="text-muted-foreground mt-3 text-sm leading-6">
-          Use the verification link we sent, then return here to continue.
+          Use the verification link we sent, then return here to continue. Your
+          educator profile is created after you verify and complete setup.
         </p>
       </div>
       {error && (

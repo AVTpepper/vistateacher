@@ -65,6 +65,7 @@ async function establishSession(user: User): Promise<string> {
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const schema =
     mode === "sign-up"
       ? signUpSchema
@@ -187,14 +188,27 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             ) : undefined
           }
         >
-          <Input
-            id="password"
-            type="password"
-            autoComplete={
-              mode === "sign-up" ? "new-password" : "current-password"
-            }
-            {...form.register("password")}
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              className="pr-16"
+              type={showPassword ? "text" : "password"}
+              autoComplete={
+                mode === "sign-up" ? "new-password" : "current-password"
+              }
+              {...form.register("password")}
+            />
+            <button
+              type="button"
+              aria-controls="password"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              className="text-primary absolute inset-y-0 right-3 text-xs font-bold hover:underline"
+              onClick={() => setShowPassword((visible) => !visible)}
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
         </Field>
       )}
 

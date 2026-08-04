@@ -17,7 +17,7 @@ async function signIn(page: Page, email: string) {
   });
   await page.goto("/sign-in");
   await page.getByLabel("Email address").fill(email);
-  await page.getByLabel("Password").fill("VistaTeacher1!");
+  await page.getByLabel("Password", { exact: true }).fill("VistaTeacher1!");
   await page.getByRole("button", { name: "Sign in" }).click();
   try {
     await expect(page).toHaveURL(/\/app$/, { timeout: 30_000 });
