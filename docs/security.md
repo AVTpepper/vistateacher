@@ -33,6 +33,8 @@ Clients cannot write conversations, messages, blocks, attachment reservations, n
 
 Firebase Admin credentials, Stripe secrets, webhook secrets, and OpenAI keys remain in `server-only` modules and managed App Hosting secrets. Logs redact tokens, keys, contacts, private lesson content, and unnecessary payment payloads.
 
+Clients cannot write lessons, versions, AI usage, generation status, or source parameters directly. Lesson routes derive ownership from the session and require an active account. Generation and regeneration additionally require effective Plus access, available monthly quota, and the persistent cooldown. Structured model output is schema-validated before persistence; a failed repair releases quota. Export routes re-check ownership and current Plus access before producing private, non-cached PDF or DOCX attachments.
+
 ## Uploads
 
 Generated object names prevent path injection. Feed images use direct authenticated uploads only under `posts/{uid}/{generatedId}/{generatedName}`; browser checks are repeated by Storage rules that enforce active ownership, image MIME type, and a 10 MB limit. The server validates MIME, extension, size, ownership, and resource type for trusted workflows. Unsafe documents download with `Content-Disposition: attachment` and are never executed inline. Paid resources, messages, and verification evidence deny direct Storage reads; trusted endpoints provide short-lived authorized downloads. Deletion workflows clean orphaned files idempotently.
@@ -43,7 +45,7 @@ Message attachment uploads require an active account and a matching server-owned
 
 ## Billing, Quotas, and Rate Limits
 
-The browser cannot set plans or trials. Stripe signatures and event IDs provide authenticity and idempotency. Quota checks and increments use transactions; failed operations do not consume quota. Free messaging is limited to ten sends per UTC day using the sender's server-owned daily usage record; Plus messaging is unlimited. Production rate limits use a persistent store, never instance memory.
+The browser cannot set plans or trials. Stripe signatures and event IDs provide authenticity and idempotency. Quota checks and increments use transactions; failed operations do not consume quota. Free messaging is limited to ten sends per UTC day using the sender's server-owned daily usage record; Plus messaging is unlimited. Plus AI generation is limited to 50 successful lessons per UTC month. Production rate limits use persistent usage records, never instance memory.
 
 ## Privacy and Moderation
 

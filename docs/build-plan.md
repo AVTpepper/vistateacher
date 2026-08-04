@@ -64,10 +64,10 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 8 - AI Lesson Builder
 
-- [ ] Implement server-only OpenAI structured generation and one repair attempt.
-- [ ] Enforce status, rate, entitlement, and monthly quota checks.
-- [ ] Persist lessons and version history transactionally.
-- [ ] Implement editing, regeneration, duplication, PDF, and DOCX exports.
+- [x] Implement server-only OpenAI structured generation and one repair attempt.
+- [x] Enforce status, rate, entitlement, and monthly quota checks.
+- [x] Persist lessons and version history transactionally.
+- [x] Implement editing, regeneration, duplication, PDF, and DOCX exports.
 
 ## Phase 9 - Dashboard and Analytics
 

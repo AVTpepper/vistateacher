@@ -54,7 +54,7 @@ The browser never writes subscription state. Local webhook tests will use Stripe
 
 ## OpenAI Setup
 
-Set `OPENAI_API_KEY` only in the server environment. Automated tests use a deterministic provider selected by `AI_PROVIDER=MOCK` and never call OpenAI. Production structured output is validated with Zod before persistence.
+Set `OPENAI_API_KEY` only in the server environment. `OPENAI_LESSON_MODEL` defaults to `gpt-4.1-mini`. Automated tests use a deterministic provider selected by `AI_PROVIDER=MOCK` and never call OpenAI. Production structured output is validated with Zod before persistence.
 
 ## Commands
 

@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+export const lessonSourceSchema = z.object({
+  subject: z.string().trim().min(1).max(80),
+  gradeLevel: z.string().trim().min(1).max(80),
+  topic: z.string().trim().min(3).max(240),
+  durationMinutes: z.number().int().min(15).max(240),
+  objectives: z.string().trim().max(2_000).default(""),
+  standards: z.string().trim().max(1_000).default(""),
+  studentNeeds: z.string().trim().max(2_000).default(""),
+  teachingStyle: z.enum(["inquiry", "balanced", "direct"]),
+});
+
 export const lessonPlanSchema = z.object({
   title: z.string().trim().min(3).max(160),
   subject: z.string().trim().min(1).max(80),
@@ -29,3 +40,14 @@ export const lessonPlanSchema = z.object({
 });
 
 export type LessonPlanInput = z.infer<typeof lessonPlanSchema>;
+export type LessonSourceInput = z.infer<typeof lessonSourceSchema>;
+
+export const lessonUpdateSchema = z.object({
+  content: lessonPlanSchema,
+});
+
+export const lessonRegenerateSchema = z.object({
+  source: lessonSourceSchema.optional(),
+});
+
+export const lessonExportFormatSchema = z.enum(["pdf", "docx"]);

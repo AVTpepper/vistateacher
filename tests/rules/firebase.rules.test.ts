@@ -53,6 +53,13 @@ import {
   setUserBlocked,
   startConversation,
 } from "@/lib/messages/server";
+import {
+  createLesson,
+  duplicateLesson,
+  LessonActionError,
+  regenerateLesson,
+  updateLesson,
+} from "@/lib/lessons/server";
 
 const projectId = "demo-vista-teacher";
 let testEnv: RulesTestEnvironment;
@@ -421,6 +428,119 @@ describe("Firestore rules", () => {
         new Uint8Array([1, 2, 3, 4]),
         { contentType: "application/pdf" },
       ),
+    );
+  });
+
+  it("enforces AI entitlement and monthly quota transactionally", async () => {
+    process.env.AI_PROVIDER = "MOCK";
+    await seedNetworkUser("free-teacher");
+    const source = {
+      subject: "Science",
+      gradeLevel: "Grade 6",
+      topic: "Local food webs",
+      durationMinutes: 50,
+      objectives: "",
+      standards: "MS-LS2-3",
+      studentNeeds: "",
+      teachingStyle: "inquiry" as const,
+    };
+    await expect(createLesson("free-teacher", source)).rejects.toMatchObject({
+      code: "plus-required",
+    } satisfies Partial<LessonActionError>);
+
+    await seedNetworkUser("plus-teacher");
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "subscriptions", "plus-teacher"), {
+        plan: "plus",
+        status: "active",
+        trialConsumed: false,
+      });
+      await setDoc(
+        doc(
+          context.firestore(),
+          "usage",
+          `plus-teacher_${new Date().toISOString().slice(0, 7)}`,
+        ),
+        { uid: "plus-teacher", aiLessons: 50 },
+      );
+    });
+    await expect(createLesson("plus-teacher", source)).rejects.toMatchObject({
+      code: "limit-reached",
+    } satisfies Partial<LessonActionError>);
+  });
+
+  it("persists lesson versions, edits, regeneration, and duplication atomically", async () => {
+    process.env.AI_PROVIDER = "MOCK";
+    await seedNetworkUser("lesson-owner");
+    await seedNetworkUser("lesson-outsider");
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "subscriptions", "lesson-owner"), {
+        plan: "plus",
+        status: "active",
+        trialConsumed: false,
+      });
+    });
+    const created = await createLesson("lesson-owner", {
+      subject: "Science",
+      gradeLevel: "Grade 6",
+      topic: "Local food webs",
+      durationMinutes: 50,
+      objectives: "",
+      standards: "MS-LS2-3",
+      studentNeeds: "Use sentence frames.",
+      teachingStyle: "inquiry",
+    });
+    expect(created.currentVersion).toBe(1);
+    expect(created.versions).toHaveLength(1);
+
+    const edited = await updateLesson("lesson-owner", created.id, {
+      ...created.content,
+      title: "Revised local food webs",
+    });
+    expect(edited.currentVersion).toBe(2);
+    expect(edited.versions[0]?.kind).toBe("edited");
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(
+          context.firestore(),
+          "usage",
+          `lesson-owner_${new Date().toISOString().slice(0, 7)}`,
+        ),
+        { lastAiLessonAt: new Date(0) },
+        { merge: true },
+      );
+    });
+    const regenerated = await regenerateLesson("lesson-owner", created.id);
+    expect(regenerated.currentVersion).toBe(3);
+    expect(regenerated.versions[0]?.kind).toBe("generated");
+
+    const duplicate = await duplicateLesson("lesson-owner", created.id);
+    expect(duplicate.content.title).toContain("(Copy)");
+    expect(duplicate.versions[0]?.kind).toBe("duplicated");
+
+    const ownerDb = testEnv.authenticatedContext("lesson-owner").firestore();
+    const outsiderDb = testEnv
+      .authenticatedContext("lesson-outsider")
+      .firestore();
+    await assertSucceeds(getDoc(doc(ownerDb, "lessons", created.id)));
+    await assertSucceeds(
+      getDoc(doc(ownerDb, "lessons", created.id, "versions", "v1")),
+    );
+    await assertFails(getDoc(doc(outsiderDb, "lessons", created.id)));
+    await assertFails(
+      getDoc(doc(outsiderDb, "lessons", created.id, "versions", "v1")),
+    );
+    await assertFails(
+      updateDoc(doc(ownerDb, "lessons", created.id), {
+        currentVersion: 999,
+      }),
+    );
+    await assertFails(
+      setDoc(doc(ownerDb, "lessons", created.id, "versions", "v999"), {
+        ownerId: "lesson-owner",
+        version: 999,
+      }),
     );
   });
 

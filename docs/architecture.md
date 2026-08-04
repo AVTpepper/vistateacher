@@ -29,7 +29,11 @@ The web SDK handles permitted reads, real-time listeners, authentication, and ow
 
 ## AI Lesson Flow
 
-The server verifies session/status, validates input, resolves Plus access, checks rate/quota, and calls OpenAI. Structured JSON is Zod-validated. One repair may be attempted; malformed output is neither saved nor charged. A transaction persists the lesson/version and increments usage after valid output exists. Tests inject a deterministic server-only provider.
+The server verifies session/status, validates bounded source parameters, resolves Plus access, and reserves monthly quota plus lesson generation state in one Admin transaction. A trusted timestamp on the monthly usage record provides a cross-instance generation cooldown. The browser never receives an OpenAI credential.
+
+OpenAI Responses structured output uses the shared Zod lesson schema. One repair attempt is allowed. Successful generation atomically updates the current lesson and creates its immutable numbered version; failed generation removes the reservation or restores the previous ready version and reverses quota. Tests inject a deterministic server-only provider and never call OpenAI.
+
+Manual edits and duplication also create immutable versions transactionally. PDF and DOCX files are generated in memory by authenticated routes that re-check active status, ownership, and current Plus access at download time.
 
 ## Notifications and Analytics
 

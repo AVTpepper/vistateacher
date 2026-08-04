@@ -323,8 +323,7 @@ batch.set(db.doc("userAnalytics/plus-educator"), {
   followerGrowth: [{ period: "2026-08", value: 1 }],
   updatedAt: FieldValue.serverTimestamp(),
 });
-batch.set(db.doc("lessons/demo-lesson"), {
-  ownerId: "plus-educator",
+const demoLessonContent = {
   title: "Investigating Local Ecosystems",
   subject: "Science",
   gradeLevel: "Grade 6",
@@ -347,11 +346,45 @@ batch.set(db.doc("lessons/demo-lesson"), {
     extensions: ["Model a species removal."],
   },
   standards: ["MS-LS2-3"],
-  sourceParameters: { provider: "development-seed" },
+};
+const demoLessonSource = {
+  subject: "Science",
+  gradeLevel: "Grade 6",
+  topic: "Investigating local ecosystems",
+  durationMinutes: 50,
+  objectives: "Describe relationships in a local food web.",
+  standards: "MS-LS2-3",
+  studentNeeds: "Provide sentence frames for scientific explanations.",
+  teachingStyle: "inquiry",
+};
+batch.set(db.doc("lessons/demo-lesson"), {
+  ownerId: "plus-educator",
+  source: demoLessonSource,
+  content: demoLessonContent,
+  status: "ready",
+  generationStatus: "idle",
   currentVersion: 1,
   createdAt: FieldValue.serverTimestamp(),
   updatedAt: FieldValue.serverTimestamp(),
 });
+batch.set(db.doc("lessons/demo-lesson/versions/v1"), {
+  ownerId: "plus-educator",
+  version: 1,
+  kind: "generated",
+  source: demoLessonSource,
+  content: demoLessonContent,
+  createdAt: FieldValue.serverTimestamp(),
+});
+batch.set(
+  db.doc(`usage/plus-educator_${new Date().toISOString().slice(0, 7)}`),
+  {
+    uid: "plus-educator",
+    period: new Date().toISOString().slice(0, 7),
+    aiLessons: 12,
+    updatedAt: FieldValue.serverTimestamp(),
+  },
+  { merge: true },
+);
 
 await batch.commit();
 console.log(
