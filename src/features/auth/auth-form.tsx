@@ -11,7 +11,7 @@ import {
   updateProfile,
   type User,
 } from "firebase/auth";
-import { ArrowRight, LoaderCircle } from "lucide-react";
+import { ArrowRight, Check, LoaderCircle, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -66,6 +66,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const schema =
     mode === "sign-up"
       ? signUpSchema
@@ -78,6 +79,30 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   });
   const isPending = form.formState.isSubmitting;
   const fieldErrors = form.formState.errors as FieldErrors<SignUpValues>;
+  const passwordValue =
+    mode === "sign-up"
+      ? String((form.watch("password" as const) ?? ""))
+      : "";
+  const showPasswordRequirements = mode === "sign-up" && isPasswordFocused;
+  const passwordRequirements = [
+    {
+      label: "Use at least 10 characters.",
+      met: passwordValue.length >= 10,
+    },
+    {
+      label: "Add a lowercase letter.",
+      met: /[a-z]/.test(passwordValue),
+    },
+    {
+      label: "Add an uppercase letter.",
+      met: /[A-Z]/.test(passwordValue),
+    },
+    {
+      label: "Add a number.",
+      met: /[0-9]/.test(passwordValue),
+    },
+  ];
+  const passwordRegistration = form.register("password");
 
   async function completeProviderSignIn(user: User) {
     if (!user.emailVerified) {
@@ -176,7 +201,11 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         <Field
           id="password"
           label="Password"
-          error={fieldErrors.password?.message}
+          error={
+            mode === "sign-up" && isPasswordFocused
+              ? undefined
+              : fieldErrors.password?.message
+          }
           action={
             mode === "sign-in" ? (
               <Link
@@ -196,7 +225,12 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               autoComplete={
                 mode === "sign-up" ? "new-password" : "current-password"
               }
-              {...form.register("password")}
+              {...passwordRegistration}
+              onFocus={() => setIsPasswordFocused(true)}
+              onBlur={(event) => {
+                passwordRegistration.onBlur(event);
+                setIsPasswordFocused(false);
+              }}
             />
             <button
               type="button"
@@ -209,6 +243,25 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               {showPassword ? "Hide" : "Show"}
             </button>
           </div>
+          {showPasswordRequirements && (
+            <ul className="mt-2 space-y-1 text-xs" aria-live="polite">
+              {passwordRequirements.map((requirement) => (
+                <li
+                  key={requirement.label}
+                  className={`flex items-center gap-2 ${
+                    requirement.met ? "text-emerald-600" : "text-destructive"
+                  }`}
+                >
+                  {requirement.met ? (
+                    <Check aria-hidden="true" className="size-3.5" />
+                  ) : (
+                    <X aria-hidden="true" className="size-3.5" />
+                  )}
+                  <span>{requirement.label}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </Field>
       )}
 
