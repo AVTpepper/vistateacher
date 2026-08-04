@@ -36,25 +36,12 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if true;
       allow create: if false;
-      allow update: if owns(uid)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "displayName", "displayNameLower", "photoURL", "coverImageURL",
-          "gradeLevel", "subjects", "country", "city", "cityLower", "school",
-          "schoolLower", "yearsOfExperience", "bio", "website", "interests",
-          "searchKeywords", "updatedAt"
-        ]);
-      allow delete: if false;
+      allow update, delete: if false;
     }
 
     match /userPrivate/{uid} {
       allow read: if owns(uid) || isAdmin();
-      allow create: if false;
-      allow update: if owns(uid)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "contactDetails", "privacySettings", "notificationSettings",
-          "accountDeletion", "updatedAt"
-        ]);
-      allow delete: if false;
+      allow create, update, delete: if false;
     }
 
     match /subscriptions/{uid} {

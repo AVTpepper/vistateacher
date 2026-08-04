@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { getFirebaseClient } from "@/lib/firebase/client";
 
-export function LogoutButton() {
+export function LogoutButton({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
 
   async function logout() {
@@ -19,9 +19,14 @@ export function LogoutButton() {
   }
 
   return (
-    <Button variant="ghost" onClick={logout}>
+    <Button
+      className="h-8 flex-1 px-2 text-xs text-white/40 hover:bg-white/8 hover:text-red-300"
+      variant="ghost"
+      onClick={logout}
+      title="Sign out"
+    >
       <LogOut aria-hidden="true" />
-      Sign out
+      {!compact && "Log out"}
     </Button>
   );
 }

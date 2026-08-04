@@ -9,7 +9,21 @@ test("renders the VistaTeacher marketing foundation", async ({ page }) => {
   await expect(
     page.getByRole("navigation", { name: "Main navigation" }),
   ).toBeVisible();
+  await expect(page.getByAltText("A bright, active classroom")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Join free today" }),
+  ).toBeVisible();
   await expect(page).toHaveTitle(/VistaTeacher/);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  expect(
+    await page
+      .getByAltText("A bright, active classroom")
+      .evaluate((image: HTMLImageElement) => image.naturalWidth > 0),
+  ).toBe(true);
 
   await expect(
     page.getByRole("link", { name: "Pricing" }).first(),
@@ -21,6 +35,17 @@ test("renders the VistaTeacher marketing foundation", async ({ page }) => {
     }),
   ).toBeVisible();
   await expect(page.getByText("$9")).toBeVisible();
+});
+
+test("protects the platform shell without a server session", async ({
+  page,
+}) => {
+  await page.goto("/app");
+
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(
+    page.getByRole("heading", { name: "Welcome back" }),
+  ).toBeVisible();
 });
 
 test("exposes accessible account entry and recovery routes", async ({

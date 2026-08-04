@@ -13,7 +13,7 @@ The browser is untrusted. Firebase ID tokens prove authentication only after Adm
 
 ## Rules and Secrets
 
-Rules are deny-by-default. Public profile updates use field allowlists excluding role, status, verification, and counters. Private documents are owner/admin readable. Conversation reads require membership; lessons are owner-only; admin collections require claims.
+Rules are deny-by-default. Public profile and private settings mutations are server-only, while private documents are owner/admin readable. Validated route handlers exclude role, status, verification, counters, and arbitrary deletion metadata from educator-controlled input. Conversation reads require membership; lessons are owner-only; admin collections require claims.
 
 Initial profile, private preference, and subscription documents are created only by the transactional server onboarding endpoint. Clients cannot create partial identity records directly.
 
@@ -29,7 +29,7 @@ The browser cannot set plans or trials. Stripe signatures and event IDs provide 
 
 ## Privacy and Moderation
 
-Private contact data is fetched only after owner preference and viewer entitlement/relationship checks pass. Blocking is checked across follows, messaging, discovery, and notifications. Reports disclose only necessary target context. Reported-message review is narrowly scoped and creates an audit log.
+Private contact data is fetched only when the viewer owns the profile or the educator has explicitly opted into public contact sharing. Account deletion requires an exact confirmation and records a server timestamp for review. Blocking is checked across follows, messaging, discovery, and notifications. Reports disclose only necessary target context. Reported-message review is narrowly scoped and creates an audit log.
 
 ## Operations
 

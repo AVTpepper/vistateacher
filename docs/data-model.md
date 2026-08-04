@@ -7,7 +7,7 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 | Path                   | Ownership and purpose                  | Important fields                                                                                       |
 | ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `users/{uid}`          | Server-created public educator profile | normalized identity/location, professional fields, role, verification, counters, status, timestamps    |
-| `userPrivate/{uid}`    | Server-created; owner/admin reads      | email, contact details, privacy/notification settings, payment reference, moderation/deletion metadata |
+| `userPrivate/{uid}`    | Server-written; owner/admin reads      | email, contact details, privacy/notification settings, payment reference, moderation/deletion metadata |
 | `subscriptions/{uid}`  | Server-owned; owner reads safe state   | plan/status, Stripe IDs, interval/end/cancellation, VistaTeacher trial state                           |
 | `usage/{uid}_{period}` | Server-owned monthly or daily counters | messages, uploads, AI lessons, period, timestamp                                                       |
 
@@ -48,3 +48,5 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 | `userAnalytics/{uid}`       | Server aggregate; owner/admin reads | engagement, growth, views, resources, forum, AI series            |
 
 Soft deletion precedes permanent deletion. Retention policies must minimize private/payment data while preserving legally required billing and audit records. Administrators do not receive blanket message access; reported-message review is narrowly scoped and audited.
+
+Public educator discovery uses bounded `searchKeywords` arrays derived by trusted profile mutations. Private contact fields never enter public profile documents or search indexes. A deletion request is stored under `userPrivate/{uid}.accountDeletion.requestedAt`; a later reviewed workflow performs soft and permanent deletion.

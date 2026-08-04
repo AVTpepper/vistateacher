@@ -39,4 +39,8 @@ Normal requests do not scan activity collections. Trusted writes and reconciliat
 
 ## Search
 
-The Firebase MVP uses normalized fields, keyword arrays, and bounded parallel prefix queries. A service interface keeps Firestore limitations out of UI components and permits later Algolia or Typesense adoption.
+The Firebase MVP uses normalized fields, keyword arrays, and bounded parallel queries. The authenticated command interface issues an abortable request to a server search service, which groups approved educators, resources, and discussions. A service boundary keeps Firestore limitations out of UI components and permits later Algolia or Typesense adoption.
+
+## Profiles and Settings
+
+Public profile routes read `users/{uid}` and join subscription state on the server. Contact details are loaded from `userPrivate/{uid}` only for the owner or when the owner explicitly enables public sharing. Profile and settings forms submit bounded Zod contracts to same-origin route handlers; Firestore rules deny direct identity-document mutations so clients cannot bypass server validation. Account deletion records a reviewable request rather than deleting data synchronously.

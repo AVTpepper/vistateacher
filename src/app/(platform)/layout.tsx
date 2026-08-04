@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { LogoutButton } from "@/features/auth/logout-button";
+import { PlatformShell } from "@/components/platform/platform-shell";
 import { requireCurrentAccount } from "@/lib/auth/session";
+import { adminDb } from "@/lib/firebase/admin";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -13,19 +13,26 @@ export default async function PlatformLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireCurrentAccount();
+  const account = await requireCurrentAccount();
+  const [profile, subscription] = await Promise.all([
+    adminDb().doc(`users/${account.uid}`).get(),
+    adminDb().doc(`subscriptions/${account.uid}`).get(),
+  ]);
+  const profileData = profile.data();
 
   return (
-    <div className="bg-background min-h-screen">
-      <header className="bg-card border-b">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 lg:px-8">
-          <Link className="font-serif text-xl" href="/app">
-            VistaTeacher
-          </Link>
-          <LogoutButton />
-        </div>
-      </header>
+    <PlatformShell
+      account={{
+        uid: account.uid,
+        displayName: account.displayName ?? "Educator",
+        photoURL: account.photoURL,
+        subject: Array.isArray(profileData?.subjects)
+          ? String(profileData.subjects[0] ?? "Educator")
+          : "Educator",
+      }}
+      plan={subscription.data()?.plan === "plus" ? "plus" : "free"}
+    >
       {children}
-    </div>
+    </PlatformShell>
   );
 }

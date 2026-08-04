@@ -72,13 +72,35 @@ describe("Firestore rules", () => {
     );
   });
 
-  it("prevents users from changing protected profile fields", async () => {
+  it("keeps all profile mutations behind server validation", async () => {
     await seedActiveUser("owner");
     const ownerDb = testEnv.authenticatedContext("owner").firestore();
 
     await assertFails(
       updateDoc(doc(ownerDb, "users", "owner"), {
-        role: "platform_admin",
+        displayName: "Changed without server validation",
+      }),
+    );
+  });
+
+  it("keeps settings and deletion requests behind server validation", async () => {
+    await seedActiveUser("owner");
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "userPrivate", "owner"), {
+        email: "owner@example.test",
+        privacySettings: { shareContactInfo: false },
+      });
+    });
+    const ownerDb = testEnv.authenticatedContext("owner").firestore();
+
+    await assertFails(
+      updateDoc(doc(ownerDb, "userPrivate", "owner"), {
+        privacySettings: { shareContactInfo: true },
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(ownerDb, "userPrivate", "owner"), {
+        accountDeletion: { requestedAt: "untrusted" },
       }),
     );
   });

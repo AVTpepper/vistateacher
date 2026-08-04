@@ -23,10 +23,10 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 2 - Application Shell and Profiles
 
-- [ ] Build responsive desktop and mobile platform navigation.
-- [ ] Build public profiles, profile editing, and settings.
-- [ ] Add privacy-aware contact details and account deletion requests.
-- [ ] Add the grouped search service and command interface.
+- [x] Build responsive desktop and mobile platform navigation.
+- [x] Build public profiles, profile editing, and settings.
+- [x] Add privacy-aware contact details and account deletion requests.
+- [x] Add the grouped search service and command interface.
 
 ## Phase 3 - Discover and Network
 

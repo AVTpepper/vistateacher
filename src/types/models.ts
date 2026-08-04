@@ -19,6 +19,17 @@ export interface SubscriptionRecord {
   updatedAt: Date;
 }
 
+export interface ProfileSearchResult {
+  uid: string;
+  displayName: string;
+  photoURL: string | null;
+  gradeLevel: string;
+  subjects: string[];
+  school: string;
+  city: string;
+  isVerified: boolean;
+}
+
 export interface LessonPlan {
   title: string;
   subject: string;
