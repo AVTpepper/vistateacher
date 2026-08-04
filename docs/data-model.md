@@ -29,14 +29,15 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 
 ## Messaging and Lessons
 
-| Path                                      | Ownership and purpose         | Important fields                                                  |
-| ----------------------------------------- | ----------------------------- | ----------------------------------------------------------------- |
-| `conversations/{sortedUid_sortedUid}`     | Participants                  | participants/summary, last preview/time, timestamps               |
-| `conversations/{id}/messages/{messageId}` | Trusted send endpoint         | sender, text/attachment, read state, moderation, timestamp        |
-| `users/{uid}/notifications/{id}`          | Recipient                     | type, actor/entity, safe message, read, timestamp                 |
-| `blocks/{blockerUid_blockedUid}`          | Private blocker/server        | blocker, blocked user, timestamp                                  |
-| `lessons/{lessonId}`                      | Owner-only by default         | structured lesson, source parameters, current version, timestamps |
-| `lessons/{lessonId}/versions/{versionId}` | Owner-only immutable snapshot | structured content, source, timestamp                             |
+| Path                                      | Ownership and purpose             | Important fields                                                                        |
+| ----------------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------- |
+| `conversations/{sortedUid_sortedUid}`     | Participant-readable/server-write | participant IDs, last preview/sender/time, per-user unread counts, timestamps           |
+| `conversations/{id}/messages/{messageId}` | Participant-readable/server-write | sender, bounded text, consumed attachment metadata, read members, moderation, timestamp |
+| `messageAttachments/{attachmentId}`       | Server-owned upload reservation   | owner/conversation, generated path, exact file metadata, reservation status, timestamp  |
+| `users/{uid}/notifications/{id}`          | Recipient-readable/server-write   | type, actor/entity, safe message/link, read state, timestamp                            |
+| `blocks/{blockerUid_blockedUid}`          | Private blocker/server            | blocker, blocked user, timestamp                                                        |
+| `lessons/{lessonId}`                      | Owner-only by default             | structured lesson, source parameters, current version, timestamps                       |
+| `lessons/{lessonId}/versions/{versionId}` | Owner-only immutable snapshot     | structured content, source, timestamp                                                   |
 
 ## Moderation and Aggregates
 
@@ -59,3 +60,5 @@ Feed writes are server-only. Post creation initializes moderation and counters a
 Resource reservations store `status: uploading`, the generated `filePath`, expected MIME and size, `usagePeriod`, and pending moderation state while incrementing `usage/{uid}_{YYYY-MM}.resourceUploads`. Finalization verifies the private object and changes status to `active` with approved moderation. Reviews use `{resourceId}_{uid}` IDs and transactionally maintain `ratingTotal`, `ratingCount`, and `ratingAverage`. Resource objects remain private in Storage and are served only by the entitlement-checked attachment route.
 
 Forum threads page by `lastActivityAt` plus document ID. Thread creation increments category thread and post counts; each reply increments the thread reply count and category post count. Like IDs encode target and user. Forum report IDs encode target and reporter. Accepting an answer sets `forumThreads.acceptedReplyId` and the matching reply's `accepted` flag in one transaction. Deletion reverses aggregates and removes child replies, reactions, and reports.
+
+One-to-one conversation IDs sort both participant UIDs. Message transactions verify both active profiles and block directions, enforce `usage/{uid}_{YYYY-MM-DD}.messages`, create a recipient notification, and update the conversation preview plus unread counts atomically. Message history pages by `createdAt` and document ID. Attachment reservations are consumed only after Storage metadata verification; failed sends delete unconsumed reservations and objects. Message report IDs combine message and reporter to prevent duplicate reports.

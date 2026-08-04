@@ -7,8 +7,10 @@ import {
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -44,6 +46,13 @@ import {
   reportForumContent,
   setForumLiked,
 } from "@/lib/forum/server";
+import {
+  MessageActionError,
+  reportMessage,
+  sendMessage,
+  setUserBlocked,
+  startConversation,
+} from "@/lib/messages/server";
 
 const projectId = "demo-vista-teacher";
 let testEnv: RulesTestEnvironment;
@@ -208,6 +217,209 @@ describe("Firestore rules", () => {
           "follower_educator",
         ),
         { followerUid: "follower", followingUid: "educator" },
+      ),
+    );
+  });
+
+  it("creates deterministic conversations, quotas, unread state, and notifications", async () => {
+    await seedNetworkUser("sender");
+    await seedNetworkUser("recipient");
+
+    const result = await startConversation("sender", {
+      recipientId: "recipient",
+      content: "Would you like to compare reflection routines?",
+    });
+    expect(result.conversationId).toBe("recipient_sender");
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [conversation, messages, usage, notifications] = await Promise.all([
+        getDoc(
+          doc(context.firestore(), "conversations", result.conversationId),
+        ),
+        getDocs(
+          collection(
+            context.firestore(),
+            "conversations",
+            result.conversationId,
+            "messages",
+          ),
+        ),
+        getDoc(
+          doc(
+            context.firestore(),
+            "usage",
+            "sender_" + new Date().toISOString().slice(0, 10),
+          ),
+        ),
+        getDocs(
+          collection(
+            context.firestore(),
+            "users",
+            "recipient",
+            "notifications",
+          ),
+        ),
+      ]);
+      expect(conversation.data()?.participantIds).toEqual([
+        "recipient",
+        "sender",
+      ]);
+      expect(conversation.data()?.unreadCounts).toMatchObject({
+        sender: 0,
+        recipient: 1,
+      });
+      expect(messages.size).toBe(1);
+      expect(usage.data()?.messages).toBe(1);
+      expect(notifications.size).toBe(1);
+    });
+  });
+
+  it("enforces the Free daily message limit inside the transaction", async () => {
+    await seedNetworkUser("sender");
+    await seedNetworkUser("recipient");
+    const conversationId = "recipient_sender";
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(
+          context.firestore(),
+          "usage",
+          "sender_" + new Date().toISOString().slice(0, 10),
+        ),
+        { uid: "sender", messages: 10 },
+      );
+      await setDoc(doc(context.firestore(), "conversations", conversationId), {
+        participantIds: ["recipient", "sender"],
+        unreadCounts: { recipient: 0, sender: 0 },
+        lastMessageAt: serverTimestamp(),
+      });
+    });
+
+    await expect(
+      sendMessage("sender", {
+        conversationId,
+        content: "This message should exceed the daily limit.",
+        attachmentId: null,
+      }),
+    ).rejects.toMatchObject({
+      code: "limit-reached",
+    } satisfies Partial<MessageActionError>);
+  });
+
+  it("enforces blocks and deterministic message reports", async () => {
+    await seedNetworkUser("sender");
+    await seedNetworkUser("recipient");
+    const created = await startConversation("sender", {
+      recipientId: "recipient",
+      content: "Initial message for moderation coverage.",
+    });
+    await reportMessage("recipient", {
+      conversationId: created.conversationId,
+      messageId: created.messageId,
+      reason: "spam",
+      details: "Repeated promotional content.",
+    });
+    await expect(
+      reportMessage("recipient", {
+        conversationId: created.conversationId,
+        messageId: created.messageId,
+        reason: "spam",
+        details: "Repeated promotional content.",
+      }),
+    ).rejects.toMatchObject({
+      code: "already-reported",
+    } satisfies Partial<MessageActionError>);
+
+    await setUserBlocked("recipient", {
+      blockedUid: "sender",
+      blocked: true,
+    });
+    await expect(
+      sendMessage("sender", {
+        conversationId: created.conversationId,
+        content: "This message should be blocked.",
+        attachmentId: null,
+      }),
+    ).rejects.toMatchObject({
+      code: "blocked",
+    } satisfies Partial<MessageActionError>);
+  });
+
+  it("limits conversation reads to participants and keeps writes server-owned", async () => {
+    await seedNetworkUser("sender");
+    await seedNetworkUser("recipient");
+    await seedNetworkUser("outsider");
+    const created = await startConversation("sender", {
+      recipientId: "recipient",
+      content: "Participant-only conversation.",
+    });
+    const recipientDb = testEnv.authenticatedContext("recipient").firestore();
+    const outsiderDb = testEnv.authenticatedContext("outsider").firestore();
+    await assertSucceeds(
+      getDoc(doc(recipientDb, "conversations", created.conversationId)),
+    );
+    await assertFails(
+      getDoc(doc(outsiderDb, "conversations", created.conversationId)),
+    );
+    await assertFails(
+      setDoc(
+        doc(
+          recipientDb,
+          "conversations",
+          created.conversationId,
+          "messages",
+          "direct-write",
+        ),
+        { senderId: "recipient", content: "Untrusted write" },
+      ),
+    );
+    await assertFails(
+      updateDoc(
+        doc(
+          recipientDb,
+          "users",
+          "recipient",
+          "notifications",
+          `message_${created.messageId}`,
+        ),
+        { read: true },
+      ),
+    );
+  });
+
+  it("allows only exact reserved message attachment uploads", async () => {
+    await seedNetworkUser("sender");
+    const senderStorage = testEnv.authenticatedContext("sender").storage();
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), "messageAttachments", "attachment-one"),
+        {
+          ownerId: "sender",
+          conversationId: "recipient_sender",
+          fileType: "application/pdf",
+          fileSize: 4,
+          path: "messages/recipient_sender/attachment-one/attachment.pdf",
+          status: "reserved",
+        },
+      );
+    });
+    await assertSucceeds(
+      uploadBytes(
+        ref(
+          senderStorage,
+          "messages/recipient_sender/attachment-one/attachment.pdf",
+        ),
+        new Uint8Array([1, 2, 3, 4]),
+        { contentType: "application/pdf" },
+      ),
+    );
+    await assertFails(
+      uploadBytes(
+        ref(
+          senderStorage,
+          "messages/recipient_sender/attachment-one/wrong.pdf",
+        ),
+        new Uint8Array([1, 2, 3, 4]),
+        { contentType: "application/pdf" },
       ),
     );
   });
@@ -554,6 +766,8 @@ describe("Firestore rules", () => {
   });
 
   it("requires conversation membership", async () => {
+    await seedActiveUser("a");
+    await seedActiveUser("c");
     await testEnv.withSecurityRulesDisabled(async (context) => {
       await setDoc(doc(context.firestore(), "conversations", "a_b"), {
         participantIds: ["a", "b"],

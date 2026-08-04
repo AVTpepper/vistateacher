@@ -55,7 +55,18 @@ service firebase.storage {
     }
 
     match /messages/{conversationId}/{messageId}/{fileName} {
-      allow read, write: if false;
+      allow read: if false;
+      allow create: if active()
+        && firestore.exists(/databases/(default)/documents/messageAttachments/$(messageId))
+        && firestore.get(/databases/(default)/documents/messageAttachments/$(messageId)).data.ownerId == request.auth.uid
+        && firestore.get(/databases/(default)/documents/messageAttachments/$(messageId)).data.conversationId == conversationId
+        && firestore.get(/databases/(default)/documents/messageAttachments/$(messageId)).data.status == "reserved"
+        && firestore.get(/databases/(default)/documents/messageAttachments/$(messageId)).data.path == "messages/" + conversationId + "/" + messageId + "/" + fileName
+        && firestore.get(/databases/(default)/documents/messageAttachments/$(messageId)).data.fileType == request.resource.contentType
+        && firestore.get(/databases/(default)/documents/messageAttachments/$(messageId)).data.fileSize == request.resource.size
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('(application/pdf|image/(jpeg|png|webp))');
+      allow update, delete: if false;
     }
 
     match /verification/{uid}/{fileName} {

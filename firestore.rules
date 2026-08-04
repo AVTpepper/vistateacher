@@ -113,20 +113,27 @@ service cloud.firestore {
     }
 
     match /conversations/{conversationId} {
-      allow read: if signedIn() && request.auth.uid in resource.data.participantIds;
+      allow read: if isActive() && request.auth.uid in resource.data.participantIds;
       allow write: if false;
 
       match /messages/{messageId} {
-        allow read: if conversationMember(conversationId);
+        allow read: if isActive() && conversationMember(conversationId);
         allow write: if false;
       }
     }
 
+    match /messageAttachments/{attachmentId} {
+      allow read, write: if false;
+    }
+
+    match /blocks/{blockId} {
+      allow read: if ownsExisting("blockerUid") || isAdmin();
+      allow write: if false;
+    }
+
     match /users/{uid}/notifications/{notificationId} {
       allow read: if owns(uid);
-      allow update: if owns(uid)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["read"]);
-      allow create, delete: if false;
+      allow write: if false;
     }
 
     match /lessons/{lessonId} {

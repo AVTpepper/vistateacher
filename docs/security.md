@@ -29,6 +29,8 @@ Resource reservations validate taxonomy, access tier, file name, MIME, and size 
 
 Clients cannot write forum categories, threads, replies, reactions, reports, solved state, or counters directly. Forum routes validate bounded content and trusted origins, derive actor IDs from the session, reject inactive accounts and locked discussions, and update related counters transactionally. Thread owners may lock or delete their discussions and moderate replies; only platform administrators may pin discussions. Accepted answers must belong to the selected visible thread.
 
+Clients cannot write conversations, messages, blocks, attachment reservations, notifications, read state, or message reports directly. Message transactions derive the sender from the session, require the deterministic participant pair, check both users and both block directions, and enforce the effective-plan daily quota before any write. Recipient notifications, unread counters, and daily usage change in the same transaction as the message. Only participants can read a conversation or its messages; administrators do not receive blanket access.
+
 Firebase Admin credentials, Stripe secrets, webhook secrets, and OpenAI keys remain in `server-only` modules and managed App Hosting secrets. Logs redact tokens, keys, contacts, private lesson content, and unnecessary payment payloads.
 
 ## Uploads
@@ -37,9 +39,11 @@ Generated object names prevent path injection. Feed images use direct authentica
 
 Resource files are returned with `Content-Disposition: attachment`, `Cache-Control: private, no-store`, and `X-Content-Type-Options: nosniff`. The route verifies active account state and effective plan before reading bytes; Free accounts cannot download Plus-only files unless they own them. Failed or canceled uploads delete any reserved object, and owner deletion removes every file under the generated resource prefix.
 
+Message attachment uploads require an active account and a matching server-owned reservation for owner, conversation, generated path, MIME, and exact byte size. Browser reads are always denied. The participant-authorized download route returns private, non-sniffable attachments; failed message sends delete unused reservations and objects.
+
 ## Billing, Quotas, and Rate Limits
 
-The browser cannot set plans or trials. Stripe signatures and event IDs provide authenticity and idempotency. Quota checks and increments use transactions; failed operations do not consume quota. Production rate limits use a persistent store, never instance memory.
+The browser cannot set plans or trials. Stripe signatures and event IDs provide authenticity and idempotency. Quota checks and increments use transactions; failed operations do not consume quota. Free messaging is limited to ten sends per UTC day using the sender's server-owned daily usage record; Plus messaging is unlimited. Production rate limits use a persistent store, never instance memory.
 
 ## Privacy and Moderation
 

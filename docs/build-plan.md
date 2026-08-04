@@ -57,10 +57,10 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 7 - Messaging and Notifications
 
-- [ ] Implement deterministic one-to-one conversations and real-time messages.
-- [ ] Enforce daily message limits transactionally.
-- [ ] Implement attachments, blocks, reports, read state, and pagination.
-- [ ] Implement trusted notification creation and read controls.
+- [x] Implement deterministic one-to-one conversations and real-time messages.
+- [x] Enforce daily message limits transactionally.
+- [x] Implement attachments, blocks, reports, read state, and pagination.
+- [x] Implement trusted notification creation and read controls.
 
 ## Phase 8 - AI Lesson Builder
 

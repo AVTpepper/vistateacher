@@ -37,6 +37,16 @@ Trusted operations create notifications alongside the causing action, skip self-
 
 Normal requests do not scan activity collections. Trusted writes and reconciliation jobs maintain `platformStats/current` and `userAnalytics/{uid}`. Dashboard charts read these bounded aggregates.
 
+## Messaging
+
+Conversation IDs sort the two participant UIDs, guaranteeing one one-to-one thread per educator pair. The messages page server-renders a bounded conversation list and initial history; the authenticated Firebase client listens only to the selected participant-readable message collection for real-time delivery. Older history uses an opaque timestamp and document-ID cursor.
+
+Message sends run through Firebase Admin transactions. Each transaction verifies both active participants, both block directions, conversation membership, the effective subscription, and daily usage before creating the message, updating unread summary state, incrementing `usage/{uid}_{YYYY-MM-DD}.messages`, and creating the recipient notification. Free accounts stop at ten messages per UTC day; Plus accounts are unlimited.
+
+Attachments use a server reservation with generated paths and exact MIME/size metadata. Storage rules accept only the matching active owner upload. The send operation verifies object metadata before consuming the reservation, while failed sends cancel the object and reservation. Direct object reads are denied; participant-authorized downloads use the server route with attachment headers.
+
+Blocks and deterministic message reports are server-owned. Block checks run in both directions inside every send transaction. Notification creation and read controls also use trusted routes; direct document writes remain denied.
+
 ## Search
 
 The Firebase MVP uses normalized fields, keyword arrays, and bounded parallel queries. The authenticated command interface issues an abortable request to a server search service, which groups approved educators, resources, and discussions. A service boundary keeps Firestore limitations out of UI components and permits later Algolia or Typesense adoption.

@@ -268,28 +268,30 @@ batch.set(db.doc("forumThreads/demo-thread/replies/demo-reply"), {
 });
 batch.set(db.doc("conversations/free-educator_plus-educator"), {
   participantIds: ["free-educator", "plus-educator"],
-  participantSummary: {},
-  lastMessagePreview: "Thanks for sharing the organizer.",
+  lastMessagePreview: "I sent over the organizer we discussed.",
   lastMessageAt: FieldValue.serverTimestamp(),
+  lastSenderId: "plus-educator",
+  unreadCounts: { "free-educator": 1, "plus-educator": 0 },
   createdAt: FieldValue.serverTimestamp(),
+  updatedAt: FieldValue.serverTimestamp(),
 });
 batch.set(
   db.doc("conversations/free-educator_plus-educator/messages/demo-message"),
   {
-    senderId: "free-educator",
-    content: "Thanks for sharing the organizer.",
-    attachmentURL: null,
-    readBy: ["free-educator"],
+    senderId: "plus-educator",
+    content: "I sent over the organizer we discussed.",
+    attachment: null,
+    readBy: ["plus-educator"],
     moderationStatus: "approved",
     createdAt: FieldValue.serverTimestamp(),
   },
 );
 batch.set(db.doc("users/free-educator/notifications/demo-notification"), {
-  type: "forum_reply",
+  type: "message",
   actorId: "plus-educator",
-  entityType: "forumThread",
-  entityId: "demo-thread",
-  message: "Maya replied to a discussion you follow.",
+  entityId: "free-educator_plus-educator",
+  message: "Maya Chen sent you a message.",
+  href: "/messages?conversation=free-educator_plus-educator",
   read: false,
   createdAt: FieldValue.serverTimestamp(),
 });
