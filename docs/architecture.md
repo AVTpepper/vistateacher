@@ -23,6 +23,12 @@ Session, logout, and onboarding mutations require the configured same-origin req
 
 The web SDK handles permitted reads, real-time listeners, authentication, and ownership-scoped images. Security rules are the final client boundary. Firebase Admin is imported only from `server-only` modules for transactions, signed downloads, notifications, moderation, and aggregates. Each Admin operation checks session, status, ownership, entitlements, validation, and rate limits because Admin bypasses rules.
 
+## Administration
+
+Every administrator page verifies the server session and `platform_admin` role before reading data; the mutation endpoint repeats that check and the domain service rejects non-admin actors independently. Overview reads only `platformStats/current` plus twelve recent audit entries. User, content, report, and verification readers use fixed limits and never expose private contact details or unrestricted message history.
+
+User status, content moderation, report resolution, and verification decisions run as Firestore transactions. Each transaction writes the target changes and creates one audit record containing only the actor, action, target, bounded previous/new state, explicit reason, and server timestamp. Audit records are never updated or deleted by product code. Administrator accounts cannot suspend themselves or another platform administrator.
+
 ## Subscription Resolution
 
 `subscriptions/{uid}` is server-owned. Effective entitlements resolve centrally from Stripe status plus the VistaTeacher no-card trial. Payment does not set educator verification. Stripe events are signature-verified, deduplicated by event ID, and safe to retry; checkout redirects never grant access.

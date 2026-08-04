@@ -52,6 +52,8 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 
 Soft deletion precedes permanent deletion. Retention policies must minimize private/payment data while preserving legally required billing and audit records. Administrators do not receive blanket message access; reported-message review is narrowly scoped and audited.
 
+Administrator overview reads `platformStats/current` rather than scanning domain collections. Operational lists are bounded to 50 users, reports, or verification requests and 20 recent records per content collection. Moderation transactions store only minimal previous/new state in `auditLogs`; reasons are bounded and audit documents are immutable.
+
 Public educator discovery uses bounded `searchKeywords` arrays derived by trusted profile mutations. Private contact fields never enter public profile documents or search indexes. A deletion request is stored under `userPrivate/{uid}.accountDeletion.requestedAt`; a later reviewed workflow performs soft and permanent deletion.
 
 Follow transactions create or remove the deterministic relationship document and update `users/{followerUid}.followingCount` plus `users/{followingUid}.followerCount` atomically. Relationship queries use the single-field `followerUid` and `followingUid` indexes; no client may write these records or counters directly.

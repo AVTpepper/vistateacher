@@ -26,6 +26,7 @@ export default async function PlatformLayout({
         uid: account.uid,
         displayName: account.displayName ?? "Educator",
         photoURL: account.photoURL,
+        role: account.role,
         subject: Array.isArray(profileData?.subjects)
           ? String(profileData.subjects[0] ?? "Educator")
           : "Educator",

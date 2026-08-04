@@ -11,6 +11,7 @@ import {
   Mail,
   Menu,
   MessageSquare,
+  ShieldCheck,
   Settings,
   Sparkles,
   UsersRound,
@@ -25,6 +26,7 @@ import { LogoutButton } from "@/features/auth/logout-button";
 import { GlobalSearch } from "@/features/search/global-search";
 import { cn } from "@/lib/utils";
 import type { Plan } from "@/types/models";
+import type { UserRole } from "@/types/models";
 
 const navigation = [
   { label: "Home Feed", icon: Home, href: "/app" },
@@ -47,6 +49,7 @@ interface PlatformShellProps {
     uid: string;
     displayName: string;
     photoURL: string | null;
+    role: UserRole;
     subject: string;
   };
   plan: Plan;
@@ -127,6 +130,23 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             </Link>
           );
         })}
+        {account.role === "platform_admin" && (
+          <Link
+            href="/admin"
+            onClick={() => setMobileOpen(false)}
+            title={collapsed ? "Administration" : undefined}
+            className={cn(
+              "relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
+              pathname.startsWith("/admin")
+                ? "bg-white/12 text-white"
+                : "text-white/60 hover:bg-white/8 hover:text-white",
+              collapsed && "justify-center px-0",
+            )}
+          >
+            <ShieldCheck className="size-[18px] shrink-0" />
+            {!collapsed && <span>Administration</span>}
+          </Link>
+        )}
       </nav>
       {plan === "free" && !collapsed && (
         <div className="mx-3 mb-3 rounded-xl border border-white/10 bg-white/5 p-3.5">

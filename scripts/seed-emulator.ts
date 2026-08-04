@@ -158,6 +158,7 @@ batch.set(db.doc("posts/demo-post"), {
   likeCount: 1,
   commentCount: 1,
   shareCount: 0,
+  reportCount: 1,
   visibility: "public",
   moderationStatus: "approved",
   createdAt: FieldValue.serverTimestamp(),
@@ -306,11 +307,31 @@ batch.set(db.doc("reports/demo-report"), {
   targetId: "demo-post",
   reason: "other",
   description: "Development-only report for moderation testing.",
-  status: "pending",
+  status: "open",
   assignedAdminId: null,
   resolution: null,
   createdAt: FieldValue.serverTimestamp(),
   updatedAt: FieldValue.serverTimestamp(),
+});
+batch.set(db.doc("verificationRequests/demo-verification"), {
+  uid: "educator-three",
+  evidencePath: "verification/educator-three/demo-evidence.pdf",
+  status: "pending",
+  reviewerId: null,
+  reason: null,
+  reviewedAt: null,
+  createdAt: FieldValue.serverTimestamp(),
+  updatedAt: FieldValue.serverTimestamp(),
+});
+batch.set(db.doc("auditLogs/demo-audit"), {
+  actorId: "platform-admin",
+  action: "content.moderate",
+  targetType: "resource",
+  targetId: "demo-resource",
+  previousState: { moderationStatus: "pending" },
+  newState: { moderationStatus: "approved" },
+  reason: "Development seed approval.",
+  createdAt: FieldValue.serverTimestamp(),
 });
 batch.set(db.doc("platformStats/current"), {
   demoData: true,
@@ -320,6 +341,7 @@ batch.set(db.doc("platformStats/current"), {
   resources: 1,
   forumThreads: 1,
   pendingReports: 1,
+  pendingVerifications: 1,
   updatedAt: FieldValue.serverTimestamp(),
 });
 batch.set(db.doc("userAnalytics/plus-educator"), {

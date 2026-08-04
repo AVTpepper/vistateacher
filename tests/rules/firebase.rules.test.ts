@@ -65,6 +65,7 @@ import {
   reconcileBillingEvent,
   startVistaTrial,
 } from "@/lib/billing/server";
+import { AdminActionError, performAdminAction } from "@/lib/admin/server";
 
 const projectId = "demo-vista-teacher";
 let testEnv: RulesTestEnvironment;
@@ -1107,6 +1108,128 @@ describe("Firestore rules", () => {
         ),
       ),
     );
+    const adminDb = testEnv
+      .authenticatedContext("admin", { role: "platform_admin" })
+      .firestore();
+    await assertFails(
+      setDoc(doc(adminDb, "auditLogs", "forged-audit"), {
+        actorId: "admin",
+        action: "user.status",
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(adminDb, "auditLogs", "audit-one"), {
+        action: "tampered",
+      }),
+    );
+  });
+
+  it("rejects educators and protects administrator accounts", async () => {
+    await seedNetworkUser("target-admin", { role: "platform_admin" });
+    await expect(
+      performAdminAction(
+        { uid: "educator", role: "educator" },
+        {
+          action: "user.status",
+          targetId: "target-admin",
+          status: "suspended",
+          reason: "Unauthorized attempt.",
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "admin-required",
+    } satisfies Partial<AdminActionError>);
+    await expect(
+      performAdminAction(
+        { uid: "admin", role: "platform_admin" },
+        {
+          action: "user.status",
+          targetId: "target-admin",
+          status: "suspended",
+          reason: "Protected account test.",
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "protected-target",
+    } satisfies Partial<AdminActionError>);
+  });
+
+  it("moderates content, reports, and verification with immutable audits", async () => {
+    await seedNetworkUser("review-target", { isVerified: false });
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await Promise.all([
+        setDoc(doc(db, "posts", "review-post"), {
+          authorId: "review-target",
+          content: "Reported post",
+          moderationStatus: "approved",
+          updatedAt: serverTimestamp(),
+        }),
+        setDoc(doc(db, "reports", "review-report"), {
+          reporterId: "reporter",
+          targetType: "post",
+          targetId: "review-post",
+          status: "open",
+          createdAt: serverTimestamp(),
+        }),
+        setDoc(doc(db, "verificationRequests", "review-verification"), {
+          uid: "review-target",
+          evidencePath: "verification/review-target/evidence.pdf",
+          status: "pending",
+          createdAt: serverTimestamp(),
+        }),
+        setDoc(doc(db, "platformStats", "current"), {
+          pendingReports: 1,
+          pendingVerifications: 1,
+        }),
+      ]);
+    });
+    const actor = { uid: "admin", role: "platform_admin" as const };
+
+    await performAdminAction(actor, {
+      action: "content.moderate",
+      targetType: "post",
+      targetId: "review-post",
+      parentId: null,
+      status: "rejected",
+      reason: "Violates the community guidelines.",
+    });
+    await performAdminAction(actor, {
+      action: "report.resolve",
+      targetId: "review-report",
+      resolution: "resolved",
+      reason: "Content was reviewed and removed.",
+    });
+    await performAdminAction(actor, {
+      action: "verification.decide",
+      targetId: "review-verification",
+      decision: "approved",
+      reason: "Professional evidence confirmed.",
+    });
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      const [post, report, verification, user, stats, audits] =
+        await Promise.all([
+          getDoc(doc(db, "posts", "review-post")),
+          getDoc(doc(db, "reports", "review-report")),
+          getDoc(doc(db, "verificationRequests", "review-verification")),
+          getDoc(doc(db, "users", "review-target")),
+          getDoc(doc(db, "platformStats", "current")),
+          getDocs(collection(db, "auditLogs")),
+        ]);
+      expect(post.data()?.moderationStatus).toBe("rejected");
+      expect(report.data()?.status).toBe("resolved");
+      expect(report.data()?.assignedAdminId).toBe("admin");
+      expect(verification.data()?.status).toBe("approved");
+      expect(user.data()?.isVerified).toBe(true);
+      expect(stats.data()?.pendingReports).toBe(0);
+      expect(stats.data()?.pendingVerifications).toBe(0);
+      expect(audits.size).toBe(3);
+      expect(
+        audits.docs.every((audit) => audit.data().actorId === "admin"),
+      ).toBe(true);
+    });
   });
 });
 

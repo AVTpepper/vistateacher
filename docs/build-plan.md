@@ -84,9 +84,9 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 11 - Administration
 
-- [ ] Protect all administrator routes and operations server-side.
-- [ ] Build aggregate overview, users, content, reports, and verification views.
-- [ ] Implement moderation actions and immutable audit logs.
+- [x] Protect all administrator routes and operations server-side.
+- [x] Build aggregate overview, users, content, reports, and verification views.
+- [x] Implement moderation actions and immutable audit logs.
 
 ## Phase 12 - Hardening and Release
 

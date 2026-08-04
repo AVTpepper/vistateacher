@@ -37,6 +37,8 @@ Clients cannot write lessons, versions, AI usage, generation status, or source p
 
 Analytics documents are owner/admin-readable and server-write-only. The dashboard validates bounded aggregate shapes and resolves the effective plan before projecting full trend series. Free users receive summary totals but never Plus series. Browser-provided counts, subscription labels, and quota values are ignored; the server joins trusted profile, subscription, and exact usage documents.
 
+Administrator pages, action routes, and domain mutations each enforce the `platform_admin` role server-side. Lists are bounded, overview metrics come from the trusted platform aggregate, and the console excludes private contacts and general message access. Moderation requires a bounded explicit reason. Target updates, pending-count changes, and append-only audit creation share one transaction; direct audit writes remain denied even to administrators. Self-suspension and suspension of other platform administrators are blocked.
+
 ## Uploads
 
 Generated object names prevent path injection. Feed images use direct authenticated uploads only under `posts/{uid}/{generatedId}/{generatedName}`; browser checks are repeated by Storage rules that enforce active ownership, image MIME type, and a 10 MB limit. The server validates MIME, extension, size, ownership, and resource type for trusted workflows. Unsafe documents download with `Content-Disposition: attachment` and are never executed inline. Paid resources, messages, and verification evidence deny direct Storage reads; trusted endpoints provide short-lived authorized downloads. Deletion workflows clean orphaned files idempotently.
