@@ -81,7 +81,7 @@ export function LandingPage() {
             <div className="bg-card shadow-foreground/5 overflow-hidden rounded-2xl border shadow-2xl">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1400&q=85"
+                src="/images/ivan-aleksic-PDRFeeDniCk-unsplash.jpg"
                 alt="A bright, active classroom"
                 className="h-52 w-full object-cover sm:h-72 md:h-80"
               />
