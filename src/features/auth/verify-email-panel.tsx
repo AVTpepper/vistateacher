@@ -41,11 +41,25 @@ export function VerifyEmailPanel() {
         error?: string;
         next?: string;
       };
-      if (!response.ok || !result.next) throw new Error(result.error);
+      if (!response.ok || !result.next) {
+        if (response.status === 401) {
+          setError("Your sign-in has expired. Sign in again to continue.");
+          return;
+        }
+        if (response.status === 403) {
+          setError(
+            "You're verified, but this session cannot continue. Sign in again.",
+          );
+          return;
+        }
+        throw new Error(result.error);
+      }
       router.push(result.next);
       router.refresh();
     } catch {
-      setError("We couldn't confirm your email. Please sign in and try again.");
+      setError(
+        "We couldn't confirm this session. Open the verification link in the same browser, then sign in again.",
+      );
     } finally {
       setIsChecking(false);
     }
@@ -73,6 +87,10 @@ export function VerifyEmailPanel() {
         <p className="text-muted-foreground mt-3 text-sm leading-6">
           Use the verification link we sent, then return here to continue. Your
           educator profile is created after you verify and complete setup.
+        </p>
+        <p className="text-muted-foreground mt-2 text-xs">
+          For best results, open the email link in the same browser you used to
+          create your account.
         </p>
       </div>
       {error && (
