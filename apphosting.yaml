@@ -7,30 +7,37 @@ runConfig:
 
 env:
   - variable: NEXT_PUBLIC_APP_URL
+    value: https://example.com
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: REPLACE_IN_APP_HOSTING
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: REPLACE_IN_APP_HOSTING
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: REPLACE_IN_APP_HOSTING
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: REPLACE_IN_APP_HOSTING
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: REPLACE_IN_APP_HOSTING
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: REPLACE_IN_APP_HOSTING
     availability:
       - BUILD
       - RUNTIME
