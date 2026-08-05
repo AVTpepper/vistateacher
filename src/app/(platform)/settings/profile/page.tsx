@@ -18,6 +18,8 @@ export default async function EditProfilePage() {
         Keep the context other educators use to find and understand your work.
       </p>
       <ProfileEditForm
+        initialCoverImageURL={profile.coverImageURL}
+        plan={data.plan}
         initial={{
           displayName: profile.displayName,
           professionalRoles: profile.professionalRoles,

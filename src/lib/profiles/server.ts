@@ -2,6 +2,7 @@ import "server-only";
 
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
+import { getBillingState } from "@/lib/billing/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { getFollowId } from "@/lib/network/server";
 import { canViewContactDetails } from "@/lib/profiles/privacy";
@@ -41,12 +42,11 @@ export async function getProfileView(
   viewerUid: string | null,
 ): Promise<ProfileView | null> {
   const db = adminDb();
-  const [profileSnapshot, privateSnapshot, subscriptionSnapshot] =
-    await Promise.all([
-      db.doc(`users/${uid}`).get(),
-      db.doc(`userPrivate/${uid}`).get(),
-      db.doc(`subscriptions/${uid}`).get(),
-    ]);
+  const [profileSnapshot, privateSnapshot, billing] = await Promise.all([
+    db.doc(`users/${uid}`).get(),
+    db.doc(`userPrivate/${uid}`).get(),
+    getBillingState(uid).catch(() => null),
+  ]);
   if (!profileSnapshot.exists) return null;
 
   const profile = profileDocumentSchema.parse(profileSnapshot.data());
@@ -69,7 +69,7 @@ export async function getProfileView(
   return {
     profile,
     joinedLabel: joinedLabel(profile.createdAt),
-    plan: subscriptionSnapshot.data()?.plan === "plus" ? "plus" : "free",
+    plan: billing?.effectivePlan ?? "free",
     contactDetails:
       canViewContact && privateUser ? privateUser.contactDetails : null,
     isOwner,

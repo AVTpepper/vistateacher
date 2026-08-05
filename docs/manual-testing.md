@@ -76,7 +76,10 @@ Test once at desktop width and once around 390 px mobile width.
 ## 5. Profile, Settings, and Network
 
 - [ ] Open your profile and edit name, school, subjects, bio, and location.
-- [ ] Upload safe avatar and cover images; reject unsupported or oversized files.
+- [ ] Confirm Community profiles can view/remove an existing cover but must upgrade to replace it.
+- [ ] Confirm Plus profiles can upload JPG, PNG, or WebP cover images up to 5 MB; reject unsupported or oversized files.
+- [ ] At a short desktop height, scroll the sidebar to every destination without displaying a native scrollbar; confirm mobile drawer scrolling remains visible and usable.
+- [ ] Open About & policies from the authenticated sidebar and reach About, support, billing, privacy, and terms.
 - [ ] Toggle contact privacy and verify another educator sees only permitted fields.
 - [ ] Search educators by name and apply subject, grade, location, and verification filters.
 - [ ] Follow and unfollow an educator; verify both profile counters update.

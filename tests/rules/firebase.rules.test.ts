@@ -1361,6 +1361,19 @@ describe("Storage rules", () => {
     );
   });
 
+  it("keeps profile cover writes server-owned", async () => {
+    await seedActiveUser("owner");
+    const ownerStorage = testEnv.authenticatedContext("owner").storage();
+
+    await assertFails(
+      uploadBytes(
+        ref(ownerStorage, "users/owner/cover/cover.webp"),
+        new Uint8Array([1]),
+        { contentType: "image/webp" },
+      ),
+    );
+  });
+
   it("limits post media writes to active owners and reads to signed-in users", async () => {
     await seedActiveUser("owner");
     const ownerStorage = testEnv.authenticatedContext("owner").storage();

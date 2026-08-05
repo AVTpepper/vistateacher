@@ -49,6 +49,21 @@ test("signs in a seeded educator and protects platform workflows", async ({
   await expect(
     page.getByRole("link", { name: "Help & feedback" }),
   ).toHaveAttribute("href", "/support");
+  await expect(
+    page.getByRole("link", { name: "About & policies" }),
+  ).toHaveAttribute("href", "/information");
+
+  await page.goto("/information");
+  await expect(
+    page.getByRole("heading", { name: "About & policies" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /Privacy policy/ }),
+  ).toHaveAttribute("href", "/privacy");
+  await expect(
+    page.getByRole("link", { name: /Contact and feedback/ }),
+  ).toHaveAttribute("href", "/support");
+  await expectNoPageOverflow(page);
 
   await page.goto("/settings/billing");
   await expect(page.getByText("$0 membership fee")).toBeVisible();
@@ -81,6 +96,34 @@ test("signs in a seeded educator and protects platform workflows", async ({
 
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/app$/);
+});
+
+test("keeps the short desktop sidebar scrollable without a visible scrollbar", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium");
+  await page.setViewportSize({ width: 1100, height: 600 });
+  await signIn(page, "community@vista.local");
+
+  const navigation = page.getByRole("navigation", {
+    name: "Platform navigation",
+  });
+  await expect(navigation).toBeVisible();
+  expect(
+    await navigation.evaluate(
+      (element) => element.scrollHeight > element.clientHeight,
+    ),
+  ).toBe(true);
+  expect(
+    await navigation.evaluate(
+      (element) => getComputedStyle(element).scrollbarWidth,
+    ),
+  ).toBe("none");
+  await navigation.hover();
+  await page.mouse.wheel(0, 600);
+  await expect(
+    page.getByRole("link", { name: "About & policies" }),
+  ).toBeVisible();
 });
 
 test("lets a platform administrator resolve and audit a report", async ({

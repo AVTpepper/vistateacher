@@ -8,10 +8,20 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ProfileCoverEditor } from "@/features/profiles/profile-cover-editor";
 import { educationStages } from "@/lib/profiles/options";
 import { profileUpdateSchema, type ProfileUpdate } from "@/schemas/profile";
+import type { Plan } from "@/types/models";
 
-export function ProfileEditForm({ initial }: { initial: ProfileUpdate }) {
+export function ProfileEditForm({
+  initial,
+  initialCoverImageURL,
+  plan,
+}: {
+  initial: ProfileUpdate;
+  initialCoverImageURL: string | null;
+  plan: Plan;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +81,10 @@ export function ProfileEditForm({ initial }: { initial: ProfileUpdate }) {
 
   return (
     <form className="space-y-6" onSubmit={submit}>
+      <ProfileCoverEditor
+        initialCoverImageURL={initialCoverImageURL}
+        plan={plan}
+      />
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Display name" id="displayName">
           <Input

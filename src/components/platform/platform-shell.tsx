@@ -7,6 +7,7 @@ import {
   Compass,
   GraduationCap,
   Home,
+  Info,
   LayoutDashboard,
   LifeBuoy,
   Mail,
@@ -44,6 +45,7 @@ const navigation = [
   { label: "Messages", icon: Mail, href: "/messages" },
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { label: "Help & feedback", icon: LifeBuoy, href: "/support" },
+  { label: "About & policies", icon: Info, href: "/information" },
 ];
 
 interface PlatformShellProps {
@@ -91,7 +93,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
       </div>
       <nav
         aria-label="Platform navigation"
-        className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4"
+        className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4 lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden"
       >
         {navigation.map(({ label, icon: Icon, href, plus }) => {
           const active =

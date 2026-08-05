@@ -19,7 +19,7 @@ The browser is untrusted. Firebase ID tokens prove authentication only after Adm
 
 Rules are deny-by-default. Public profile and private settings mutations are server-only, while private documents are owner/admin readable. Validated route handlers exclude role, status, verification, counters, and arbitrary deletion metadata from educator-controlled input. Conversation reads require membership; lessons are owner-only; admin collections require claims.
 
-Initial profile, private preference, and subscription documents are created only by the transactional server onboarding endpoint. Clients cannot create partial identity records directly.
+Initial profile, private preference, and subscription documents are created only by the transactional server onboarding endpoint. Clients cannot create partial identity records directly. Profile cover objects are written only by the trusted cover route after active-account, effective-Plus, MIME, and size checks; Storage rules reject direct client cover writes. Cover removal remains owner-controlled.
 
 Clients cannot create or delete follow documents or alter connection counters. The follow endpoint re-verifies active account state, trusted origin, target state, existing relationship, effective plan, and current count inside the transaction. Community accounts stop at five following connections; Plus accounts use the centralized unlimited entitlement.
 
