@@ -754,6 +754,40 @@ describe("Firestore rules", () => {
     });
   });
 
+  it("activates Plus on checkout completion to avoid duplicate charges", async () => {
+    await seedActiveUser("checkout-owner");
+    await seedSubscription("checkout-owner");
+
+    const event = {
+      id: "evt-checkout-complete",
+      type: "checkout.completed" as const,
+      uid: "checkout-owner",
+      createdAt: new Date("2026-08-05T10:00:00.000Z"),
+      customerId: "cus_checkout_owner",
+      subscriptionId: "sub_checkout_owner",
+      interval: "year" as const,
+    };
+
+    await expect(reconcileBillingEvent(event)).resolves.toBe(true);
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [subscription, storedEvent] = await Promise.all([
+        getDoc(doc(context.firestore(), "subscriptions", "checkout-owner")),
+        getDoc(
+          doc(context.firestore(), "billingEvents", "evt-checkout-complete"),
+        ),
+      ]);
+      expect(subscription.data()?.plan).toBe("plus");
+      expect(subscription.data()?.status).toBe("active");
+      expect(subscription.data()?.billingInterval).toBe("year");
+      expect(subscription.data()?.stripeCustomerId).toBe("cus_checkout_owner");
+      expect(subscription.data()?.stripeSubscriptionId).toBe(
+        "sub_checkout_owner",
+      );
+      expect(storedEvent.data()?.applied).toBe(true);
+    });
+  });
+
   it("prevents suspended users from creating posts", async () => {
     await seedActiveUser("suspended", "suspended");
     await assertFails(

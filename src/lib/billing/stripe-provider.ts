@@ -54,8 +54,10 @@ class StripeBillingProvider implements BillingProvider {
       customer: input.customerId ?? undefined,
       customer_email: input.customerId ? undefined : input.email,
       client_reference_id: input.uid,
-      metadata: { uid: input.uid },
-      subscription_data: { metadata: { uid: input.uid } },
+      metadata: { uid: input.uid, interval: input.interval },
+      subscription_data: {
+        metadata: { uid: input.uid, interval: input.interval },
+      },
       return_url: originUrl(
         input.origin,
         "/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}",
@@ -91,6 +93,9 @@ class StripeBillingProvider implements BillingProvider {
       const uid = session.client_reference_id ?? session.metadata?.uid;
       const customerId = stripeId(session.customer);
       const subscriptionId = stripeId(session.subscription);
+      const interval = session.metadata?.interval;
+      const billingInterval: BillingInterval | null =
+        interval === "month" ? "month" : interval === "year" ? "year" : null;
       if (!uid || !customerId || !subscriptionId) return null;
       return {
         id: event.id,
@@ -99,6 +104,7 @@ class StripeBillingProvider implements BillingProvider {
         createdAt,
         customerId,
         subscriptionId,
+        interval: billingInterval,
       };
     }
 

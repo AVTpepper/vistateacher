@@ -22,6 +22,7 @@ export type NormalizedBillingEvent =
       createdAt: Date;
       customerId: string;
       subscriptionId: string;
+      interval: BillingInterval | null;
     }
   | {
       id: string;

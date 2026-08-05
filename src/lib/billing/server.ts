@@ -222,9 +222,14 @@ export async function reconcileBillingEvent(
     );
     const applied = !priorEventAt || priorEventAt <= event.createdAt;
     if (event.type === "checkout.completed" && applied) {
+      const prior = readSubscription(subscriptionSnapshot.data() ?? {});
       transaction.update(subscriptionRef, {
+        plan: "plus",
+        status: "active",
         stripeCustomerId: event.customerId,
         stripeSubscriptionId: event.subscriptionId,
+        billingInterval: event.interval ?? prior.billingInterval,
+        cancelAtPeriodEnd: false,
         stripeEventCreatedAt: Timestamp.fromDate(event.createdAt),
         updatedAt: FieldValue.serverTimestamp(),
       });
