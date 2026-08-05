@@ -7,10 +7,15 @@ import {
   resolveEffectivePlan,
 } from "@/lib/entitlements/plan-entitlements";
 import { adminDb } from "@/lib/firebase/admin";
-import { generateLessonPlan } from "@/lib/lessons/provider";
 import {
+  generateLessonPlan,
+  type LessonGenerationOptions,
+} from "@/lib/lessons/provider";
+import {
+  lessonActionSchema,
   lessonPlanSchema,
   lessonSourceSchema,
+  lessonVisibilitySchema,
   type LessonPlanInput,
   type LessonSourceInput,
 } from "@/schemas/lesson";
@@ -27,6 +32,7 @@ export interface LessonSummary {
   gradeLevel: string;
   durationMinutes: number;
   currentVersion: number;
+  visibility: "draft" | "published";
   generationStatus: "idle" | "generating";
   createdAt: string;
   updatedAt: string;
@@ -141,6 +147,10 @@ function summary(
     gradeLevel: content.gradeLevel,
     durationMinutes: content.durationMinutes,
     currentVersion: number(data.currentVersion),
+    visibility:
+      lessonVisibilitySchema.safeParse(data.visibility).success
+        ? data.visibility
+        : "published",
     generationStatus:
       data.generationStatus === "generating" ? "generating" : "idle",
     createdAt: iso(data.createdAt),
@@ -233,6 +243,7 @@ async function reserveGeneration(
   uid: string,
   source: LessonSourceInput,
   lessonId?: string,
+  options?: { ignoreCooldown?: boolean },
 ): Promise<{
   lessonId: string;
   previousVersion: number;
@@ -275,6 +286,7 @@ async function reserveGeneration(
       throw new LessonActionError("limit-reached");
     const lastGeneration = date(usage.data()?.lastAiLessonAt);
     if (
+      !options?.ignoreCooldown &&
       lastGeneration &&
       now.getTime() - lastGeneration.getTime() < GENERATION_COOLDOWN_MS
     )
@@ -297,6 +309,7 @@ async function reserveGeneration(
         ownerId: uid,
         source,
         content: null,
+        visibility: "published",
         status: "generating",
         generationStatus: "generating",
         currentVersion: 0,
@@ -376,6 +389,10 @@ async function completeGeneration(
     transaction.update(lessonRef, {
       source,
       content,
+      visibility:
+        lessonVisibilitySchema.safeParse(lesson.data()?.visibility).success
+          ? lesson.data()?.visibility
+          : "published",
       status: "ready",
       generationStatus: "idle",
       pendingSource: FieldValue.delete(),
@@ -397,10 +414,13 @@ async function runGeneration(
   uid: string,
   source: LessonSourceInput,
   lessonId?: string,
+  options?: { ignoreCooldown?: boolean; generation?: LessonGenerationOptions },
 ): Promise<LessonDetail> {
-  const reservation = await reserveGeneration(uid, source, lessonId);
+  const reservation = await reserveGeneration(uid, source, lessonId, {
+    ignoreCooldown: options?.ignoreCooldown,
+  });
   try {
-    const content = await generateLessonPlan(source);
+    const content = await generateLessonPlan(source, options?.generation);
     await completeGeneration(uid, source, content, reservation);
     return getLesson(uid, reservation.lessonId);
   } catch (error) {
@@ -417,19 +437,64 @@ export async function createLesson(
   return runGeneration(uid, source);
 }
 
+async function assertBatchCreationCapacity(uid: string, count: number) {
+  const now = new Date();
+  const period = monthKey(now);
+  const db = adminDb();
+  const [user, subscription, usage] = await Promise.all([
+    db.doc(`users/${uid}`).get(),
+    db.doc(`subscriptions/${uid}`).get(),
+    db.doc(`usage/${uid}_${period}`).get(),
+  ]);
+  if (user.data()?.status !== "active") throw new LessonActionError("inactive");
+  const plan = resolveEffectivePlan(subscriptionRecord(subscription.data()), now);
+  const entitlements = PLAN_ENTITLEMENTS[plan];
+  const used = number(usage.data()?.aiLessons);
+  const creations = number(usage.data()?.aiLessonCreations);
+  if (used + count > entitlements.aiLessonsPerMonth)
+    throw new LessonActionError("limit-reached");
+  if (creations + count > entitlements.aiLessonCreationsPerMonth)
+    throw new LessonActionError("creation-limit-reached");
+}
+
+export async function createLessons(
+  uid: string,
+  source: LessonSourceInput,
+  count: number,
+): Promise<LessonDetail[]> {
+  await assertBatchCreationCapacity(uid, count);
+  const generated: LessonDetail[] = [];
+  for (let index = 0; index < count; index += 1) {
+    generated.push(
+      await runGeneration(uid, source, undefined, {
+        ignoreCooldown: index > 0,
+      }),
+    );
+  }
+  return generated;
+}
+
 export async function regenerateLesson(
   uid: string,
   lessonId: string,
   source?: LessonSourceInput,
+  feedback?: string,
+  referenceContent?: LessonPlanInput,
 ): Promise<LessonDetail> {
   const current = await getLesson(uid, lessonId);
-  return runGeneration(uid, source ?? current.source, lessonId);
+  return runGeneration(uid, source ?? current.source, lessonId, {
+    generation: {
+      feedback,
+      referencePlan: referenceContent ?? current.content,
+    },
+  });
 }
 
 export async function updateLesson(
   uid: string,
   lessonId: string,
   content: LessonPlanInput,
+  visibility?: "draft" | "published",
 ): Promise<LessonDetail> {
   const db = adminDb();
   const lessonRef = db.doc(`lessons/${lessonId}`);
@@ -448,6 +513,7 @@ export async function updateLesson(
     const version = number(lesson.data()?.currentVersion) + 1;
     transaction.update(lessonRef, {
       content,
+      ...(visibility ? { visibility } : {}),
       currentVersion: version,
       updatedAt: FieldValue.serverTimestamp(),
     });
@@ -486,6 +552,10 @@ export async function duplicateLesson(
       ownerId: uid,
       source: lessonSourceSchema.parse(source.data()?.source),
       content: duplicatedContent,
+      visibility:
+        lessonVisibilitySchema.safeParse(source.data()?.visibility).success
+          ? source.data()?.visibility
+          : "published",
       status: "ready",
       generationStatus: "idle",
       currentVersion: 1,
@@ -502,6 +572,26 @@ export async function duplicateLesson(
   return getLesson(uid, duplicateRef.id);
 }
 
+export async function deleteLesson(uid: string, lessonId: string): Promise<void> {
+  const parsed = lessonActionSchema.safeParse({ lessonId });
+  if (!parsed.success) throw new LessonActionError("not-found");
+  const db = adminDb();
+  const lessonRef = db.doc(`lessons/${lessonId}`);
+  await db.runTransaction(async (transaction) => {
+    const [user, lesson] = await transaction.getAll(
+      db.doc(`users/${uid}`),
+      lessonRef,
+    );
+    if (user.data()?.status !== "active")
+      throw new LessonActionError("inactive");
+    if (!lesson.exists) throw new LessonActionError("not-found");
+    if (lesson.data()?.ownerId !== uid)
+      throw new LessonActionError("not-owner");
+    transaction.delete(lessonRef);
+  });
+  await db.recursiveDelete(lessonRef);
+}
+
 export interface LessonExportReservation {
   lesson: LessonDetail;
   period: string;
@@ -511,11 +601,13 @@ export interface LessonExportReservation {
 export async function reserveLessonExport(
   uid: string,
   lessonId: string,
+  options: { countUsage?: boolean } = {},
 ): Promise<LessonExportReservation> {
   const db = adminDb();
   const now = new Date();
   const period = monthKey(now);
   const lesson = await getLesson(uid, lessonId);
+  const shouldCount = options.countUsage !== false;
   const usageRef = db.doc(`usage/${uid}_${period}`);
   const lessonRef = db.doc(`lessons/${lessonId}`);
   let counted = false;
@@ -536,6 +628,7 @@ export async function reserveLessonExport(
       subscriptionRecord(subscription.data()),
       now,
     );
+    if (!shouldCount) return;
     const limit = PLAN_ENTITLEMENTS[plan].lessonExportsPerMonth;
     const used = number(usage.data()?.lessonExports);
     if (limit !== null && used >= limit)

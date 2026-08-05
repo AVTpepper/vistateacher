@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AlertTriangle,
   BookOpen,
   Brain,
   ChevronDown,
@@ -10,6 +11,7 @@ import {
   Download,
   FileText,
   History,
+  Eye,
   Lightbulb,
   ListChecks,
   LoaderCircle,
@@ -19,6 +21,7 @@ import {
   Sparkles,
   Star,
   Target,
+  Trash2,
   Users,
   WandSparkles,
   X,
@@ -62,6 +65,10 @@ const EMPTY_SOURCE: LessonSourceInput = {
   teachingStyle: "balanced",
 };
 
+interface CreateLessonsResponse {
+  lessons: LessonDetail[];
+}
+
 function asSummary(lesson: LessonDetail): LessonSummary {
   return {
     id: lesson.id,
@@ -70,6 +77,7 @@ function asSummary(lesson: LessonDetail): LessonSummary {
     gradeLevel: lesson.gradeLevel,
     durationMinutes: lesson.durationMinutes,
     currentVersion: lesson.currentVersion,
+    visibility: lesson.visibility,
     generationStatus: lesson.generationStatus,
     createdAt: lesson.createdAt,
     updatedAt: lesson.updatedAt,
@@ -115,16 +123,24 @@ function ListField({
 
 function LessonEditor({
   content,
+  visibility,
   saving,
+  canRefine,
   onCancel,
   onSave,
+  onRefine,
 }: {
   content: LessonPlanInput;
+  visibility: "draft" | "published";
   saving: boolean;
+  canRefine: boolean;
   onCancel: () => void;
-  onSave: (content: LessonPlanInput) => void;
+  onSave: (content: LessonPlanInput, visibility: "draft" | "published") => void;
+  onRefine: (feedback: string, referenceContent: LessonPlanInput) => void;
 }) {
   const [draft, setDraft] = useState(content);
+  const [draftVisibility, setDraftVisibility] = useState(visibility);
+  const [feedback, setFeedback] = useState("");
   const textField = (
     label: string,
     value: string,
@@ -160,6 +176,19 @@ function LessonEditor({
         </button>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
+        <label className="grid gap-1.5 text-xs font-bold sm:col-span-2">
+          Lesson status
+          <select
+            value={draftVisibility}
+            onChange={(event) =>
+              setDraftVisibility(event.target.value as "draft" | "published")
+            }
+            className="bg-muted h-10 rounded-lg px-3 text-sm font-normal outline-none"
+          >
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+          </select>
+        </label>
         {textField("Title", draft.title, (title) =>
           setDraft({ ...draft, title }),
         )}
@@ -269,6 +298,27 @@ function LessonEditor({
         </div>
       </div>
       <div className="mt-5 flex justify-end gap-2">
+        <div className="mr-auto flex-1">
+          <label className="grid gap-1.5 text-xs font-bold">
+            AI feedback for fresh regeneration
+            <textarea
+              value={feedback}
+              maxLength={2000}
+              onChange={(event) => setFeedback(event.target.value)}
+              rows={3}
+              placeholder="Example: Keep the objective, but add a hands-on station rotation and stronger differentiation for multilingual learners."
+              className="bg-muted resize-none rounded-lg px-3 py-2 text-sm font-normal outline-none"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={saving || !canRefine || feedback.trim().length < 3}
+            onClick={() => onRefine(feedback, draft)}
+            className="border-primary text-primary mt-2 inline-flex h-9 items-center rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
+          >
+            Regenerate With AI Feedback
+          </button>
+        </div>
         <button
           type="button"
           onClick={onCancel}
@@ -279,7 +329,7 @@ function LessonEditor({
         <button
           type="button"
           disabled={saving}
-          onClick={() => onSave(draft)}
+          onClick={() => onSave(draft, draftVisibility)}
           className="bg-primary text-primary-foreground flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-bold disabled:opacity-50"
         >
           {saving ? (
@@ -299,7 +349,10 @@ function LessonDisplay({
   working,
   onEdit,
   onRegenerate,
+  onRegenerateWithFeedback,
+  onDelete,
   onDuplicate,
+  onPreviewPdf,
   onExport,
   canRegenerate,
   canExport,
@@ -308,12 +361,16 @@ function LessonDisplay({
   working: boolean;
   onEdit: () => void;
   onRegenerate: () => void;
+  onRegenerateWithFeedback: (feedback: string) => void;
+  onDelete: () => void;
   onDuplicate: () => void;
+  onPreviewPdf: () => void;
   onExport: (format: "pdf" | "docx") => void;
   canRegenerate: boolean;
   canExport: boolean;
 }) {
   const [expanded, setExpanded] = useState("objectives");
+  const [feedback, setFeedback] = useState("");
   const content = lesson.content;
   const sections = [
     {
@@ -453,12 +510,30 @@ function LessonDisplay({
             </button>
             <button
               type="button"
+              onClick={onDelete}
+              disabled={working}
+              className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25 disabled:opacity-50"
+            >
+              <Trash2 className="size-3" />
+              Delete
+            </button>
+            <button
+              type="button"
               onClick={onDuplicate}
               disabled={working}
               className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25 disabled:opacity-50"
             >
               <Copy className="size-3" />
               Duplicate
+            </button>
+            <button
+              type="button"
+              onClick={onPreviewPdf}
+              disabled={working}
+              className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25 disabled:opacity-50"
+            >
+              <Eye className="size-3" />
+              Preview PDF
             </button>
             <button
               type="button"
@@ -526,10 +601,32 @@ function LessonDisplay({
         })}
       </div>
       <div className="bg-muted/35 flex flex-col gap-3 border-t p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-muted-foreground flex items-center gap-2 text-xs">
-          <History className="size-4" />
-          Version {lesson.currentVersion} · {lesson.versions.length} saved
-          versions
+        <div className="flex-1">
+          <div className="text-muted-foreground flex items-center gap-2 text-xs">
+            <History className="size-4" />
+            Version {lesson.currentVersion} · {lesson.versions.length} saved
+            versions
+          </div>
+          <label className="mt-2 grid gap-1 text-xs font-bold">
+            Direct feedback to AI (fresh lesson regeneration)
+            <textarea
+              value={feedback}
+              onChange={(event) => setFeedback(event.target.value)}
+              rows={2}
+              maxLength={2000}
+              placeholder="Example: Keep the same topic but make it project-based and include a stronger formative assessment rubric."
+              className="bg-background resize-none rounded-lg px-3 py-2 text-xs font-normal outline-none"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={working || !canRegenerate || feedback.trim().length < 3}
+            onClick={() => onRegenerateWithFeedback(feedback)}
+            className="border-primary text-primary mt-1 flex h-8 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
+          >
+            <WandSparkles className="size-3" />
+            Regenerate With Feedback
+          </button>
         </div>
         <button
           type="button"
@@ -559,8 +656,55 @@ export function LessonBuilderExperience({
   const [workspace, setWorkspace] = useState(initialWorkspace);
   const [lesson, setLesson] = useState(initialLesson);
   const [source, setSource] = useState(initialLesson?.source ?? EMPTY_SOURCE);
+  const [lessonCount, setLessonCount] = useState(1);
   const [working, setWorking] = useState(false);
   const [editing, setEditing] = useState(false);
+
+  function consumeUsage(
+    usage: LessonWorkspace["usage"],
+    kind: "creation" | "refinement" | "export",
+    count = 1,
+  ) {
+    if (count <= 0) return usage;
+    if (kind === "export") {
+      if (usage.exports.limit === null) return usage;
+      return {
+        ...usage,
+        exports: {
+          ...usage.exports,
+          used: usage.exports.used + count,
+          remaining: Math.max(0, (usage.exports.remaining ?? 0) - count),
+        },
+      };
+    }
+    return {
+      ...usage,
+      used: usage.used + count,
+      remaining: Math.max(0, usage.remaining - count),
+      creations:
+        kind === "creation"
+          ? {
+              ...usage.creations,
+              used: usage.creations.used + count,
+              remaining:
+                usage.creations.remaining === null
+                  ? null
+                  : Math.max(0, usage.creations.remaining - count),
+            }
+          : usage.creations,
+      refinements:
+        kind === "refinement"
+          ? {
+              ...usage.refinements,
+              used: usage.refinements.used + count,
+              remaining:
+                usage.refinements.remaining === null
+                  ? null
+                  : Math.max(0, usage.refinements.remaining - count),
+            }
+          : usage.refinements,
+    };
+  }
 
   async function selectLesson(lessonId: string) {
     if (!lessonId) return setLesson(null);
@@ -590,33 +734,7 @@ export function LessonBuilderExperience({
     setWorkspace((current) => ({
       ...current,
       usage: consumesQuota
-        ? {
-            ...current.usage,
-            used: current.usage.used + 1,
-            remaining: Math.max(0, current.usage.remaining - 1),
-            creations:
-              consumesQuota === "creation"
-                ? {
-                    ...current.usage.creations,
-                    used: current.usage.creations.used + 1,
-                    remaining:
-                      current.usage.creations.remaining === null
-                        ? null
-                        : Math.max(0, current.usage.creations.remaining - 1),
-                  }
-                : current.usage.creations,
-            refinements:
-              consumesQuota === "refinement"
-                ? {
-                    ...current.usage.refinements,
-                    used: current.usage.refinements.used + 1,
-                    remaining:
-                      current.usage.refinements.remaining === null
-                        ? null
-                        : Math.max(0, current.usage.refinements.remaining - 1),
-                  }
-                : current.usage.refinements,
-          }
+        ? consumeUsage(current.usage, consumesQuota)
         : current.usage,
       lessons: [
         asSummary(next),
@@ -630,15 +748,20 @@ export function LessonBuilderExperience({
       return toast.error("Add a topic or unit.");
     setWorking(true);
     try {
-      const generated = await resultJson<LessonDetail>(
+      const generated = await resultJson<LessonDetail | CreateLessonsResponse>(
         await fetch("/api/ai-lessons", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(source),
+          body: JSON.stringify({ source, count: lessonCount }),
         }),
       );
-      storeLesson(generated, "creation");
-      toast.success("Lesson generated.");
+      const lessons = "lessons" in generated ? generated.lessons : [generated];
+      lessons.forEach((item) => storeLesson(item, "creation"));
+      toast.success(
+        lessons.length > 1
+          ? `${lessons.length} lessons generated.`
+          : "Lesson generated.",
+      );
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Generation failed.",
@@ -648,7 +771,10 @@ export function LessonBuilderExperience({
     }
   }
 
-  async function action(name: "regenerate" | "duplicate") {
+  async function action(
+    name: "regenerate" | "duplicate",
+    options?: { feedback?: string; referenceContent?: LessonPlanInput },
+  ) {
     if (!lesson) return;
     setWorking(true);
     try {
@@ -656,7 +782,14 @@ export function LessonBuilderExperience({
         await fetch(`/api/ai-lessons/${lesson.id}/${name}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: name === "regenerate" ? JSON.stringify({ source }) : undefined,
+          body:
+            name === "regenerate"
+              ? JSON.stringify({
+                  source,
+                  feedback: options?.feedback,
+                  referenceContent: options?.referenceContent,
+                })
+              : undefined,
         }),
       );
       storeLesson(next, name === "regenerate" ? "refinement" : null);
@@ -672,7 +805,10 @@ export function LessonBuilderExperience({
     }
   }
 
-  async function save(content: LessonPlanInput) {
+  async function saveWithVisibility(
+    content: LessonPlanInput,
+    visibility: "draft" | "published",
+  ) {
     if (!lesson) return;
     setWorking(true);
     try {
@@ -680,7 +816,7 @@ export function LessonBuilderExperience({
         await fetch(`/api/ai-lessons/${lesson.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
+          body: JSON.stringify({ content, visibility }),
         }),
       );
       storeLesson(updated);
@@ -688,6 +824,28 @@ export function LessonBuilderExperience({
       toast.success("Lesson version saved.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Save failed.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function deleteCurrentLesson() {
+    if (!lesson) return;
+    setWorking(true);
+    try {
+      const response = await fetch(`/api/ai-lessons/${lesson.id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Delete failed.");
+      setWorkspace((current) => ({
+        ...current,
+        lessons: current.lessons.filter((item) => item.id !== lesson.id),
+      }));
+      setLesson(null);
+      setEditing(false);
+      toast.success("Lesson deleted.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Delete failed.");
     } finally {
       setWorking(false);
     }
@@ -718,24 +876,39 @@ export function LessonBuilderExperience({
       URL.revokeObjectURL(url);
       setWorkspace((current) => ({
         ...current,
-        usage: {
-          ...current.usage,
-          exports:
-            current.usage.exports.limit === null
-              ? current.usage.exports
-              : {
-                  ...current.usage.exports,
-                  used: current.usage.exports.used + 1,
-                  remaining: Math.max(
-                    0,
-                    (current.usage.exports.remaining ?? 0) - 1,
-                  ),
-                },
-        },
+        usage: consumeUsage(current.usage, "export"),
       }));
       toast.success(`${format.toUpperCase()} downloaded.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Export failed.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function previewPdf() {
+    if (!lesson) return;
+    const previewWindow = window.open("", "_blank", "noopener,noreferrer");
+    if (!previewWindow) {
+      toast.error("Enable pop-ups to preview the PDF.");
+      return;
+    }
+    setWorking(true);
+    try {
+      const response = await fetch(`/api/ai-lessons/${lesson.id}/export/pdf?preview=1`);
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(result?.error ?? "Preview failed.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      previewWindow.location.href = url;
+      window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+    } catch (error) {
+      previewWindow.close();
+      toast.error(error instanceof Error ? error.message : "Preview failed.");
     } finally {
       setWorking(false);
     }
@@ -759,27 +932,24 @@ export function LessonBuilderExperience({
         </div>
         <div className="w-full sm:w-auto">
           <div className="flex flex-wrap gap-2 text-xs">
-            {workspace.plan === "free" ? (
-              [
-                ["Lessons", workspace.usage.creations],
-                ["Refinements", workspace.usage.refinements],
-                ["Exports", workspace.usage.exports],
-              ].map(([label, usage]) => (
-                <span
-                  key={String(label)}
-                  className="bg-muted rounded-lg px-3 py-2"
-                >
-                  <strong>{String(label)}</strong>{" "}
-                  {(usage as typeof workspace.usage.creations).used}/
-                  {(usage as typeof workspace.usage.creations).limit}
-                </span>
-              ))
-            ) : (
-              <span className="bg-muted rounded-lg px-3 py-2">
-                <strong>{workspace.usage.used}</strong> /{" "}
-                {workspace.usage.limit} AI generations this month
+            {[
+              ["Lessons", workspace.usage.creations],
+              ["Refinements", workspace.usage.refinements],
+              ["Exports", workspace.usage.exports],
+            ].map(([label, usage]) => (
+              <span
+                key={String(label)}
+                className="bg-muted rounded-lg px-3 py-2"
+              >
+                <strong>{String(label)}</strong>{" "}
+                {(usage as typeof workspace.usage.creations).used}/
+                {(usage as typeof workspace.usage.creations).limit ?? "Unlimited"}
               </span>
-            )}
+            ))}
+            <span className="bg-muted rounded-lg px-3 py-2">
+              <strong>{workspace.usage.used}</strong> / {workspace.usage.limit} AI
+              generations this month
+            </span>
           </div>
         </div>
       </header>
@@ -790,6 +960,7 @@ export function LessonBuilderExperience({
           onClick={() => {
             setLesson(null);
             setSource(EMPTY_SOURCE);
+            setLessonCount(1);
             setEditing(false);
           }}
           className="bg-primary text-primary-foreground flex h-10 shrink-0 items-center gap-2 rounded-lg px-4 text-xs font-bold"
@@ -815,9 +986,13 @@ export function LessonBuilderExperience({
             <WandSparkles className="text-accent size-4" />
             Lesson parameters
           </h2>
+          <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            <AlertTriangle className="mr-1 inline size-3.5" /> Required before
+            generation: Subject, Grade level, Topic / unit, and Duration.
+          </p>
           <div className="space-y-4">
             <label className="grid gap-1.5 text-xs font-bold">
-              Subject
+              Subject <span className="text-red-600">*</span>
               <select
                 value={source.subject}
                 onChange={(event) =>
@@ -831,7 +1006,7 @@ export function LessonBuilderExperience({
               </select>
             </label>
             <label className="grid gap-1.5 text-xs font-bold">
-              Grade level
+              Grade level <span className="text-red-600">*</span>
               <select
                 value={source.gradeLevel}
                 onChange={(event) =>
@@ -845,7 +1020,7 @@ export function LessonBuilderExperience({
               </select>
             </label>
             <label className="grid gap-1.5 text-xs font-bold">
-              Topic / unit
+              Topic / unit <span className="text-red-600">*</span>
               <input
                 value={source.topic}
                 maxLength={240}
@@ -857,7 +1032,7 @@ export function LessonBuilderExperience({
               />
             </label>
             <label className="grid gap-1.5 text-xs font-bold">
-              Duration
+              Duration <span className="text-red-600">*</span>
               <select
                 value={source.durationMinutes}
                 onChange={(event) =>
@@ -873,6 +1048,22 @@ export function LessonBuilderExperience({
                     {minutes} minutes
                   </option>
                 ))}
+              </select>
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold">
+              Lessons to generate
+              <select
+                value={lessonCount}
+                onChange={(event) => setLessonCount(Number(event.target.value))}
+                className={fieldClass}
+              >
+                {Array.from({ length: 5 }, (_, index) => index + 1).map(
+                  (count) => (
+                    <option key={count} value={count}>
+                      {count} lesson{count === 1 ? "" : "s"}
+                    </option>
+                  ),
+                )}
               </select>
             </label>
             <label className="grid gap-1.5 text-xs font-bold">
@@ -935,8 +1126,8 @@ export function LessonBuilderExperience({
               onClick={() => void generate()}
               disabled={
                 working ||
-                workspace.usage.remaining === 0 ||
-                workspace.usage.creations.remaining === 0 ||
+                workspace.usage.remaining < lessonCount ||
+                (workspace.usage.creations.remaining ?? 0) < lessonCount ||
                 source.topic.trim().length < 3
               }
               className="bg-accent text-accent-foreground flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold disabled:opacity-50"
@@ -946,7 +1137,7 @@ export function LessonBuilderExperience({
               ) : (
                 <Sparkles className="size-4" />
               )}
-              Generate lesson
+              Generate {lessonCount > 1 ? `${lessonCount} lessons` : "lesson"}
             </button>
           </div>
         </section>
@@ -971,9 +1162,19 @@ export function LessonBuilderExperience({
           {lesson && editing && (
             <LessonEditor
               content={lesson.content}
+              visibility={lesson.visibility}
               saving={working}
+              canRefine={
+                workspace.usage.remaining > 0 &&
+                workspace.usage.refinements.remaining !== 0
+              }
               onCancel={() => setEditing(false)}
-              onSave={(content) => void save(content)}
+              onSave={(content, visibility) =>
+                void saveWithVisibility(content, visibility)
+              }
+              onRefine={(feedback, referenceContent) =>
+                void action("regenerate", { feedback, referenceContent })
+              }
             />
           )}
           {lesson && !editing && (
@@ -982,7 +1183,12 @@ export function LessonBuilderExperience({
               working={working}
               onEdit={() => setEditing(true)}
               onRegenerate={() => void action("regenerate")}
+              onRegenerateWithFeedback={(feedback) =>
+                void action("regenerate", { feedback })
+              }
+              onDelete={() => void deleteCurrentLesson()}
               onDuplicate={() => void action("duplicate")}
+              onPreviewPdf={() => void previewPdf()}
               onExport={(format) => void exportLesson(format)}
               canRegenerate={
                 workspace.usage.remaining > 0 &&

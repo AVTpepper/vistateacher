@@ -10,7 +10,10 @@ import {
 } from "docx";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
-import { releaseLessonExport, reserveLessonExport } from "@/lib/lessons/server";
+import {
+  releaseLessonExport,
+  reserveLessonExport,
+} from "@/lib/lessons/server";
 import type { LessonPlanInput } from "@/schemas/lesson";
 
 export interface LessonExport {
@@ -53,6 +56,10 @@ function plainTextSections(content: LessonPlanInput) {
   ] as const;
 }
 
+const VISTA_INK = rgb(0.1, 0.2, 0.26);
+const VISTA_ACCENT = rgb(0.04, 0.55, 0.58);
+const VISTA_MUTED = rgb(0.38, 0.45, 0.5);
+
 function wrapText(text: string, maxCharacters = 92): string[] {
   const words = text.replace(/[^\x20-\x7E]/g, " ").split(/\s+/);
   const lines: string[] = [];
@@ -84,21 +91,63 @@ async function createPdf(content: LessonPlanInput): Promise<Uint8Array> {
       y,
       size,
       font: isBold ? bold : regular,
-      color: rgb(0.12, 0.16, 0.14),
+      color: VISTA_INK,
     });
     y -= size + 5;
   };
 
+  const drawHeader = () => {
+    page.drawRectangle({
+      x: 0,
+      y: 742,
+      width: pageSize[0],
+      height: 50,
+      color: VISTA_ACCENT,
+    });
+    page.drawText("VistaTeacher", {
+      x: 54,
+      y: 760,
+      size: 11,
+      font: bold,
+      color: rgb(1, 1, 1),
+    });
+    y = 716;
+  };
+
+  drawHeader();
+
+  const drawSectionHeading = (heading: string) => {
+    if (y < 70) {
+      page = document.addPage(pageSize);
+      drawHeader();
+    }
+    page.drawRectangle({
+      x: 54,
+      y: y - 2,
+      width: 504,
+      height: 18,
+      color: rgb(0.93, 0.97, 0.98),
+    });
+    drawLine(heading, 12, true, 6);
+    y -= 4;
+  };
+
   for (const line of wrapText(content.title, 52)) drawLine(line, 20, true);
-  y -= 3;
+  y -= 1;
   drawLine(
     `${content.subject} | ${content.gradeLevel} | ${content.durationMinutes} minutes`,
     10,
   );
+  drawLine(`Generated: ${new Date().toLocaleDateString("en-US")}`, 9, false);
+  page.drawLine({
+    start: { x: 54, y },
+    end: { x: 558, y },
+    thickness: 1,
+    color: VISTA_MUTED,
+  });
   y -= 12;
   for (const [heading, items] of plainTextSections(content)) {
-    drawLine(heading, 13, true);
-    y -= 2;
+    drawSectionHeading(heading);
     if (!items.length) drawLine("None specified", 10, false, 12);
     for (const item of items) {
       const lines = wrapText(item, 86);
@@ -113,7 +162,12 @@ async function createPdf(content: LessonPlanInput): Promise<Uint8Array> {
 }
 
 async function createDocx(content: LessonPlanInput): Promise<Uint8Array> {
+  const subtitle = `${content.subject} | ${content.gradeLevel} | ${content.durationMinutes} minutes`;
   const children: Paragraph[] = [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: "VistaTeacher", bold: true, color: "0B8C95" })],
+    }),
     new Paragraph({
       text: content.title,
       heading: HeadingLevel.TITLE,
@@ -121,16 +175,26 @@ async function createDocx(content: LessonPlanInput): Promise<Uint8Array> {
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: subtitle, color: "4B5C66" })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
       children: [
-        new TextRun(
-          `${content.subject} | ${content.gradeLevel} | ${content.durationMinutes} minutes`,
-        ),
+        new TextRun({
+          text: `Generated: ${new Date().toLocaleDateString("en-US")}`,
+          italics: true,
+          color: "4B5C66",
+        }),
       ],
     }),
   ];
   for (const [heading, items] of plainTextSections(content)) {
     children.push(
-      new Paragraph({ text: heading, heading: HeadingLevel.HEADING_1 }),
+      new Paragraph({
+        text: heading,
+        heading: HeadingLevel.HEADING_1,
+        thematicBreak: true,
+      }),
     );
     if (!items.length) children.push(new Paragraph("None specified"));
     items.forEach((item) =>
@@ -145,8 +209,12 @@ export async function createLessonExport(
   uid: string,
   lessonId: string,
   format: "pdf" | "docx",
+  options: { countUsage?: boolean } = {},
 ): Promise<LessonExport> {
-  const reservation = await reserveLessonExport(uid, lessonId);
+  const reservation =
+    options.countUsage === false
+      ? await reserveLessonExport(uid, lessonId, { countUsage: false })
+      : await reserveLessonExport(uid, lessonId);
   try {
     const baseName = safeFileName(reservation.lesson.title);
     return format === "pdf"

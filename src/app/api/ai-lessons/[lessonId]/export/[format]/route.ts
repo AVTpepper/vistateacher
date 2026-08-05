@@ -24,15 +24,22 @@ export async function GET(
       { status: 400 },
     );
   try {
+    const preview = request.nextUrl.searchParams.get("preview") === "1";
+    if (preview && format.data !== "pdf")
+      return NextResponse.json(
+        { error: "Preview is currently available for PDF only." },
+        { status: 400 },
+      );
     const exported = await createLessonExport(
       account.uid,
       routeParams.lessonId,
       format.data,
+      { countUsage: !preview },
     );
     return new NextResponse(Buffer.from(exported.bytes), {
       headers: {
         "Content-Type": exported.contentType,
-        "Content-Disposition": `attachment; filename="${exported.fileName}"`,
+        "Content-Disposition": `${preview ? "inline" : "attachment"}; filename="${exported.fileName}"`,
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
       },

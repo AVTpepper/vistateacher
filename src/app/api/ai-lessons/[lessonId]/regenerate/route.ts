@@ -36,6 +36,8 @@ export async function POST(
         account.uid,
         (await params).lessonId,
         parsed.data.source,
+        parsed.data.feedback,
+        parsed.data.referenceContent,
       ),
     );
   } catch (error) {

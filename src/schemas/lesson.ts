@@ -41,13 +41,29 @@ export const lessonPlanSchema = z.object({
 
 export type LessonPlanInput = z.infer<typeof lessonPlanSchema>;
 export type LessonSourceInput = z.infer<typeof lessonSourceSchema>;
+export const lessonVisibilitySchema = z.enum(["draft", "published"]);
 
 export const lessonUpdateSchema = z.object({
   content: lessonPlanSchema,
+  visibility: lessonVisibilitySchema.optional(),
 });
+
+export const lessonActionSchema = z.object({
+  lessonId: z.string().trim().min(1).max(128),
+});
+
+export const lessonCreateRequestSchema = z.union([
+  lessonSourceSchema.transform((source) => ({ source, count: 1 })),
+  z.object({
+    source: lessonSourceSchema,
+    count: z.number().int().min(1).max(5).default(1),
+  }),
+]);
 
 export const lessonRegenerateSchema = z.object({
   source: lessonSourceSchema.optional(),
+  feedback: z.string().trim().min(3).max(2_000).optional(),
+  referenceContent: lessonPlanSchema.optional(),
 });
 
 export const lessonExportFormatSchema = z.enum(["pdf", "docx"]);
