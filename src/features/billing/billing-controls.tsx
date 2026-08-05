@@ -3,7 +3,6 @@
 import { CreditCard, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -52,29 +51,14 @@ export function BillingControls({
   const [pending, setPending] = useState<"checkout" | "portal" | null>(null);
 
   async function action(kind: "checkout" | "portal"): Promise<void> {
-    setPending(kind);
     if (kind === "checkout") {
+      setPending(kind);
       router.push(`/settings/billing/checkout?interval=${interval}`);
       return;
     }
 
-    const response = await fetch(`/api/billing/${kind}`, {
-      method: "POST",
-    });
-    const result = (await response.json().catch(() => null)) as {
-      url?: string;
-      error?: string;
-    } | null;
-    setPending(null);
-    if (!response.ok) {
-      toast.error(result?.error ?? "Billing is temporarily unavailable.");
-      return;
-    }
-    if (result?.url) {
-      window.location.assign(result.url);
-      return;
-    }
-    toast.error("Billing did not return a destination. Please try again.");
+    setPending(kind);
+    router.push("/settings/billing/manage");
   }
 
   const periodEnd = formattedDate(billing.currentPeriodEnd);

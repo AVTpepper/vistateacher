@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { coverThemeSchema } from "@/lib/profiles/cover-themes";
+
 const optionalUrl = z
   .union([z.string().trim().max(200), z.null()])
   .transform((value) => value || null)
@@ -63,6 +65,7 @@ export const profileDocumentSchema = profileUpdateSchema.extend({
   uid: z.string().min(1),
   photoURL: z.string().nullable(),
   coverImageURL: z.string().nullable(),
+  coverTheme: coverThemeSchema.catch("coastal-mist"),
   role: z.enum(["educator", "school_admin", "platform_admin"]),
   isVerified: z.boolean(),
   followerCount: z.number().int().nonnegative(),

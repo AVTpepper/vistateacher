@@ -16,6 +16,7 @@ import type { SubscriptionRecord, SubscriptionStatus } from "@/types/models";
 type BillingErrorCode =
   | "account-unavailable"
   | "already-subscribed"
+  | "billing-unavailable"
   | "customer-unavailable"
   | "subscription-unavailable"
   | "trial-unavailable";
@@ -200,6 +201,31 @@ export async function createPortal(
   const customerId = readSubscription(snapshot.data() ?? {}).stripeCustomerId;
   if (!customerId) throw new BillingError("customer-unavailable");
   return provider.createPortalSession({ customerId, origin });
+}
+
+export async function updateSubscriptionCancellation(
+  uid: string,
+  cancelAtPeriodEnd: boolean,
+  provider: BillingProvider = getBillingProvider(),
+): Promise<void> {
+  const db = adminDb();
+  const subscriptionRef = db.doc(`subscriptions/${uid}`);
+  const snapshot = await subscriptionRef.get();
+  if (!snapshot.exists) throw new BillingError("subscription-unavailable");
+
+  const current = readSubscription(snapshot.data() ?? {});
+  if (!current.stripeSubscriptionId || !current.stripeCustomerId) {
+    throw new BillingError("billing-unavailable");
+  }
+  await provider.updateSubscriptionCancellation({
+    subscriptionId: current.stripeSubscriptionId,
+    cancelAtPeriodEnd,
+  });
+
+  await subscriptionRef.update({
+    cancelAtPeriodEnd,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
 }
 
 export async function reconcileBillingEvent(

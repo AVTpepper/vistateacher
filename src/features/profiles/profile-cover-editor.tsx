@@ -1,71 +1,46 @@
 "use client";
 
-import { Crown, ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
+import { Crown } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { coverThemes, type CoverThemeId } from "@/lib/profiles/cover-themes";
 import type { Plan } from "@/types/models";
 
 export function ProfileCoverEditor({
-  initialCoverImageURL,
+  initialCoverTheme,
   plan,
 }: {
-  initialCoverImageURL: string | null;
+  initialCoverTheme: CoverThemeId;
   plan: Plan;
 }) {
-  const [coverImageURL, setCoverImageURL] = useState(initialCoverImageURL);
+  const [coverTheme, setCoverTheme] = useState<CoverThemeId>(initialCoverTheme);
   const [pending, setPending] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  async function upload(file: File) {
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      toast.error("Choose a JPG, PNG, or WebP image.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Cover images must be 5 MB or smaller.");
-      return;
-    }
-
+  async function chooseTheme(theme: CoverThemeId) {
+    if (theme === coverTheme) return;
     setPending(true);
     try {
-      const form = new FormData();
-      form.set("cover", file);
       const response = await fetch("/api/profile/cover", {
-        method: "POST",
-        body: form,
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme }),
       });
       const result = (await response.json().catch(() => null)) as {
-        coverImageURL?: string;
+        coverTheme?: CoverThemeId;
         error?: string;
       } | null;
-      if (!response.ok || !result?.coverImageURL)
-        throw new Error(result?.error ?? "We couldn't update your cover.");
-      setCoverImageURL(result.coverImageURL);
-      toast.success("Profile cover updated.");
+      if (!response.ok || !result?.coverTheme) {
+        throw new Error(
+          result?.error ?? "We couldn't update your cover style.",
+        );
+      }
+      setCoverTheme(result.coverTheme);
+      toast.success("Cover style updated.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload failed.");
-    } finally {
-      setPending(false);
-      if (inputRef.current) inputRef.current.value = "";
-    }
-  }
-
-  async function remove() {
-    setPending(true);
-    try {
-      const response = await fetch("/api/profile/cover", { method: "DELETE" });
-      const result = (await response.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-      if (!response.ok)
-        throw new Error(result?.error ?? "We couldn't remove your cover.");
-      setCoverImageURL(null);
-      toast.success("Profile cover removed.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Removal failed.");
+      toast.error(error instanceof Error ? error.message : "Update failed.");
     } finally {
       setPending(false);
     }
@@ -77,7 +52,7 @@ export function ProfileCoverEditor({
         <div>
           <h3 className="text-sm font-bold">Profile cover</h3>
           <p className="text-muted-foreground mt-1 text-xs leading-5">
-            Use a wide JPG, PNG, or WebP image up to 5 MB.
+            Choose a color or gradient style for your banner.
           </p>
         </div>
         <span className="bg-accent/10 text-accent flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold uppercase">
@@ -86,45 +61,40 @@ export function ProfileCoverEditor({
         </span>
       </div>
 
-      <div className="from-primary/30 to-sidebar-primary/30 relative h-44 overflow-hidden rounded-lg bg-gradient-to-br">
-        {coverImageURL && (
-          // Profile covers use runtime Firebase Storage origins.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={coverImageURL}
-            alt="Current profile cover"
-            className="h-full w-full object-cover"
-          />
-        )}
+      <div
+        className="relative h-44 overflow-hidden rounded-lg"
+        style={{
+          background: coverThemes.find((theme) => theme.id === coverTheme)
+            ?.background,
+        }}
+      >
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
         {plan === "plus" ? (
           <>
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="sr-only"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void upload(file);
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={() => inputRef.current?.click()}
-            >
-              {pending ? (
-                <LoaderCircle aria-hidden="true" className="animate-spin" />
-              ) : (
-                <ImagePlus aria-hidden="true" />
-              )}
-              {coverImageURL ? "Replace image" : "Choose image"}
-            </Button>
+            <div className="mb-2 flex w-full flex-wrap gap-2">
+              {coverThemes.map((theme) => (
+                <button
+                  key={theme.id}
+                  type="button"
+                  disabled={pending}
+                  onClick={() => void chooseTheme(theme.id)}
+                  className="group"
+                  aria-pressed={coverTheme === theme.id}
+                  aria-label={`Choose ${theme.label} cover style`}
+                >
+                  <span
+                    className={`block h-7 w-11 rounded-md border border-black/10 ring-offset-2 transition ${
+                      coverTheme === theme.id ? "ring-primary ring-2" : ""
+                    }`}
+                    style={{ background: theme.background }}
+                  />
+                  <span className="sr-only">{theme.label}</span>
+                </button>
+              ))}
+            </div>
           </>
         ) : (
           <Button asChild type="button" variant="outline">
@@ -132,17 +102,6 @@ export function ProfileCoverEditor({
               <Crown aria-hidden="true" />
               Unlock with Plus
             </Link>
-          </Button>
-        )}
-        {coverImageURL && (
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={pending}
-            onClick={() => void remove()}
-          >
-            <Trash2 aria-hidden="true" />
-            Remove
           </Button>
         )}
       </div>

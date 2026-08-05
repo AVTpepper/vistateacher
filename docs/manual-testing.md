@@ -76,8 +76,10 @@ Test once at desktop width and once around 390 px mobile width.
 ## 5. Profile, Settings, and Network
 
 - [ ] Open your profile and edit name, school, subjects, bio, and location.
-- [ ] Confirm Community profiles can view/remove an existing cover but must upgrade to replace it.
-- [ ] Confirm Plus profiles can upload JPG, PNG, or WebP cover images up to 5 MB; reject unsupported or oversized files.
+- [ ] Confirm banner customization supports preset styles only (no banner image upload path in UI or API).
+- [ ] Confirm Plus profiles can switch among preset cover color/gradient styles and that the chosen style appears on the public profile.
+- [ ] Confirm profile image upload/remove works with JPG, PNG, or WebP up to 3 MB and updates avatar surfaces.
+- [ ] Confirm Manage billing opens the in-app subscription controls page and cancel/resume changes persist after refresh.
 - [ ] At a short desktop height, scroll the sidebar to every destination without displaying a native scrollbar; confirm mobile drawer scrolling remains visible and usable.
 - [ ] Open About & policies from the authenticated sidebar and reach About, support, billing, privacy, and terms.
 - [ ] Toggle contact privacy and verify another educator sees only permitted fields.

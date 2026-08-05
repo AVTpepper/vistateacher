@@ -19,6 +19,7 @@ const educator = {
   interests: ["Student Voice"],
   photoURL: null,
   coverImageURL: null,
+  coverTheme: "coastal-mist",
   role: "educator",
   isVerified: true,
   followerCount: 0,

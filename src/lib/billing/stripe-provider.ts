@@ -9,6 +9,7 @@ import type {
   CheckoutSessionInput,
   NormalizedBillingEvent,
   PortalSessionInput,
+  SubscriptionCancellationInput,
 } from "@/lib/billing/provider";
 import { resolveStripeMode, stripeModeSchema } from "@/lib/billing/stripe-mode";
 import type { BillingInterval } from "@/schemas/billing";
@@ -75,6 +76,14 @@ class StripeBillingProvider implements BillingProvider {
       return_url: originUrl(input.origin, "/settings/billing"),
     });
     return session.url;
+  }
+
+  async updateSubscriptionCancellation(
+    input: SubscriptionCancellationInput,
+  ): Promise<void> {
+    await this.client.subscriptions.update(input.subscriptionId, {
+      cancel_at_period_end: input.cancelAtPeriodEnd,
+    });
   }
 
   constructWebhookEvent(

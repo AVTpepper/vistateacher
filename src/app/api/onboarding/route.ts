@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
           professionalRoles: input.professionalRoles,
           photoURL: account.photoURL,
           coverImageURL: null,
+          coverTheme: "coastal-mist",
           role: "educator",
           gradeLevel: input.gradeLevel,
           subjects: input.subjects,

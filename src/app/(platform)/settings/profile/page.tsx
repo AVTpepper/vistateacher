@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ProfileEditForm } from "@/features/profiles/profile-edit-form";
 import { requireCurrentAccount } from "@/lib/auth/session";
+import { resolveCoverTheme } from "@/lib/profiles/cover-themes";
 import { getProfileView } from "@/lib/profiles/server";
 
 export const metadata: Metadata = { title: "Edit profile" };
@@ -18,7 +19,8 @@ export default async function EditProfilePage() {
         Keep the context other educators use to find and understand your work.
       </p>
       <ProfileEditForm
-        initialCoverImageURL={profile.coverImageURL}
+        initialPhotoURL={profile.photoURL}
+        initialCoverTheme={resolveCoverTheme(profile.coverTheme)}
         plan={data.plan}
         initial={{
           displayName: profile.displayName,

@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { FollowButton } from "@/features/network/follow-button";
 import { ProfileTabs } from "@/features/profiles/profile-tabs";
+import { coverThemeById, resolveCoverTheme } from "@/lib/profiles/cover-themes";
 import type { ProfileView as ProfileViewData } from "@/lib/profiles/server";
 
 export function ProfileView({
@@ -27,6 +28,7 @@ export function ProfileView({
   resources: Array<{ id: string; title: string; type: string }>;
 }) {
   const { profile } = data;
+  const coverTheme = coverThemeById(resolveCoverTheme(profile.coverTheme));
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
   const stats = [
     {
@@ -52,16 +54,10 @@ export function ProfileView({
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="from-primary/30 to-sidebar-primary/30 relative mb-4 h-44 overflow-hidden rounded-2xl bg-gradient-to-br">
-        {profile.coverImageURL && (
-          // Profile covers use runtime Firebase Storage origins.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={profile.coverImageURL}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-        )}
+      <div
+        className="relative mb-4 h-44 overflow-hidden rounded-2xl"
+        style={{ background: coverTheme.background }}
+      >
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
       </div>
       <section className="bg-card relative -mt-12 rounded-2xl border p-5 sm:p-6">

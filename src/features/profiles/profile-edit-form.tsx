@@ -9,17 +9,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProfileCoverEditor } from "@/features/profiles/profile-cover-editor";
+import { ProfilePhotoEditor } from "@/features/profiles/profile-photo-editor";
+import type { CoverThemeId } from "@/lib/profiles/cover-themes";
 import { educationStages } from "@/lib/profiles/options";
 import { profileUpdateSchema, type ProfileUpdate } from "@/schemas/profile";
 import type { Plan } from "@/types/models";
 
 export function ProfileEditForm({
   initial,
-  initialCoverImageURL,
+  initialPhotoURL,
+  initialCoverTheme,
   plan,
 }: {
   initial: ProfileUpdate;
-  initialCoverImageURL: string | null;
+  initialPhotoURL: string | null;
+  initialCoverTheme: CoverThemeId;
   plan: Plan;
 }) {
   const router = useRouter();
@@ -81,10 +85,11 @@ export function ProfileEditForm({
 
   return (
     <form className="space-y-6" onSubmit={submit}>
-      <ProfileCoverEditor
-        initialCoverImageURL={initialCoverImageURL}
-        plan={plan}
+      <ProfilePhotoEditor
+        initialPhotoURL={initialPhotoURL}
+        displayName={initial.displayName}
       />
+      <ProfileCoverEditor initialCoverTheme={initialCoverTheme} plan={plan} />
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Display name" id="displayName">
           <Input

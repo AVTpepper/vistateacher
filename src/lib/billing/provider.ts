@@ -14,6 +14,11 @@ export interface PortalSessionInput {
   origin: string;
 }
 
+export interface SubscriptionCancellationInput {
+  subscriptionId: string;
+  cancelAtPeriodEnd: boolean;
+}
+
 export type NormalizedBillingEvent =
   | {
       id: string;
@@ -41,6 +46,9 @@ export type NormalizedBillingEvent =
 export interface BillingProvider {
   createCheckoutSession(input: CheckoutSessionInput): Promise<string>;
   createPortalSession(input: PortalSessionInput): Promise<string>;
+  updateSubscriptionCancellation(
+    input: SubscriptionCancellationInput,
+  ): Promise<void>;
   constructWebhookEvent(
     body: string,
     signature: string,
