@@ -118,7 +118,7 @@ export function GlobalSearch() {
               value={query}
               onChange={(event) => updateQuery(event.target.value)}
               placeholder="Search teachers, resources, discussions..."
-              className="h-full flex-1 bg-transparent text-sm outline-none"
+              className="h-10 min-w-0 flex-1 rounded-sm bg-transparent text-sm outline-none"
             />
             <Dialog.Close
               className="text-muted-foreground hover:text-foreground hover:bg-muted grid size-8 place-items-center rounded-lg"
