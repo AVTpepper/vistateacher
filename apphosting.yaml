@@ -46,6 +46,10 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: STRIPE_MODE
+    value: TEST
+    availability:
+      - RUNTIME
   - variable: STRIPE_SECRET_KEY
     secret: STRIPE_SECRET_KEY
   - variable: STRIPE_WEBHOOK_SECRET

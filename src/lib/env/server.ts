@@ -2,10 +2,13 @@ import "server-only";
 
 import { z } from "zod";
 
+import { stripeModeSchema } from "@/lib/billing/stripe-mode";
+
 const serverEnvSchema = z.object({
   FIREBASE_PROJECT_ID: z.string().min(1),
   FIREBASE_CLIENT_EMAIL: z.email(),
   FIREBASE_PRIVATE_KEY: z.string().min(1),
+  STRIPE_MODE: stripeModeSchema.default("TEST"),
   STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
   STRIPE_PRICE_PLUS_MONTHLY: z.string().startsWith("price_"),

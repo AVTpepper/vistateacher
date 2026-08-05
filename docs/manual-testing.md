@@ -138,8 +138,11 @@ Use `plus@vista.local` for Plus workflows. Automated/local AI uses `AI_PROVIDER=
 - [ ] Plus educator creates, edits, regenerates, duplicates, and versions a lesson.
 - [ ] Export authorized lessons to PDF and DOCX.
 - [ ] Verify AI monthly quota and cooldown are enforced without consuming failed attempts.
-- [ ] Confirm pricing proceeds directly to monthly or yearly Stripe Checkout.
-- [ ] Complete monthly and yearly Checkout with Stripe test cards.
+- [ ] Confirm a logged-out Plus choice preserves plan intent through registration, verification, onboarding, and sign-in before opening billing.
+- [ ] Confirm billing shows the Stripe test-mode notice when `STRIPE_MODE=TEST`.
+- [ ] Complete monthly and yearly Checkout with `4242 4242 4242 4242`, a future expiry such as `12/34`, any three-digit CVC, and any valid postal code.
+- [ ] Confirm the webhook changes the account to Plus; the success redirect alone must not grant access.
+- [ ] Cancel Checkout and confirm the user returns to authenticated billing with their current plan unchanged.
 - [ ] Open Customer Portal and verify cancellation/reactivation states reconcile through webhooks.
 
 ## 11. Administration
@@ -166,7 +169,8 @@ Run this only after Firebase App Hosting and the custom domain are connected.
 - [ ] Canonical URLs use the production domain.
 - [ ] Email/password and Google sign-in work on the production domain.
 - [ ] Create two disposable educator accounts and test profile, follow, feed, message, resource, and forum flows.
-- [ ] Complete one Stripe test-mode Checkout and confirm the webhook updates billing state.
+- [ ] Confirm `STRIPE_MODE=TEST`, `sk_test_...`, test Price IDs, and the test webhook signing secret are deployed together.
+- [ ] Complete one Stripe test-mode Checkout and confirm the webhook updates billing state without moving real funds.
 - [ ] Generate one lesson with the configured OpenAI provider.
 - [ ] Complete one admin action and inspect its audit entry.
 - [ ] Check App Hosting logs for errors and Firebase/Google Cloud billing dashboards for unexpected usage.

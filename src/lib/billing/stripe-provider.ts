@@ -10,9 +10,11 @@ import type {
   NormalizedBillingEvent,
   PortalSessionInput,
 } from "@/lib/billing/provider";
+import { resolveStripeMode, stripeModeSchema } from "@/lib/billing/stripe-mode";
 import type { BillingInterval } from "@/schemas/billing";
 
 const stripeEnvSchema = z.object({
+  STRIPE_MODE: stripeModeSchema.default("TEST"),
   STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
   STRIPE_PRICE_PLUS_MONTHLY: z.string().startsWith("price_").optional(),
@@ -34,6 +36,7 @@ class StripeBillingProvider implements BillingProvider {
 
   constructor() {
     this.env = stripeEnvSchema.parse(process.env);
+    resolveStripeMode(this.env.STRIPE_MODE, this.env.STRIPE_SECRET_KEY);
     this.client = new Stripe(this.env.STRIPE_SECRET_KEY);
   }
 

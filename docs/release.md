@@ -5,7 +5,7 @@
 1. Create the Firebase App Hosting backend from the repository root and select Node.js 24.
 2. Set `NEXT_PUBLIC_APP_URL` to the final HTTPS origin in both build and runtime environments.
 3. Set every `NEXT_PUBLIC_FIREBASE_*` value in the backend environment. App Hosting console values override the declarations in `apphosting.yaml`.
-4. Create and grant the backend access to every secret referenced by `apphosting.yaml`: Firebase Admin credentials, Stripe keys/prices, and the OpenAI key.
+4. Create and grant the backend access to every secret referenced by `apphosting.yaml`: Firebase Admin credentials, Stripe keys/prices, and the OpenAI key. `STRIPE_MODE` is a non-secret server setting; Stripe keys remain secrets.
 5. Keep `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false` and `AI_PROVIDER=OPENAI` in every production rollout.
 6. Deploy Firestore rules, Storage rules, and indexes separately before promoting the application rollout.
 
@@ -14,8 +14,11 @@ Create secrets with `firebase apphosting:secrets:set SECRET_NAME`. If a secret w
 ## External Services
 
 - Enable Firebase Email/Password and Google authentication providers and add the production domain to authorized domains.
-- Register `https://PRODUCTION_ORIGIN/api/billing/webhook` in Stripe with checkout, subscription, invoice-paid, and payment-failed events.
-- Confirm monthly and yearly Stripe price IDs use the same live/test mode as `STRIPE_SECRET_KEY`.
+- Register `https://PRODUCTION_ORIGIN/api/billing/webhook` in the matching Stripe environment with `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`.
+- Keep `STRIPE_MODE=TEST` with an `sk_test_...` secret key, test Price IDs, and the test endpoint signing secret while validating the integration. The application rejects a mode/key mismatch.
+- To accept real payments, change `STRIPE_MODE` to `LIVE` and replace all four Stripe secrets together: `STRIPE_SECRET_KEY` (`sk_live_...`), `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PLUS_MONTHLY`, and `STRIPE_PRICE_PLUS_YEARLY`. Test and live webhook signing secrets are different.
+- Confirm monthly and yearly Stripe Price IDs belong to the same Stripe environment and account as `STRIPE_SECRET_KEY`.
+- Never commit Stripe secret keys or expose them through `NEXT_PUBLIC_*` variables. The browser receives only a test-mode boolean and Stripe's public simulator values.
 - Restrict Firebase and Google Cloud service accounts to the minimum production roles.
 
 ## Release Gate
@@ -37,7 +40,7 @@ The E2E command starts fresh Firebase emulators, seeds deterministic accounts, b
 
 ## Rollout
 
-1. Review the App Hosting rollout environment and confirm no emulator or mock-provider values are present.
+1. Review the App Hosting rollout environment and confirm no emulator or mock-provider values are present. Confirm `STRIPE_MODE=LIVE` before a rollout intended to collect real payments.
 2. Verify `/`, `/sign-in`, `/robots.txt`, and `/sitemap.xml` return successful responses on the rollout URL.
 3. Sign in with a non-admin smoke-test account and verify feed, resources, dashboard, and logout.
 4. Verify Stripe Checkout and Customer Portal in the configured Stripe mode, then confirm webhook reconciliation.

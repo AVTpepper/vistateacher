@@ -74,6 +74,10 @@ test("signs in a seeded educator and protects platform workflows", async ({
   await expectNoPageOverflow(page);
 
   await page.goto("/settings/billing");
+  await expect(
+    page.getByRole("heading", { name: "Stripe test mode" }),
+  ).toBeVisible();
+  await expect(page.getByText("4242 4242 4242 4242")).toBeVisible();
   await expect(page.getByText("$0 membership fee")).toBeVisible();
   await expect(
     page.getByRole("heading", {
