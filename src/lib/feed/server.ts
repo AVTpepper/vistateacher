@@ -16,6 +16,8 @@ import type {
   CreatePostInput,
   FeedView,
   ReportPostInput,
+  UpdateCommentInput,
+  UpdatePostInput,
 } from "@/schemas/feed";
 
 const PAGE_SIZE = 10;
@@ -41,6 +43,8 @@ export interface FeedPost {
   commentCount: number;
   shareCount: number;
   createdAt: string;
+  updatedAt: string;
+  editedAt: string | null;
   liked: boolean;
   bookmarked: boolean;
   ownedByViewer: boolean;
@@ -56,6 +60,8 @@ export interface FeedComment {
   author: FeedAuthor;
   content: string;
   createdAt: string;
+  updatedAt: string;
+  editedAt: string | null;
   ownedByViewer: boolean;
 }
 
@@ -102,6 +108,10 @@ function authorFromData(
 
 function postTimestamp(document: QueryDocumentSnapshot): Timestamp {
   const value = document.data().createdAt;
+  return value instanceof Timestamp ? value : Timestamp.fromMillis(0);
+}
+
+function timestamp(value: unknown): Timestamp {
   return value instanceof Timestamp ? value : Timestamp.fromMillis(0);
 }
 
@@ -155,6 +165,11 @@ async function hydratePosts(
       commentCount: nonnegativeCount(data.commentCount),
       shareCount: nonnegativeCount(data.shareCount),
       createdAt: createdAt.toDate().toISOString(),
+      updatedAt: timestamp(data.updatedAt).toDate().toISOString(),
+      editedAt:
+        data.editedAt instanceof Timestamp
+          ? data.editedAt.toDate().toISOString()
+          : null,
       liked: likeSnapshots[index]?.exists ?? false,
       bookmarked: bookmarkSnapshots[index]?.exists ?? false,
       ownedByViewer: authorId === viewerUid,
@@ -295,6 +310,33 @@ export async function createPost(
   return postRef.id;
 }
 
+export async function updatePost(
+  uid: string,
+  input: UpdatePostInput,
+): Promise<void> {
+  const db = adminDb();
+  const postRef = db.doc(`posts/${input.postId}`);
+  await db.runTransaction(async (transaction) => {
+    const [post, user] = await Promise.all([
+      transaction.get(postRef),
+      transaction.get(db.doc(`users/${uid}`)),
+    ]);
+    if (!post.exists) throw new FeedActionError("not-found");
+    if (post.data()?.authorId !== uid) throw new FeedActionError("not-owner");
+    if (!user.exists || user.data()?.status !== "active")
+      throw new FeedActionError("inactive");
+    transaction.update(postRef, {
+      type: input.type,
+      content: input.content,
+      imageURLs: input.imageURLs,
+      tags: [...new Set(input.tags.map((tag) => tag.toLowerCase()))],
+      resourceId: input.type === "resource" ? input.resourceId : null,
+      editedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+}
+
 async function assertVisiblePost(
   transaction: FirebaseFirestore.Transaction,
   postRef: FirebaseFirestore.DocumentReference,
@@ -431,8 +473,58 @@ export async function getPostComments(
       author: authorMap.get(authorId) ?? authorFromData(authorId, undefined),
       content: String(data.content ?? ""),
       createdAt: createdAt.toDate().toISOString(),
+      updatedAt: timestamp(data.updatedAt).toDate().toISOString(),
+      editedAt:
+        data.editedAt instanceof Timestamp
+          ? data.editedAt.toDate().toISOString()
+          : null,
       ownedByViewer: authorId === viewerUid,
     };
+  });
+}
+
+export async function updatePostComment(
+  uid: string,
+  input: UpdateCommentInput,
+): Promise<void> {
+  const db = adminDb();
+  const postRef = db.doc(`posts/${input.postId}`);
+  const commentRef = postRef.collection("comments").doc(input.commentId);
+  await db.runTransaction(async (transaction) => {
+    const [post, comment] = await Promise.all([
+      assertVisiblePost(transaction, postRef),
+      transaction.get(commentRef),
+    ]);
+    if (!post.exists || !comment.exists) throw new FeedActionError("not-found");
+    if (comment.data()?.authorId !== uid) throw new FeedActionError("not-owner");
+    transaction.update(commentRef, {
+      content: input.content,
+      editedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+}
+
+export async function deletePostComment(
+  uid: string,
+  postId: string,
+  commentId: string,
+): Promise<void> {
+  const db = adminDb();
+  const postRef = db.doc(`posts/${postId}`);
+  const commentRef = postRef.collection("comments").doc(commentId);
+  await db.runTransaction(async (transaction) => {
+    const [post, comment] = await Promise.all([
+      transaction.get(postRef),
+      transaction.get(commentRef),
+    ]);
+    if (!post.exists || !comment.exists) throw new FeedActionError("not-found");
+    if (comment.data()?.authorId !== uid) throw new FeedActionError("not-owner");
+    transaction.delete(commentRef);
+    transaction.update(postRef, {
+      commentCount: Math.max(0, nonnegativeCount(post.data()?.commentCount) - 1),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
   });
 }
 

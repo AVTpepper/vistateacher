@@ -6,6 +6,7 @@ import {
   Heart,
   MessageCircle,
   MoreHorizontal,
+  Pencil,
   Send,
   Share2,
   Trash2,
@@ -57,6 +58,10 @@ export function PostCard({
   const [comments, setComments] = useState<FeedComment[] | null>(null);
   const [comment, setComment] = useState("");
   const [commenting, setCommenting] = useState(false);
+  const [editingPost, setEditingPost] = useState(false);
+  const [postDraft, setPostDraft] = useState(initialPost.content);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [commentDraft, setCommentDraft] = useState("");
 
   async function toggleLike() {
     const previous = post;
@@ -120,6 +125,8 @@ export function PostCard({
       },
       content,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      editedAt: null,
       ownedByViewer: true,
     };
     setComments((current) => [...(current ?? []), optimistic]);
@@ -165,6 +172,72 @@ export function PostCard({
       return;
     }
     toast.success("Post deleted.");
+  }
+
+  async function savePostEdit() {
+    const content = postDraft.trim();
+    if (!content) return;
+    const response = await mutation(`/api/feed/${post.id}`, "PATCH", {
+      type: post.type,
+      content,
+      imageURLs: post.imageURLs,
+      tags: post.tags,
+      resourceId: post.resourceId,
+    });
+    if (!response.ok) {
+      toast.error("We couldn't update that post.");
+      return;
+    }
+    setPost((current) => ({
+      ...current,
+      content,
+      updatedAt: new Date().toISOString(),
+      editedAt: new Date().toISOString(),
+    }));
+    setEditingPost(false);
+    toast.success("Post updated.");
+  }
+
+  async function saveCommentEdit(commentId: string) {
+    const content = commentDraft.trim();
+    if (!content) return;
+    const response = await mutation(
+      `/api/feed/${post.id}/comments/${commentId}`,
+      "PATCH",
+      { content },
+    );
+    if (!response.ok) {
+      toast.error("We couldn't update that comment.");
+      return;
+    }
+    setComments((current) =>
+      current?.map((item) =>
+        item.id === commentId
+          ? {
+              ...item,
+              content,
+              updatedAt: new Date().toISOString(),
+              editedAt: new Date().toISOString(),
+            }
+          : item,
+      ) ?? [],
+    );
+    setEditingCommentId(null);
+    setCommentDraft("");
+    toast.success("Comment updated.");
+  }
+
+  async function removeComment(commentId: string) {
+    const response = await mutation(`/api/feed/${post.id}/comments/${commentId}`, "DELETE");
+    if (!response.ok) {
+      toast.error("We couldn't delete that comment.");
+      return;
+    }
+    setComments((current) => current?.filter((item) => item.id !== commentId) ?? []);
+    setPost((current) => ({
+      ...current,
+      commentCount: Math.max(0, current.commentCount - 1),
+    }));
   }
 
   async function report() {
@@ -213,6 +286,9 @@ export function PostCard({
               .join(" · ")}
             {" · "}
             {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+            {post.editedAt
+              ? ` · edited ${formatDistanceToNow(new Date(post.editedAt), { addSuffix: true })}`
+              : ""}
           </p>
         </div>
         <div className="relative">
@@ -246,6 +322,19 @@ export function PostCard({
               {post.ownedByViewer && (
                 <button
                   type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setPostDraft(post.content);
+                    setEditingPost(true);
+                  }}
+                  className="hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+                >
+                  <Pencil aria-hidden="true" className="size-3.5" /> Edit
+                </button>
+              )}
+              {post.ownedByViewer && (
+                <button
+                  type="button"
                   onClick={() => void removePost()}
                   className="text-destructive hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
                 >
@@ -257,7 +346,35 @@ export function PostCard({
         </div>
       </header>
       <div className="px-4 pb-3">
-        <p className="text-sm leading-6 whitespace-pre-line">{post.content}</p>
+        {editingPost ? (
+          <div className="space-y-2">
+            <textarea
+              value={postDraft}
+              onChange={(event) => setPostDraft(event.target.value)}
+              maxLength={5000}
+              rows={4}
+              className="bg-muted w-full resize-y rounded-lg px-3 py-2 text-sm outline-none"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingPost(false)}
+                className="h-8 rounded-lg border px-3 text-xs font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void savePostEdit()}
+                className="bg-primary text-primary-foreground h-8 rounded-lg px-3 text-xs font-bold"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm leading-6 whitespace-pre-line">{post.content}</p>
+        )}
         {post.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {post.tags.map((tag) => (
@@ -348,10 +465,69 @@ export function PostCard({
                   className="size-8 shrink-0 rounded-full text-[10px]"
                 />
                 <div className="bg-muted min-w-0 flex-1 rounded-lg px-3 py-2">
-                  <p className="text-xs font-bold">{item.author.displayName}</p>
-                  <p className="mt-0.5 text-xs leading-5 break-words">
-                    {item.content}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-bold">{item.author.displayName}</p>
+                    <p className="text-muted-foreground text-[10px]">
+                      {formatDistanceToNow(new Date(item.createdAt), {
+                        addSuffix: true,
+                      })}
+                      {item.editedAt
+                        ? ` · edited ${formatDistanceToNow(new Date(item.editedAt), { addSuffix: true })}`
+                        : ""}
+                    </p>
+                  </div>
+                  {editingCommentId === item.id ? (
+                    <div className="mt-1 space-y-1">
+                      <textarea
+                        value={commentDraft}
+                        onChange={(event) => setCommentDraft(event.target.value)}
+                        rows={2}
+                        maxLength={1000}
+                        className="bg-background w-full resize-none rounded-lg px-2 py-1.5 text-xs outline-none"
+                      />
+                      <div className="flex justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditingCommentId(null)}
+                          className="text-muted-foreground px-2 text-[11px]"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void saveCommentEdit(item.id)}
+                          className="text-primary px-2 text-[11px] font-bold"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-0.5 text-xs leading-5 break-words">
+                      {item.content}
+                    </p>
+                  )}
+                  {item.ownedByViewer && editingCommentId !== item.id && (
+                    <div className="mt-1 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCommentId(item.id);
+                          setCommentDraft(item.content);
+                        }}
+                        className="text-muted-foreground text-[11px]"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void removeComment(item.id)}
+                        className="text-destructive text-[11px]"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))
