@@ -7,16 +7,18 @@ export function ContentPage({
   eyebrow,
   title,
   intro,
+  signedIn = false,
   children,
 }: {
   eyebrow: string;
   title: string;
   intro: string;
+  signedIn?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="bg-background min-h-screen">
-      <MarketingHeader />
+      <MarketingHeader signedIn={signedIn} />
       <main>
         <header className="border-b">
           <div className="mx-auto max-w-5xl px-5 py-16 lg:px-8 lg:py-24">

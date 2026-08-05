@@ -56,7 +56,10 @@ class StripeBillingProvider implements BillingProvider {
         input.origin,
         "/settings/billing?checkout=success",
       ),
-      cancel_url: originUrl(input.origin, "/pricing?checkout=canceled"),
+      cancel_url: originUrl(
+        input.origin,
+        "/settings/billing?checkout=canceled",
+      ),
       allow_promotion_codes: true,
     });
     if (!session.url) throw new Error("Stripe did not return a checkout URL.");

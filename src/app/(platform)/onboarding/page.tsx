@@ -3,12 +3,21 @@ import { redirect } from "next/navigation";
 
 import { OnboardingForm } from "@/features/onboarding/onboarding-form";
 import { requireCurrentAccount } from "@/lib/auth/session";
+import { parsePlanIntent, planIntentHref } from "@/lib/billing/plan-intent";
 
 export const metadata: Metadata = { title: "Set up your profile" };
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ plan?: string | string[] }>;
+}) {
+  const planIntent = parsePlanIntent((await searchParams).plan);
   const account = await requireCurrentAccount();
-  if (account.onboarded) redirect("/app");
+  if (account.onboarded)
+    redirect(
+      planIntent ? planIntentHref("/settings/billing", planIntent) : "/app",
+    );
 
   return (
     <main className="mx-auto max-w-4xl px-5 py-12 lg:px-8 lg:py-16">
@@ -25,7 +34,10 @@ export default async function OnboardingPage() {
         </p>
       </div>
       <div className="bg-card rounded-lg border p-6 shadow-sm sm:p-8">
-        <OnboardingForm displayName={account.displayName ?? ""} />
+        <OnboardingForm
+          displayName={account.displayName ?? ""}
+          planIntent={planIntent}
+        />
       </div>
     </main>
   );

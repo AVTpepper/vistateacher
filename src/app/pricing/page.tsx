@@ -10,6 +10,7 @@ import {
 } from "@/features/billing/billing-controls";
 import { billingPlans } from "@/features/billing/plan-details";
 import { getCurrentAccount } from "@/lib/auth/session";
+import { planIntentHref } from "@/lib/billing/plan-intent";
 import { getBillingState } from "@/lib/billing/server";
 
 export const metadata: Metadata = {
@@ -34,6 +35,7 @@ export default async function PricingPage() {
       eyebrow="Simple plans"
       title="Begin with community. Add Plus for deeper tools."
       intro="Core professional participation is included with Community access. Plus expands limits and unlocks planning, export, and analytics tools."
+      signedIn={Boolean(account)}
     >
       <div className="grid gap-6 md:grid-cols-2">
         {billingPlans.map((plan) => (
@@ -66,8 +68,28 @@ export default async function PricingPage() {
                 size="lg"
                 variant={plan.id === "plus" ? "accent" : "default"}
               >
-                <Link href={account ? "/app" : "/sign-up"}>
-                  {account ? "Current plan" : "Create account"}
+                <Link
+                  href={
+                    account
+                      ? account.onboarded
+                        ? "/app"
+                        : planIntentHref(
+                            "/onboarding",
+                            plan.id === "plus" ? "plus" : null,
+                          )
+                      : planIntentHref(
+                          "/sign-up",
+                          plan.id === "plus" ? "plus" : null,
+                        )
+                  }
+                >
+                  {account
+                    ? account.onboarded
+                      ? "Current plan"
+                      : "Continue setup"
+                    : plan.id === "plus"
+                      ? "Choose Plus"
+                      : "Create free account"}
                 </Link>
               </Button>
             )}

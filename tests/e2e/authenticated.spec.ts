@@ -53,6 +53,14 @@ test("signs in a seeded educator and protects platform workflows", async ({
     page.getByRole("link", { name: "About & policies" }),
   ).toHaveAttribute("href", "/information");
 
+  await page.goto("/pricing");
+  await expect(
+    page.getByRole("link", { name: "Dashboard", exact: true }),
+  ).toHaveAttribute("href", "/app");
+  await expect(
+    page.getByRole("link", { name: "Sign in", exact: true }),
+  ).toHaveCount(0);
+
   await page.goto("/information");
   await expect(
     page.getByRole("heading", { name: "About & policies" }),

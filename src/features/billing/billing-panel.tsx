@@ -2,7 +2,9 @@ import {
   BadgeCheck,
   CalendarDays,
   Check,
+  CircleCheck,
   CreditCard,
+  Info,
   ShieldCheck,
 } from "lucide-react";
 
@@ -11,11 +13,73 @@ import {
   type BillingView,
 } from "@/features/billing/billing-controls";
 import { billingPlans } from "@/features/billing/plan-details";
+import type { PlanIntent } from "@/lib/billing/plan-intent";
 import { cn } from "@/lib/utils";
 
-export function BillingPanel({ billing }: { billing: BillingView }) {
+export function BillingPanel({
+  billing,
+  checkoutStatus = null,
+  planIntent = null,
+}: {
+  billing: BillingView;
+  checkoutStatus?: "success" | "canceled" | null;
+  planIntent?: PlanIntent | null;
+}) {
   return (
     <div className="space-y-5">
+      {planIntent && !checkoutStatus && (
+        <div
+          role="status"
+          className="bg-primary/5 border-primary/20 flex items-start gap-3 rounded-lg border px-4 py-3 text-sm"
+        >
+          <Info
+            aria-hidden="true"
+            className="text-primary mt-0.5 size-4 shrink-0"
+          />
+          <div>
+            <p className="font-bold">Continue with VistaTeacher Plus</p>
+            <p className="text-muted-foreground mt-0.5 text-xs leading-5">
+              Your account is ready. Choose monthly or yearly billing below,
+              then continue to Stripe to complete payment.
+            </p>
+          </div>
+        </div>
+      )}
+      {checkoutStatus && (
+        <div
+          role="status"
+          className={cn(
+            "flex items-start gap-3 rounded-lg border px-4 py-3 text-sm",
+            checkoutStatus === "success"
+              ? "border-success/30 bg-success/10"
+              : "bg-muted/60",
+          )}
+        >
+          {checkoutStatus === "success" ? (
+            <CircleCheck
+              aria-hidden="true"
+              className="text-success mt-0.5 size-4 shrink-0"
+            />
+          ) : (
+            <Info
+              aria-hidden="true"
+              className="text-muted-foreground mt-0.5 size-4 shrink-0"
+            />
+          )}
+          <div>
+            <p className="font-bold">
+              {checkoutStatus === "success"
+                ? "Checkout complete"
+                : "Checkout canceled"}
+            </p>
+            <p className="text-muted-foreground mt-0.5 text-xs leading-5">
+              {checkoutStatus === "success"
+                ? "Your payment was received. Plus access updates after Stripe confirms the subscription."
+                : "No payment was made. Your current plan is unchanged."}
+            </p>
+          </div>
+        </div>
+      )}
       <section className="bg-card rounded-xl border p-6">
         <div className="flex items-start justify-between gap-4">
           <div>

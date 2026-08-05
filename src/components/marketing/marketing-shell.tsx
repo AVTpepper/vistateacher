@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-export function MarketingHeader() {
+export function MarketingHeader({ signedIn = false }: { signedIn?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
@@ -70,17 +70,33 @@ export function MarketingHeader() {
           </Link>
         </div>
         <div ref={controlsRef} className="flex items-center gap-2">
-          <Button
-            asChild
-            className="hidden sm:inline-flex"
-            size="sm"
-            variant="ghost"
-          >
-            <Link href="/sign-in">Sign in</Link>
-          </Button>
-          <Button asChild className="hidden min-[420px]:inline-flex" size="sm">
-            <Link href="/sign-up">Create account</Link>
-          </Button>
+          {signedIn ? (
+            <Button
+              asChild
+              className="hidden min-[420px]:inline-flex"
+              size="sm"
+            >
+              <Link href="/app">Dashboard</Link>
+            </Button>
+          ) : (
+            <>
+              <Button
+                asChild
+                className="hidden sm:inline-flex"
+                size="sm"
+                variant="ghost"
+              >
+                <Link href="/sign-in">Sign in</Link>
+              </Button>
+              <Button
+                asChild
+                className="hidden min-[420px]:inline-flex"
+                size="sm"
+              >
+                <Link href="/sign-up">Create account</Link>
+              </Button>
+            </>
+          )}
           <Button
             type="button"
             aria-controls="mobile-navigation"
@@ -140,23 +156,45 @@ export function MarketingHeader() {
           >
             Help
           </Link>
-          <Link
-            className="hover:bg-muted rounded-md px-3 py-2.5 text-sm font-semibold sm:hidden"
-            href="/sign-in"
-            onClick={() => setMenuOpen(false)}
-            tabIndex={menuOpen ? 0 : -1}
-          >
-            Sign in
-          </Link>
-          <Button asChild className="mt-2 w-full min-[420px]:hidden" size="sm">
-            <Link
-              href="/sign-up"
-              onClick={() => setMenuOpen(false)}
-              tabIndex={menuOpen ? 0 : -1}
+          {signedIn ? (
+            <Button
+              asChild
+              className="mt-2 w-full min-[420px]:hidden"
+              size="sm"
             >
-              Create account
-            </Link>
-          </Button>
+              <Link
+                href="/app"
+                onClick={() => setMenuOpen(false)}
+                tabIndex={menuOpen ? 0 : -1}
+              >
+                Dashboard
+              </Link>
+            </Button>
+          ) : (
+            <>
+              <Link
+                className="hover:bg-muted rounded-md px-3 py-2.5 text-sm font-semibold sm:hidden"
+                href="/sign-in"
+                onClick={() => setMenuOpen(false)}
+                tabIndex={menuOpen ? 0 : -1}
+              >
+                Sign in
+              </Link>
+              <Button
+                asChild
+                className="mt-2 w-full min-[420px]:hidden"
+                size="sm"
+              >
+                <Link
+                  href="/sign-up"
+                  onClick={() => setMenuOpen(false)}
+                  tabIndex={menuOpen ? 0 : -1}
+                >
+                  Create account
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
       </nav>
     </header>

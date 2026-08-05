@@ -8,9 +8,14 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { planIntentHref, type PlanIntent } from "@/lib/billing/plan-intent";
 import { getFirebaseClient } from "@/lib/firebase/client";
 
-export function VerifyEmailPanel() {
+export function VerifyEmailPanel({
+  planIntent = null,
+}: {
+  planIntent?: PlanIntent | null;
+}) {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +78,11 @@ export function VerifyEmailPanel() {
         }
         throw new Error(result.error);
       }
-      router.push(result.next);
+      router.push(
+        planIntent && result.next === "/app"
+          ? planIntentHref("/settings/billing", planIntent)
+          : planIntentHref(result.next, planIntent),
+      );
       router.refresh();
     } catch (caught) {
       const code =
@@ -126,7 +135,7 @@ export function VerifyEmailPanel() {
       return;
     }
     await sendEmailVerification(user, {
-      url: `${window.location.origin}/verify-email`,
+      url: `${window.location.origin}${planIntentHref("/verify-email", planIntent)}`,
     });
     toast.success("Verification email sent.");
   }
@@ -162,7 +171,7 @@ export function VerifyEmailPanel() {
         size="lg"
         onClick={
           requiresSignIn
-            ? () => router.push("/sign-in")
+            ? () => router.push(planIntentHref("/sign-in", planIntent))
             : () => void checkVerification()
         }
         disabled={isChecking}
@@ -182,7 +191,10 @@ export function VerifyEmailPanel() {
         >
           Resend email
         </button>
-        <Link className="text-primary hover:underline" href="/sign-in">
+        <Link
+          className="text-primary hover:underline"
+          href={planIntentHref("/sign-in", planIntent)}
+        >
           Back to sign in
         </Link>
       </div>

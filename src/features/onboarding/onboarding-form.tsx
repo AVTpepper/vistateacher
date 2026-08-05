@@ -8,6 +8,7 @@ import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { planIntentHref, type PlanIntent } from "@/lib/billing/plan-intent";
 import {
   educationStages,
   professionalRoles,
@@ -20,7 +21,13 @@ import { onboardingSchema } from "@/schemas/auth";
 type OnboardingInput = z.input<typeof onboardingSchema>;
 type OnboardingValues = z.output<typeof onboardingSchema>;
 
-export function OnboardingForm({ displayName }: { displayName: string }) {
+export function OnboardingForm({
+  displayName,
+  planIntent = null,
+}: {
+  displayName: string;
+  planIntent?: PlanIntent | null;
+}) {
   const form = useForm<OnboardingInput, unknown, OnboardingValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
@@ -98,7 +105,11 @@ export function OnboardingForm({ displayName }: { displayName: string }) {
         });
         return;
       }
-      window.location.assign(result.next);
+      window.location.assign(
+        planIntent
+          ? planIntentHref("/settings/billing", planIntent)
+          : result.next,
+      );
     } catch {
       form.setError("root", {
         message:

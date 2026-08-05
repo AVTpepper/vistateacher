@@ -2,17 +2,25 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AuthForm } from "@/features/auth/auth-form";
+import { parsePlanIntent, planIntentHref } from "@/lib/billing/plan-intent";
 
 export const metadata: Metadata = { title: "Create account" };
 
-export default function SignUpPage() {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ plan?: string | string[] }>;
+}) {
+  const planIntent = parsePlanIntent((await searchParams).plan);
   return (
     <>
       <h1 className="font-serif text-3xl">Create your VistaTeacher account</h1>
       <p className="text-muted-foreground mt-2 mb-7 text-sm">
-        Create your professional educator account.
+        {planIntent
+          ? "Create your educator account to continue with VistaTeacher Plus."
+          : "Create your professional educator account."}
       </p>
-      <AuthForm mode="sign-up" />
+      <AuthForm mode="sign-up" planIntent={planIntent} />
       <p className="text-muted-foreground mt-6 text-xs leading-5">
         By creating an account, you agree to the{" "}
         <Link className="underline" href="/terms">
@@ -28,7 +36,7 @@ export default function SignUpPage() {
         Already have an account?{" "}
         <Link
           className="text-primary font-bold hover:underline"
-          href="/sign-in"
+          href={planIntentHref("/sign-in", planIntent)}
         >
           Sign in
         </Link>

@@ -36,6 +36,25 @@ test("renders the VistaTeacher marketing foundation", async ({ page }) => {
     }),
   ).toBeVisible();
   await expect(page.getByText("$9")).toBeVisible();
+
+  const plusPlan = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Plus", exact: true }) });
+  await expect(plusPlan.getByRole("link", { name: "Choose Plus" })).toHaveAttribute(
+    "href",
+    "/sign-up?plan=plus",
+  );
+
+  await plusPlan.getByRole("link", { name: "Choose Plus" }).click();
+  await expect(page).toHaveURL(/\/sign-up\?plan=plus$/);
+  await expect(
+    page.getByText(
+      "Create your educator account to continue with VistaTeacher Plus.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Sign in", exact: true }).last(),
+  ).toHaveAttribute("href", "/sign-in?plan=plus");
 });
 
 test("opens the marketing navigation on mobile", async ({ page }) => {

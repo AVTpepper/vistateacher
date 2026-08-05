@@ -22,6 +22,7 @@ import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { planIntentHref, type PlanIntent } from "@/lib/billing/plan-intent";
 import { getFirebaseClient } from "@/lib/firebase/client";
 import {
   passwordResetSchema,
@@ -68,7 +69,13 @@ async function establishSession(user: User): Promise<string> {
   return result.next;
 }
 
-export function AuthForm({ mode }: { mode: AuthMode }) {
+export function AuthForm({
+  mode,
+  planIntent = null,
+}: {
+  mode: AuthMode;
+  planIntent?: PlanIntent | null;
+}) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -86,9 +93,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const isPending = form.formState.isSubmitting;
   const fieldErrors = form.formState.errors as FieldErrors<SignUpValues>;
   const passwordValue =
-    mode === "sign-up"
-      ? String((form.watch("password" as const) ?? ""))
-      : "";
+    mode === "sign-up" ? String(form.watch("password" as const) ?? "") : "";
   const showPasswordRequirements =
     mode === "sign-up" && (isPasswordFocused || passwordValue.length > 0);
   const passwordRequirements = [
@@ -111,12 +116,18 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   ];
   const passwordRegistration = form.register("password");
 
+  function destinationFor(next: string): string {
+    return planIntent && next === "/app"
+      ? planIntentHref("/settings/billing", planIntent)
+      : planIntentHref(next, planIntent);
+  }
+
   async function completeProviderSignIn(user: User) {
     if (!user.emailVerified) {
-      router.push("/verify-email");
+      router.push(planIntentHref("/verify-email", planIntent));
       return;
     }
-    router.push(await establishSession(user));
+    router.push(destinationFor(await establishSession(user)));
     router.refresh();
   }
 
@@ -127,7 +138,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     try {
       if (mode === "reset") {
         await sendPasswordResetEmail(auth, values.email, {
-          url: `${window.location.origin}/sign-in`,
+          url: `${window.location.origin}${planIntentHref("/sign-in", planIntent)}`,
         });
         toast.success("Password reset email sent.");
         return;
@@ -144,9 +155,9 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           displayName: signUpValues.displayName,
         });
         await sendEmailVerification(credential.user, {
-          url: `${window.location.origin}/verify-email`,
+          url: `${window.location.origin}${planIntentHref("/verify-email", planIntent)}`,
         });
-        router.push("/verify-email");
+        router.push(planIntentHref("/verify-email", planIntent));
         return;
       }
 
@@ -217,7 +228,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             mode === "sign-in" ? (
               <Link
                 className="text-primary text-xs font-bold hover:underline"
-                href="/forgot-password"
+                href={planIntentHref("/forgot-password", planIntent)}
               >
                 Forgot password?
               </Link>
