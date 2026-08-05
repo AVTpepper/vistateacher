@@ -140,6 +140,7 @@ Use `plus@vista.local` for Plus workflows. Automated/local AI uses `AI_PROVIDER=
 - [ ] Verify AI monthly quota and cooldown are enforced without consuming failed attempts.
 - [ ] Confirm a logged-out Plus choice preserves plan intent through registration, verification, onboarding, and sign-in before opening billing.
 - [ ] Confirm billing shows the Stripe test-mode notice when `STRIPE_MODE=TEST`.
+- [ ] Choose monthly and yearly Plus and confirm `/settings/billing/checkout` embeds the Stripe form inside VistaTeacher instead of navigating to `checkout.stripe.com`.
 - [ ] Complete monthly and yearly Checkout with `4242 4242 4242 4242`, a future expiry such as `12/34`, any three-digit CVC, and any valid postal code.
 - [ ] Confirm the webhook changes the account to Plus; the success redirect alone must not grant access.
 - [ ] Cancel Checkout and confirm the user returns to authenticated billing with their current plan unchanged.

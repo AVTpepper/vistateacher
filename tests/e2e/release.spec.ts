@@ -48,6 +48,15 @@ test("publishes canonical SEO metadata and release security headers", async ({
   expect(headers["content-security-policy"]).toContain(
     "frame-ancestors 'none'",
   );
+  expect(headers["content-security-policy"]).toContain(
+    "frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
+  );
+  expect(headers["content-security-policy"]).toContain(
+    "connect-src 'self' https://*.googleapis.com",
+  );
+  expect(headers["content-security-policy"]).toContain(
+    "https://checkout.stripe.com",
+  );
   expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
   expect(headers["x-content-type-options"]).toBe("nosniff");
   expect(headers["x-frame-options"]).toBe("DENY");

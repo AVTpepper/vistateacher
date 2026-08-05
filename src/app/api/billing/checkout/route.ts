@@ -29,13 +29,13 @@ export async function POST(request: NextRequest) {
     );
 
   try {
-    const url = await createCheckout(
+    const clientSecret = await createCheckout(
       account.uid,
       account.email,
       parsed.data.interval,
       getBillingOrigin(request),
     );
-    return NextResponse.json({ url });
+    return NextResponse.json({ clientSecret });
   } catch (error) {
     if (!(error instanceof BillingError)) throw error;
     return NextResponse.json(

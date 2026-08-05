@@ -40,10 +40,9 @@ test("renders the VistaTeacher marketing foundation", async ({ page }) => {
   const plusPlan = page
     .locator("section")
     .filter({ has: page.getByRole("heading", { name: "Plus", exact: true }) });
-  await expect(plusPlan.getByRole("link", { name: "Choose Plus" })).toHaveAttribute(
-    "href",
-    "/sign-up?plan=plus",
-  );
+  await expect(
+    plusPlan.getByRole("link", { name: "Choose Plus" }),
+  ).toHaveAttribute("href", "/sign-up?plan=plus");
 
   await plusPlan.getByRole("link", { name: "Choose Plus" }).click();
   await expect(page).toHaveURL(/\/sign-up\?plan=plus$/);
@@ -143,7 +142,12 @@ test("opens the marketing navigation on mobile", async ({ page }) => {
 test("protects the platform shell without a server session", async ({
   page,
 }) => {
-  for (const path of ["/app", "/discover", "/network"]) {
+  for (const path of [
+    "/app",
+    "/discover",
+    "/network",
+    "/settings/billing/checkout?interval=month",
+  ]) {
     await page.goto(path);
     await expect(page).toHaveURL(/\/sign-in$/);
     await expect(

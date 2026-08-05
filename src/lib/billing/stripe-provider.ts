@@ -48,6 +48,7 @@ class StripeBillingProvider implements BillingProvider {
     if (!priceId) throw new Error("Stripe price is not configured.");
 
     const session = await this.client.checkout.sessions.create({
+      ui_mode: "embedded_page",
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       customer: input.customerId ?? undefined,
@@ -55,18 +56,15 @@ class StripeBillingProvider implements BillingProvider {
       client_reference_id: input.uid,
       metadata: { uid: input.uid },
       subscription_data: { metadata: { uid: input.uid } },
-      success_url: originUrl(
+      return_url: originUrl(
         input.origin,
-        "/settings/billing?checkout=success",
-      ),
-      cancel_url: originUrl(
-        input.origin,
-        "/settings/billing?checkout=canceled",
+        "/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}",
       ),
       allow_promotion_codes: true,
     });
-    if (!session.url) throw new Error("Stripe did not return a checkout URL.");
-    return session.url;
+    if (!session.client_secret)
+      throw new Error("Stripe did not return a Checkout client secret.");
+    return session.client_secret;
   }
 
   async createPortalSession(input: PortalSessionInput): Promise<string> {

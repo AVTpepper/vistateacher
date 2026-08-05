@@ -50,6 +50,11 @@ env:
     value: TEST
     availability:
       - RUNTIME
+  - variable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    value: pk_test_51LGShDDyaLrjkeNa24KnDiDeOZekDxWCD9SBHcLjE46W7sNtjUXoqTpKuoRYUSA8TDzoaVdVCAqA6OCTiNef3hOj00aI7mpqEd
+    availability:
+      - BUILD
+      - RUNTIME
   - variable: STRIPE_SECRET_KEY
     secret: STRIPE_SECRET_KEY
   - variable: STRIPE_WEBHOOK_SECRET

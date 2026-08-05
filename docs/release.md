@@ -4,7 +4,7 @@
 
 1. Create the Firebase App Hosting backend from the repository root and select Node.js 24.
 2. Set `NEXT_PUBLIC_APP_URL` to the final HTTPS origin in both build and runtime environments.
-3. Set every `NEXT_PUBLIC_FIREBASE_*` value in the backend environment. App Hosting console values override the declarations in `apphosting.yaml`.
+3. Set every `NEXT_PUBLIC_FIREBASE_*` value and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` in the backend environment. App Hosting console values override the declarations in `apphosting.yaml`.
 4. Create and grant the backend access to every secret referenced by `apphosting.yaml`: Firebase Admin credentials, Stripe keys/prices, and the OpenAI key. `STRIPE_MODE` is a non-secret server setting; Stripe keys remain secrets.
 5. Keep `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false` and `AI_PROVIDER=OPENAI` in every production rollout.
 6. Deploy Firestore rules, Storage rules, and indexes separately before promoting the application rollout.
@@ -19,6 +19,7 @@ Create secrets with `firebase apphosting:secrets:set SECRET_NAME`. If a secret w
 - To accept real payments, change `STRIPE_MODE` to `LIVE` and replace all four Stripe secrets together: `STRIPE_SECRET_KEY` (`sk_live_...`), `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PLUS_MONTHLY`, and `STRIPE_PRICE_PLUS_YEARLY`. Test and live webhook signing secrets are different.
 - Confirm monthly and yearly Stripe Price IDs belong to the same Stripe environment and account as `STRIPE_SECRET_KEY`.
 - Never commit Stripe secret keys or expose them through `NEXT_PUBLIC_*` variables. The browser receives only a test-mode boolean and Stripe's public simulator values.
+- The Stripe publishable key is intentionally public and is the only Stripe value allowed in `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`. Embedded Checkout loads Stripe.js directly and keeps payment fields inside Stripe's iframe.
 - Restrict Firebase and Google Cloud service accounts to the minimum production roles.
 
 ## Release Gate

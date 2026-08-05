@@ -31,9 +31,9 @@ User status, content moderation, report resolution, and verification decisions r
 
 ## Subscription Resolution
 
-`subscriptions/{uid}` is server-owned. Effective entitlements resolve centrally from Stripe status plus any unexpired legacy temporary-access record. Payment does not set educator verification. Stripe events are signature-verified, deduplicated by event ID, and safe to retry; checkout redirects never grant access.
+`subscriptions/{uid}` is server-owned. Effective entitlements resolve centrally from Stripe status plus any unexpired legacy temporary-access record. Payment does not set educator verification. Stripe events are signature-verified, deduplicated by event ID, and safe to retry; checkout returns never grant access.
 
-New temporary Plus access enrollment is retired, and the former endpoint returns HTTP 410. Legacy timestamps remain server-owned so existing access expires correctly. Checkout accepts only a monthly/yearly choice and derives customer identity, prices, and redirect URLs from trusted state. Customer Portal requires an existing Stripe customer. Webhook reconciliation writes `billingEvents/{eventId}` and the subscription in one transaction; a Stripe creation-time watermark prevents delayed events from replacing newer lifecycle state.
+New temporary Plus access enrollment is retired, and the former endpoint returns HTTP 410. Legacy timestamps remain server-owned so existing access expires correctly. Embedded Checkout accepts only a monthly/yearly choice and derives customer identity, prices, and return URLs from trusted state; Stripe.js mounts the payment form in a secure iframe, so card details never pass through VistaTeacher. Customer Portal requires an existing Stripe customer. Webhook reconciliation writes `billingEvents/{eventId}` and the subscription in one transaction; a Stripe creation-time watermark prevents delayed events from replacing newer lifecycle state.
 
 ## AI Lesson Flow
 

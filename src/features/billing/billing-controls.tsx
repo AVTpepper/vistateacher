@@ -1,6 +1,7 @@
 "use client";
 
 import { CreditCard, LoaderCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -44,6 +45,7 @@ export function BillingControls({
   billing: BillingView;
   compact?: boolean;
 }) {
+  const router = useRouter();
   const [interval, setInterval] = useState<BillingInterval>(
     billing.billingInterval ?? "month",
   );
@@ -51,13 +53,13 @@ export function BillingControls({
 
   async function action(kind: "checkout" | "portal"): Promise<void> {
     setPending(kind);
+    if (kind === "checkout") {
+      router.push(`/settings/billing/checkout?interval=${interval}`);
+      return;
+    }
+
     const response = await fetch(`/api/billing/${kind}`, {
       method: "POST",
-      headers:
-        kind === "checkout"
-          ? { "Content-Type": "application/json" }
-          : undefined,
-      body: kind === "checkout" ? JSON.stringify({ interval }) : undefined,
     });
     const result = (await response.json().catch(() => null)) as {
       url?: string;

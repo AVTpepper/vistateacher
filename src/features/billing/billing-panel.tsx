@@ -96,7 +96,7 @@ export function BillingPanel({
             <p className="font-bold">Continue with VistaTeacher Plus</p>
             <p className="text-muted-foreground mt-0.5 text-xs leading-5">
               Your account is ready. Choose monthly or yearly billing below,
-              then continue to Stripe to complete payment.
+              then complete payment securely without leaving VistaTeacher.
             </p>
           </div>
         </div>

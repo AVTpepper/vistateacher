@@ -17,3 +17,16 @@ export function resolveStripeMode(
 
   return mode;
 }
+
+export function resolveStripePublishableKey(
+  mode: StripeMode,
+  publishableKey: string | undefined,
+): string {
+  const expectedPrefix = mode === "TEST" ? "pk_test_" : "pk_live_";
+
+  if (!publishableKey?.startsWith(expectedPrefix)) {
+    throw new Error(`STRIPE_MODE=${mode} requires a ${expectedPrefix} key.`);
+  }
+
+  return publishableKey;
+}
