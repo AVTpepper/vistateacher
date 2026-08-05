@@ -8,6 +8,7 @@ import {
   BillingControls,
   type BillingView,
 } from "@/features/billing/billing-controls";
+import { billingPlans } from "@/features/billing/plan-details";
 import { getCurrentAccount } from "@/lib/auth/session";
 import { getBillingState } from "@/lib/billing/server";
 
@@ -15,32 +16,6 @@ export const metadata: Metadata = {
   title: "Pricing",
   alternates: { canonical: "/pricing" },
 };
-
-const plans = [
-  {
-    name: "Community",
-    price: "$0",
-    note: "For joining the community",
-    features: [
-      "Educator profile",
-      "Up to 5 connections",
-      "10 messages per day",
-      "5 resource uploads per month",
-    ],
-  },
-  {
-    name: "Plus",
-    price: "$9",
-    note: "$79 when billed yearly",
-    features: [
-      "Unlimited connections and messages",
-      "Unlimited resource uploads",
-      "50 AI lessons per month",
-      "Lesson PDF and DOCX exports",
-      "Full analytics and Plus resources",
-    ],
-  },
-];
 
 export default async function PricingPage() {
   const account = await getCurrentAccount();
@@ -61,13 +36,13 @@ export default async function PricingPage() {
       intro="Core professional participation is included with Community access. Plus expands limits and unlocks planning, export, and analytics tools."
     >
       <div className="grid gap-6 md:grid-cols-2">
-        {plans.map((plan) => (
-          <section key={plan.name} className="bg-card rounded-lg border p-7">
+        {billingPlans.map((plan) => (
+          <section key={plan.id} className="bg-card rounded-lg border p-7">
             <h2 className="font-serif text-3xl">{plan.name}</h2>
             <p className="mt-5 font-serif text-5xl">
               {plan.price}
               <span className="text-muted-foreground font-sans text-sm">
-                {plan.name === "Plus" ? " / month" : ""}
+                {plan.priceSuffix}
               </span>
             </p>
             <p className="text-muted-foreground mt-2 text-sm">{plan.note}</p>
@@ -82,14 +57,14 @@ export default async function PricingPage() {
                 </li>
               ))}
             </ul>
-            {plan.name === "Plus" && billing ? (
+            {plan.id === "plus" && billing ? (
               <BillingControls billing={billing} compact />
             ) : (
               <Button
                 asChild
                 className="mt-8 w-full"
                 size="lg"
-                variant={plan.name === "Plus" ? "accent" : "default"}
+                variant={plan.id === "plus" ? "accent" : "default"}
               >
                 <Link href={account ? "/app" : "/sign-up"}>
                   {account ? "Current plan" : "Create account"}

@@ -8,7 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function FeedbackForm() {
+export function FeedbackForm({
+  defaultName,
+  defaultEmail,
+}: {
+  defaultName?: string;
+  defaultEmail?: string;
+} = {}) {
   const [pending, setPending] = useState(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -48,6 +54,7 @@ export function FeedbackForm() {
           <Input
             id="feedback-name"
             name="name"
+            defaultValue={defaultName}
             autoComplete="name"
             minLength={2}
             maxLength={80}
@@ -59,6 +66,7 @@ export function FeedbackForm() {
           <Input
             id="feedback-email"
             name="email"
+            defaultValue={defaultEmail}
             type="email"
             autoComplete="email"
             maxLength={254}

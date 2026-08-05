@@ -155,7 +155,7 @@ function LifecycleMessage({
   trialEnd: string | null;
 }) {
   const messages: Record<BillingView["lifecycle"], string> = {
-    free: "You are using VistaTeacher Community.",
+    free: "You are using VistaTeacher Community. Your membership fee is $0.",
     vista_trial: `Your temporary Plus access is active${trialEnd ? ` through ${trialEnd}` : ""}.`,
     active: billing.cancelAtPeriodEnd
       ? `Your Plus access continues${periodEnd ? ` through ${periodEnd}` : " until the billing period ends"}.`

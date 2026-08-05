@@ -45,9 +45,22 @@ export interface LessonDetail extends LessonSummary {
   versions: LessonVersion[];
 }
 
+export interface LessonQuotaUsage {
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+}
+
 export interface LessonWorkspace {
   plan: "free" | "plus";
-  usage: { used: number; limit: number; remaining: number };
+  usage: {
+    used: number;
+    limit: number;
+    remaining: number;
+    creations: LessonQuotaUsage;
+    refinements: LessonQuotaUsage;
+    exports: LessonQuotaUsage;
+  };
   lessons: LessonSummary[];
 }
 
@@ -57,6 +70,9 @@ export class LessonActionError extends Error {
       | "inactive"
       | "plus-required"
       | "limit-reached"
+      | "creation-limit-reached"
+      | "refinement-limit-reached"
+      | "export-limit-reached"
       | "rate-limited"
       | "not-found"
       | "not-owner"
@@ -71,6 +87,14 @@ function number(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.max(0, Math.trunc(value))
     : 0;
+}
+
+function quota(used: number, limit: number | null): LessonQuotaUsage {
+  return {
+    used,
+    limit,
+    remaining: limit === null ? null : Math.max(0, limit - used),
+  };
 }
 
 function date(value: unknown): Date | null {
@@ -144,10 +168,26 @@ export async function getLessonWorkspace(
       .get(),
   ]);
   const used = number(usage.data()?.aiLessons);
-  const limit = PLAN_ENTITLEMENTS.plus.aiLessonsPerMonth;
+  const entitlements = PLAN_ENTITLEMENTS[plan];
   return {
     plan,
-    usage: { used, limit, remaining: Math.max(0, limit - used) },
+    usage: {
+      used,
+      limit: entitlements.aiLessonsPerMonth,
+      remaining: Math.max(0, entitlements.aiLessonsPerMonth - used),
+      creations: quota(
+        number(usage.data()?.aiLessonCreations),
+        entitlements.aiLessonCreationsPerMonth,
+      ),
+      refinements: quota(
+        number(usage.data()?.aiRefinements),
+        entitlements.aiRefinementsPerMonth,
+      ),
+      exports: quota(
+        number(usage.data()?.lessonExports),
+        entitlements.lessonExportsPerMonth,
+      ),
+    },
     lessons: lessons.docs
       .filter((document) => document.data().content)
       .map((document) => summary(document.id, document.data()))
@@ -223,9 +263,15 @@ async function reserveGeneration(
       subscriptionRecord(subscription.data()),
       now,
     );
-    if (plan !== "plus") throw new LessonActionError("plus-required");
+    const entitlements = PLAN_ENTITLEMENTS[plan];
     const used = number(usage.data()?.aiLessons);
-    if (used >= PLAN_ENTITLEMENTS.plus.aiLessonsPerMonth)
+    const creations = number(usage.data()?.aiLessonCreations);
+    const refinements = number(usage.data()?.aiRefinements);
+    if (!lessonId && creations >= entitlements.aiLessonCreationsPerMonth)
+      throw new LessonActionError("creation-limit-reached");
+    if (lessonId && refinements >= entitlements.aiRefinementsPerMonth)
+      throw new LessonActionError("refinement-limit-reached");
+    if (used >= entitlements.aiLessonsPerMonth)
       throw new LessonActionError("limit-reached");
     const lastGeneration = date(usage.data()?.lastAiLessonAt);
     if (
@@ -264,6 +310,8 @@ async function reserveGeneration(
         uid,
         period,
         aiLessons: used + 1,
+        aiLessonCreations: creations + (lessonId ? 0 : 1),
+        aiRefinements: refinements + (lessonId ? 1 : 0),
         lastAiLessonAt: Timestamp.fromDate(now),
         updatedAt: FieldValue.serverTimestamp(),
       },
@@ -287,6 +335,14 @@ async function releaseGeneration(
       usageRef,
       {
         aiLessons: Math.max(0, number(usage.data()?.aiLessons) - 1),
+        aiLessonCreations: Math.max(
+          0,
+          number(usage.data()?.aiLessonCreations) - (reservation.isNew ? 1 : 0),
+        ),
+        aiRefinements: Math.max(
+          0,
+          number(usage.data()?.aiRefinements) - (reservation.isNew ? 0 : 1),
+        ),
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
@@ -446,17 +502,77 @@ export async function duplicateLesson(
   return getLesson(uid, duplicateRef.id);
 }
 
-export async function getExportableLesson(
+export interface LessonExportReservation {
+  lesson: LessonDetail;
+  period: string;
+  counted: boolean;
+}
+
+export async function reserveLessonExport(
   uid: string,
   lessonId: string,
-): Promise<LessonDetail> {
+): Promise<LessonExportReservation> {
   const db = adminDb();
-  const [user, plan, lesson] = await Promise.all([
-    db.doc(`users/${uid}`).get(),
-    currentPlan(uid),
-    getLesson(uid, lessonId),
-  ]);
-  if (user.data()?.status !== "active") throw new LessonActionError("inactive");
-  if (plan !== "plus") throw new LessonActionError("plus-required");
-  return lesson;
+  const now = new Date();
+  const period = monthKey(now);
+  const lesson = await getLesson(uid, lessonId);
+  const usageRef = db.doc(`usage/${uid}_${period}`);
+  const lessonRef = db.doc(`lessons/${lessonId}`);
+  let counted = false;
+
+  await db.runTransaction(async (transaction) => {
+    const [user, subscription, usage, currentLesson] = await transaction.getAll(
+      db.doc(`users/${uid}`),
+      db.doc(`subscriptions/${uid}`),
+      usageRef,
+      lessonRef,
+    );
+    if (user.data()?.status !== "active")
+      throw new LessonActionError("inactive");
+    if (!currentLesson.exists) throw new LessonActionError("not-found");
+    if (currentLesson.data()?.ownerId !== uid)
+      throw new LessonActionError("not-owner");
+    const plan = resolveEffectivePlan(
+      subscriptionRecord(subscription.data()),
+      now,
+    );
+    const limit = PLAN_ENTITLEMENTS[plan].lessonExportsPerMonth;
+    const used = number(usage.data()?.lessonExports);
+    if (limit !== null && used >= limit)
+      throw new LessonActionError("export-limit-reached");
+    if (limit !== null) {
+      counted = true;
+      transaction.set(
+        usageRef,
+        {
+          uid,
+          period,
+          lessonExports: used + 1,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+  });
+
+  return { lesson, period, counted };
+}
+
+export async function releaseLessonExport(
+  uid: string,
+  reservation: Pick<LessonExportReservation, "period" | "counted">,
+): Promise<void> {
+  if (!reservation.counted) return;
+  const usageRef = adminDb().doc(`usage/${uid}_${reservation.period}`);
+  await adminDb().runTransaction(async (transaction) => {
+    const usage = await transaction.get(usageRef);
+    transaction.set(
+      usageRef,
+      {
+        lessonExports: Math.max(0, number(usage.data()?.lessonExports) - 1),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
 }

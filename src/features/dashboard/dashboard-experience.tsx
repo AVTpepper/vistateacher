@@ -287,7 +287,7 @@ export function DashboardExperience({
                   aggregate activity.
                 </p>
                 <Link
-                  href="/pricing"
+                  href="/settings/billing"
                   className="text-primary mt-3 inline-block text-xs font-bold hover:underline"
                 >
                   View Plus plans
@@ -317,7 +317,7 @@ export function DashboardExperience({
             </div>
             {dashboard.plan === "free" && (
               <Link
-                href="/pricing"
+                href="/settings/billing"
                 className="bg-accent text-accent-foreground mt-5 flex h-10 items-center justify-center gap-2 rounded-lg text-xs font-bold"
               >
                 <Sparkles className="size-4" />

@@ -10,7 +10,7 @@ import {
 } from "docx";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
-import { getExportableLesson } from "@/lib/lessons/server";
+import { releaseLessonExport, reserveLessonExport } from "@/lib/lessons/server";
 import type { LessonPlanInput } from "@/schemas/lesson";
 
 export interface LessonExport {
@@ -146,18 +146,23 @@ export async function createLessonExport(
   lessonId: string,
   format: "pdf" | "docx",
 ): Promise<LessonExport> {
-  const lesson = await getExportableLesson(uid, lessonId);
-  const baseName = safeFileName(lesson.title);
-  return format === "pdf"
-    ? {
-        bytes: await createPdf(lesson.content),
-        contentType: "application/pdf",
-        fileName: `${baseName}.pdf`,
-      }
-    : {
-        bytes: await createDocx(lesson.content),
-        contentType:
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        fileName: `${baseName}.docx`,
-      };
+  const reservation = await reserveLessonExport(uid, lessonId);
+  try {
+    const baseName = safeFileName(reservation.lesson.title);
+    return format === "pdf"
+      ? {
+          bytes: await createPdf(reservation.lesson.content),
+          contentType: "application/pdf",
+          fileName: `${baseName}.pdf`,
+        }
+      : {
+          bytes: await createDocx(reservation.lesson.content),
+          contentType:
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          fileName: `${baseName}.docx`,
+        };
+  } catch (error) {
+    await releaseLessonExport(uid, reservation);
+    throw error;
+  }
 }

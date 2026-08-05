@@ -70,7 +70,11 @@ describe("entitlement limits", () => {
     const entitlements = getUserEntitlements(null, now);
 
     expect(entitlements.maxConnections).toBe(5);
-    expect(entitlements.aiLessonsPerMonth).toBe(0);
+    expect(entitlements.aiLessonsPerMonth).toBe(3);
+    expect(entitlements.aiLessonCreationsPerMonth).toBe(1);
+    expect(entitlements.aiRefinementsPerMonth).toBe(2);
+    expect(entitlements.lessonExportsPerMonth).toBe(2);
+    expect(entitlements.resourceDownloadsPerMonth).toBe(5);
   });
 
   it("treats null limits as unlimited", () => {

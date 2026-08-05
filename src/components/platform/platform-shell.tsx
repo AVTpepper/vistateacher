@@ -8,6 +8,7 @@ import {
   GraduationCap,
   Home,
   LayoutDashboard,
+  LifeBuoy,
   Mail,
   Menu,
   MessageSquare,
@@ -42,6 +43,7 @@ const navigation = [
   },
   { label: "Messages", icon: Mail, href: "/messages" },
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Help & feedback", icon: LifeBuoy, href: "/support" },
 ];
 
 interface PlatformShellProps {
@@ -160,10 +162,11 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             AI tools and expanded limits.
           </p>
           <Link
-            href="/pricing"
+            href="/settings/billing"
+            onClick={() => setMobileOpen(false)}
             className="bg-accent mt-2.5 block rounded-lg py-1.5 text-center text-xs font-bold text-white"
           >
-            See plans
+            Compare plans
           </Link>
         </div>
       )}

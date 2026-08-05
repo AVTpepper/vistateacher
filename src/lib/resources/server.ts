@@ -18,11 +18,7 @@ import type {
   ResourceReviewInput,
   ResourceType,
 } from "@/schemas/resource";
-import type {
-  Plan,
-  SubscriptionRecord,
-  SubscriptionStatus,
-} from "@/types/models";
+import type { SubscriptionRecord, SubscriptionStatus } from "@/types/models";
 
 const RESOURCE_LIMIT = 100;
 
@@ -48,7 +44,8 @@ export interface ResourceDetail extends ResourceSummary {
   fileSize: number;
   ownedByViewer: boolean;
   canDownload: boolean;
-  downloadBlockReason: "plus-required" | "inactive" | null;
+  downloadBlockReason:
+    "plus-required" | "download-limit-reached" | "inactive" | null;
 }
 
 export interface ResourceReview {
@@ -70,6 +67,7 @@ export class ResourceActionError extends Error {
       | "not-ready"
       | "invalid-upload"
       | "plus-required"
+      | "download-limit-reached"
       | "own-review",
   ) {
     super(code);
@@ -163,11 +161,6 @@ function summary(
     ratingCount: number(data.ratingCount),
     createdAt: timestamp(data.createdAt),
   };
-}
-
-async function effectivePlan(uid: string): Promise<Plan> {
-  const subscription = await adminDb().doc(`subscriptions/${uid}`).get();
-  return resolveEffectivePlan(subscriptionRecord(subscription.data()));
 }
 
 export async function reserveResourceUpload(
@@ -393,11 +386,13 @@ export async function getResourceDetail(
     resourceSnapshot,
     viewerSnapshot,
     subscriptionSnapshot,
+    usageSnapshot,
     reviewSnapshots,
   ] = await Promise.all([
     db.doc(`resources/${resourceId}`).get(),
     db.doc(`users/${viewerUid}`).get(),
     db.doc(`subscriptions/${viewerUid}`).get(),
+    db.doc(`usage/${viewerUid}_${periodKey()}`).get(),
     db
       .collection("resourceReviews")
       .where("resourceId", "==", resourceId)
@@ -431,6 +426,7 @@ export async function getResourceDetail(
     plan,
     accessTier: data.accessTier === "plus" ? "plus" : "free",
     ownsResource,
+    downloadsThisMonth: number(usageSnapshot.data()?.resourceDownloads),
   });
   return {
     resource: {
@@ -515,19 +511,29 @@ export async function downloadResource(
   resourceId: string,
 ): Promise<{ bytes: Buffer; fileName: string; contentType: string }> {
   const db = adminDb();
-  const [resource, user, plan] = await Promise.all([
-    db.doc(`resources/${resourceId}`).get(),
+  const now = new Date();
+  const period = periodKey(now);
+  const resourceRef = db.doc(`resources/${resourceId}`);
+  const usageRef = db.doc(`usage/${uid}_${period}`);
+  const [resource, user, subscription, usage] = await Promise.all([
+    resourceRef.get(),
     db.doc(`users/${uid}`).get(),
-    effectivePlan(uid),
+    db.doc(`subscriptions/${uid}`).get(),
+    usageRef.get(),
   ]);
   if (!resource.exists || resource.data()?.status !== "active")
     throw new ResourceActionError("not-found");
   const data = resource.data()!;
+  const plan = resolveEffectivePlan(
+    subscriptionRecord(subscription.data()),
+    now,
+  );
   const decision = canDownloadResource({
     status: user.data()?.status ?? "deleted",
     plan,
     accessTier: data.accessTier === "plus" ? "plus" : "free",
     ownsResource: data.authorId === uid,
+    downloadsThisMonth: number(usage.data()?.resourceDownloads),
   });
   if (!decision.allowed) throw new ResourceActionError(decision.reason);
   let bytes: Buffer;
@@ -539,7 +545,49 @@ export async function downloadResource(
   } catch {
     throw new ResourceActionError("not-ready");
   }
-  await resource.ref.update({ downloadCount: FieldValue.increment(1) });
+  await db.runTransaction(async (transaction) => {
+    const [currentResource, currentUser, currentSubscription, currentUsage] =
+      await transaction.getAll(
+        resourceRef,
+        db.doc(`users/${uid}`),
+        db.doc(`subscriptions/${uid}`),
+        usageRef,
+      );
+    if (!currentResource.exists || currentResource.data()?.status !== "active")
+      throw new ResourceActionError("not-found");
+    const currentPlan = resolveEffectivePlan(
+      subscriptionRecord(currentSubscription.data()),
+      now,
+    );
+    const ownsResource = currentResource.data()?.authorId === uid;
+    const downloads = number(currentUsage.data()?.resourceDownloads);
+    const currentDecision = canDownloadResource({
+      status: currentUser.data()?.status ?? "deleted",
+      plan: currentPlan,
+      accessTier:
+        currentResource.data()?.accessTier === "plus" ? "plus" : "free",
+      ownsResource,
+      downloadsThisMonth: downloads,
+    });
+    if (!currentDecision.allowed)
+      throw new ResourceActionError(currentDecision.reason);
+    const limit = PLAN_ENTITLEMENTS[currentPlan].resourceDownloadsPerMonth;
+    if (!ownsResource && limit !== null) {
+      transaction.set(
+        usageRef,
+        {
+          uid,
+          period,
+          resourceDownloads: downloads + 1,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+    transaction.update(resourceRef, {
+      downloadCount: FieldValue.increment(1),
+    });
+  });
   return {
     bytes,
     fileName: String(data.fileName),

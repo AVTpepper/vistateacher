@@ -20,6 +20,10 @@ export function resourceErrorResponse(error: unknown): NextResponse | null {
       400,
     ],
     "plus-required": ["A Plus plan is required for this download.", 403],
+    "download-limit-reached": [
+      "You have used all five Community resource downloads this month.",
+      429,
+    ],
     "own-review": ["You cannot review your own resource.", 400],
   } as const;
   const [message, status] = responses[error.code];

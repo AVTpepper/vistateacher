@@ -183,8 +183,8 @@ export function LandingPage() {
                 features={[
                   "Professional educator profile",
                   "Community discovery",
-                  "Resource and forum access",
-                  "Basic messaging limits",
+                  "5 resource downloads each month",
+                  "1 AI lesson with 2 refinements",
                 ]}
               />
               <Plan
@@ -194,9 +194,9 @@ export function LandingPage() {
                 featured
                 features={[
                   "Expanded connections and messaging",
-                  "AI lesson builder quota",
-                  "Unlimited resource uploads",
-                  "Exports and full analytics",
+                  "50 AI generations each month",
+                  "Unlimited resource uploads and downloads",
+                  "Unlimited exports and full analytics",
                 ]}
               />
             </div>

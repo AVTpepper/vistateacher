@@ -9,7 +9,19 @@ export function lessonErrorResponse(error: unknown): NextResponse | null {
   const responses = {
     inactive: ["Your account cannot perform this action.", 403],
     "plus-required": ["AI lessons require a Plus membership.", 403],
-    "limit-reached": ["You have used all 50 AI lessons for this month.", 429],
+    "limit-reached": ["You have used all AI generations for this month.", 429],
+    "creation-limit-reached": [
+      "You have used all new AI lessons for this month.",
+      429,
+    ],
+    "refinement-limit-reached": [
+      "You have used all AI refinements for this month.",
+      429,
+    ],
+    "export-limit-reached": [
+      "You have used all lesson exports for this month.",
+      429,
+    ],
     "rate-limited": ["Wait a few seconds before generating again.", 429],
     "not-found": ["Lesson not found.", 404],
     "not-owner": ["You do not own this lesson.", 403],

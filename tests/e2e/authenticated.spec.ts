@@ -43,6 +43,29 @@ test("signs in a seeded educator and protects platform workflows", async ({
 
   await expect(page.getByRole("tab", { name: "All Posts" })).toBeVisible();
   await expectNoPageOverflow(page);
+  await expect(
+    page.getByRole("link", { name: "Compare plans" }),
+  ).toHaveAttribute("href", "/settings/billing");
+  await expect(
+    page.getByRole("link", { name: "Help & feedback" }),
+  ).toHaveAttribute("href", "/support");
+
+  await page.goto("/settings/billing");
+  await expect(page.getByText("$0 membership fee")).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Choose the access that fits your work",
+    }),
+  ).toBeVisible();
+  await expectNoPageOverflow(page);
+
+  await page.goto("/support");
+  await expect(
+    page.getByRole("heading", { name: "Help & feedback" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Name")).toHaveValue("Alex Morgan");
+  await expect(page.getByLabel("Email")).toHaveValue("community@vista.local");
+  await expectNoPageOverflow(page);
 
   await page.goto("/resources");
   await expect(

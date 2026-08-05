@@ -37,11 +37,11 @@ New temporary Plus access enrollment is retired, and the former endpoint returns
 
 ## AI Lesson Flow
 
-The server verifies session/status, validates bounded source parameters, resolves Plus access, and reserves monthly quota plus lesson generation state in one Admin transaction. A trusted timestamp on the monthly usage record provides a cross-instance generation cooldown. The browser never receives an OpenAI credential.
+The server verifies session/status, validates bounded source parameters, resolves plan allowances, and reserves monthly creation or refinement quota plus lesson generation state in one Admin transaction. Community receives one creation and two refinements per month; Plus retains fifty total generations. A trusted timestamp on the monthly usage record provides a cross-instance generation cooldown. The browser never receives an OpenAI credential.
 
 OpenAI Responses structured output uses the shared Zod lesson schema. One repair attempt is allowed. Successful generation atomically updates the current lesson and creates its immutable numbered version; failed generation removes the reservation or restores the previous ready version and reverses quota. Tests inject a deterministic server-only provider and never call OpenAI.
 
-Manual edits and duplication also create immutable versions transactionally. PDF and DOCX files are generated in memory by authenticated routes that re-check active status, ownership, and current Plus access at download time.
+Manual edits and duplication also create immutable versions transactionally. PDF and DOCX files are generated in memory by authenticated routes that re-check active status, ownership, and monthly export allowance; Community receives two exports per month and Plus is unlimited.
 
 ## Notifications and Analytics
 

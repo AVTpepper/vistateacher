@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Lock, Star, Trash2 } from "lucide-react";
+import { Download, LoaderCircle, Lock, Star, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -17,6 +17,8 @@ export function ResourceDetailActions({
   const [rating, setRating] = useState(5);
   const [review, setReview] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadLimitReached, setDownloadLimitReached] = useState(false);
 
   async function submitReview() {
     setSubmitting(true);
@@ -46,24 +48,68 @@ export function ResourceDetailActions({
     router.refresh();
   }
 
+  async function download() {
+    setDownloading(true);
+    try {
+      const response = await fetch(`/api/resources/${resource.id}/download`);
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as {
+          code?: string;
+          error?: string;
+        } | null;
+        if (result?.code === "download-limit-reached")
+          setDownloadLimitReached(true);
+        throw new Error(result?.error ?? "We couldn't download this resource.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = resource.fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Resource downloaded.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Download failed.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  const canDownload = resource.canDownload && !downloadLimitReached;
+  const limitReached =
+    resource.downloadBlockReason === "download-limit-reached" ||
+    downloadLimitReached;
+
   return (
     <>
       <div className="flex flex-wrap gap-2">
-        {resource.canDownload ? (
-          <a
-            href={`/api/resources/${resource.id}/download`}
+        {canDownload ? (
+          <button
+            type="button"
+            onClick={() => void download()}
+            disabled={downloading}
             className="bg-primary text-primary-foreground flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-bold"
           >
-            <Download aria-hidden="true" className="size-4" />
+            {downloading ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-4 animate-spin"
+              />
+            ) : (
+              <Download aria-hidden="true" className="size-4" />
+            )}
             Download
-          </a>
+          </button>
         ) : (
           <Link
-            href="/pricing"
+            href="/settings/billing"
             className="bg-accent text-accent-foreground flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-bold"
           >
             <Lock aria-hidden="true" className="size-4" />
-            Upgrade to download
+            {limitReached
+              ? "Monthly download limit reached"
+              : "Upgrade to download"}
           </Link>
         )}
         {resource.ownedByViewer && (

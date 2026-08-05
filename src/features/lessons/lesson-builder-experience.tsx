@@ -13,7 +13,6 @@ import {
   Lightbulb,
   ListChecks,
   LoaderCircle,
-  Lock,
   Pencil,
   RotateCw,
   Save,
@@ -24,7 +23,6 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -91,41 +89,6 @@ async function resultJson<T>(response: Response): Promise<T> {
   if (!response.ok)
     throw new Error(result?.error ?? "The request could not be completed.");
   return result as T;
-}
-
-function PlusGate() {
-  return (
-    <div className="mx-auto max-w-2xl py-14 text-center sm:py-20">
-      <div className="bg-accent/10 mx-auto mb-6 grid size-20 place-items-center rounded-2xl">
-        <Lock aria-hidden="true" className="text-accent size-9" />
-      </div>
-      <h1 className="font-serif text-3xl">AI Lesson Builder</h1>
-      <p className="text-muted-foreground mx-auto mt-3 max-w-md text-sm leading-6">
-        Complete lesson plans with standards, differentiation, assessments, and
-        classroom-ready exports.
-      </p>
-      <div className="mx-auto mt-7 grid max-w-lg gap-3 text-left text-sm sm:grid-cols-2">
-        {[
-          "50 lesson plans each month",
-          "Structured version history",
-          "Built-in differentiation",
-          "PDF and DOCX exports",
-        ].map((feature) => (
-          <span key={feature} className="flex items-center gap-2">
-            <Sparkles aria-hidden="true" className="text-accent size-4" />
-            {feature}
-          </span>
-        ))}
-      </div>
-      <Link
-        href="/pricing"
-        className="bg-accent text-accent-foreground mt-8 inline-flex h-11 items-center gap-2 rounded-lg px-6 text-sm font-bold"
-      >
-        <Sparkles aria-hidden="true" className="size-4" />
-        Upgrade to Plus
-      </Link>
-    </div>
-  );
 }
 
 function ListField({
@@ -337,12 +300,18 @@ function LessonDisplay({
   onEdit,
   onRegenerate,
   onDuplicate,
+  onExport,
+  canRegenerate,
+  canExport,
 }: {
   lesson: LessonDetail;
   working: boolean;
   onEdit: () => void;
   onRegenerate: () => void;
   onDuplicate: () => void;
+  onExport: (format: "pdf" | "docx") => void;
+  canRegenerate: boolean;
+  canExport: boolean;
 }) {
   const [expanded, setExpanded] = useState("objectives");
   const content = lesson.content;
@@ -491,20 +460,24 @@ function LessonDisplay({
               <Copy className="size-3" />
               Duplicate
             </button>
-            <a
-              href={`/api/ai-lessons/${lesson.id}/export/pdf`}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25"
+            <button
+              type="button"
+              onClick={() => onExport("pdf")}
+              disabled={working || !canExport}
+              className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25 disabled:opacity-50"
             >
               <Download className="size-3" />
               PDF
-            </a>
-            <a
-              href={`/api/ai-lessons/${lesson.id}/export/docx`}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25"
+            </button>
+            <button
+              type="button"
+              onClick={() => onExport("docx")}
+              disabled={working || !canExport}
+              className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25 disabled:opacity-50"
             >
               <Download className="size-3" />
               DOCX
-            </a>
+            </button>
           </div>
         </div>
       </div>
@@ -561,7 +534,7 @@ function LessonDisplay({
         <button
           type="button"
           onClick={onRegenerate}
-          disabled={working}
+          disabled={working || !canRegenerate}
           className="border-primary text-primary flex h-9 items-center justify-center gap-2 rounded-lg border px-4 text-xs font-bold disabled:opacity-50"
         >
           {working ? (
@@ -589,8 +562,6 @@ export function LessonBuilderExperience({
   const [working, setWorking] = useState(false);
   const [editing, setEditing] = useState(false);
 
-  if (workspace.plan !== "plus") return <PlusGate />;
-
   async function selectLesson(lessonId: string) {
     if (!lessonId) return setLesson(null);
     setWorking(true);
@@ -610,7 +581,10 @@ export function LessonBuilderExperience({
     }
   }
 
-  function storeLesson(next: LessonDetail, consumesQuota = false) {
+  function storeLesson(
+    next: LessonDetail,
+    consumesQuota: "creation" | "refinement" | null = null,
+  ) {
     setLesson(next);
     setSource(next.source);
     setWorkspace((current) => ({
@@ -620,6 +594,28 @@ export function LessonBuilderExperience({
             ...current.usage,
             used: current.usage.used + 1,
             remaining: Math.max(0, current.usage.remaining - 1),
+            creations:
+              consumesQuota === "creation"
+                ? {
+                    ...current.usage.creations,
+                    used: current.usage.creations.used + 1,
+                    remaining:
+                      current.usage.creations.remaining === null
+                        ? null
+                        : Math.max(0, current.usage.creations.remaining - 1),
+                  }
+                : current.usage.creations,
+            refinements:
+              consumesQuota === "refinement"
+                ? {
+                    ...current.usage.refinements,
+                    used: current.usage.refinements.used + 1,
+                    remaining:
+                      current.usage.refinements.remaining === null
+                        ? null
+                        : Math.max(0, current.usage.refinements.remaining - 1),
+                  }
+                : current.usage.refinements,
           }
         : current.usage,
       lessons: [
@@ -641,7 +637,7 @@ export function LessonBuilderExperience({
           body: JSON.stringify(source),
         }),
       );
-      storeLesson(generated, true);
+      storeLesson(generated, "creation");
       toast.success("Lesson generated.");
     } catch (error) {
       toast.error(
@@ -663,7 +659,7 @@ export function LessonBuilderExperience({
           body: name === "regenerate" ? JSON.stringify({ source }) : undefined,
         }),
       );
-      storeLesson(next, name === "regenerate");
+      storeLesson(next, name === "regenerate" ? "refinement" : null);
       toast.success(
         name === "regenerate"
           ? "New lesson version generated."
@@ -697,6 +693,54 @@ export function LessonBuilderExperience({
     }
   }
 
+  async function exportLesson(format: "pdf" | "docx") {
+    if (!lesson) return;
+    setWorking(true);
+    try {
+      const response = await fetch(
+        `/api/ai-lessons/${lesson.id}/export/${format}`,
+      );
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(result?.error ?? "The lesson could not be exported.");
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") ?? "";
+      const fileName =
+        disposition.match(/filename="([^"]+)"/)?.[1] ?? `lesson-plan.${format}`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+      setWorkspace((current) => ({
+        ...current,
+        usage: {
+          ...current.usage,
+          exports:
+            current.usage.exports.limit === null
+              ? current.usage.exports
+              : {
+                  ...current.usage.exports,
+                  used: current.usage.exports.used + 1,
+                  remaining: Math.max(
+                    0,
+                    (current.usage.exports.remaining ?? 0) - 1,
+                  ),
+                },
+        },
+      }));
+      toast.success(`${format.toUpperCase()} downloaded.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Export failed.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
   const fieldClass =
     "bg-muted h-10 w-full rounded-lg border-0 px-3 text-sm outline-none";
   return (
@@ -706,27 +750,36 @@ export function LessonBuilderExperience({
           <div className="flex items-center gap-2">
             <h1 className="font-serif text-3xl">AI Lesson Builder</h1>
             <span className="bg-accent text-accent-foreground rounded px-2 py-0.5 text-[10px] font-bold">
-              PLUS
+              {workspace.plan === "plus" ? "PLUS" : "COMMUNITY"}
             </span>
           </div>
           <p className="text-muted-foreground mt-1 text-sm">
             Structured plans for the classroom.
           </p>
         </div>
-        <div className="w-full sm:w-48">
-          <div className="mb-1.5 flex justify-between text-xs">
-            <span className="font-bold">
-              {workspace.usage.used} / {workspace.usage.limit}
-            </span>
-            <span className="text-muted-foreground">this month</span>
-          </div>
-          <div className="bg-muted h-1.5 overflow-hidden rounded-full">
-            <div
-              className="bg-primary h-full rounded-full"
-              style={{
-                width: `${Math.min(100, (workspace.usage.used / workspace.usage.limit) * 100)}%`,
-              }}
-            />
+        <div className="w-full sm:w-auto">
+          <div className="flex flex-wrap gap-2 text-xs">
+            {workspace.plan === "free" ? (
+              [
+                ["Lessons", workspace.usage.creations],
+                ["Refinements", workspace.usage.refinements],
+                ["Exports", workspace.usage.exports],
+              ].map(([label, usage]) => (
+                <span
+                  key={String(label)}
+                  className="bg-muted rounded-lg px-3 py-2"
+                >
+                  <strong>{String(label)}</strong>{" "}
+                  {(usage as typeof workspace.usage.creations).used}/
+                  {(usage as typeof workspace.usage.creations).limit}
+                </span>
+              ))
+            ) : (
+              <span className="bg-muted rounded-lg px-3 py-2">
+                <strong>{workspace.usage.used}</strong> /{" "}
+                {workspace.usage.limit} AI generations this month
+              </span>
+            )}
           </div>
         </div>
       </header>
@@ -883,6 +936,7 @@ export function LessonBuilderExperience({
               disabled={
                 working ||
                 workspace.usage.remaining === 0 ||
+                workspace.usage.creations.remaining === 0 ||
                 source.topic.trim().length < 3
               }
               className="bg-accent text-accent-foreground flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold disabled:opacity-50"
@@ -929,6 +983,12 @@ export function LessonBuilderExperience({
               onEdit={() => setEditing(true)}
               onRegenerate={() => void action("regenerate")}
               onDuplicate={() => void action("duplicate")}
+              onExport={(format) => void exportLesson(format)}
+              canRegenerate={
+                workspace.usage.remaining > 0 &&
+                workspace.usage.refinements.remaining !== 0
+              }
+              canExport={workspace.usage.exports.remaining !== 0}
             />
           )}
         </section>

@@ -33,6 +33,7 @@ import {
   setPostLiked,
 } from "@/lib/feed/server";
 import {
+  downloadResource,
   reserveResourceUpload,
   ResourceActionError,
   reviewResource,
@@ -60,6 +61,7 @@ import {
   regenerateLesson,
   updateLesson,
 } from "@/lib/lessons/server";
+import { createLessonExport } from "@/lib/lessons/export";
 import {
   BillingError,
   reconcileBillingEvent,
@@ -492,7 +494,7 @@ describe("Firestore rules", () => {
     );
   });
 
-  it("enforces AI entitlement and monthly quota transactionally", async () => {
+  it("enforces Community and Plus AI quotas transactionally", async () => {
     process.env.AI_PROVIDER = "MOCK";
     await seedNetworkUser("free-teacher");
     const source = {
@@ -505,8 +507,48 @@ describe("Firestore rules", () => {
       studentNeeds: "",
       teachingStyle: "inquiry" as const,
     };
+    const communityLesson = await createLesson("free-teacher", source);
     await expect(createLesson("free-teacher", source)).rejects.toMatchObject({
-      code: "plus-required",
+      code: "creation-limit-reached",
+    } satisfies Partial<LessonActionError>);
+
+    for (let index = 0; index < 2; index += 1) {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(
+          doc(
+            context.firestore(),
+            "usage",
+            `free-teacher_${new Date().toISOString().slice(0, 7)}`,
+          ),
+          { lastAiLessonAt: new Date(0) },
+          { merge: true },
+        );
+      });
+      await regenerateLesson("free-teacher", communityLesson.id);
+    }
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(
+          context.firestore(),
+          "usage",
+          `free-teacher_${new Date().toISOString().slice(0, 7)}`,
+        ),
+        { lastAiLessonAt: new Date(0) },
+        { merge: true },
+      );
+    });
+    await expect(
+      regenerateLesson("free-teacher", communityLesson.id),
+    ).rejects.toMatchObject({
+      code: "refinement-limit-reached",
+    } satisfies Partial<LessonActionError>);
+
+    await createLessonExport("free-teacher", communityLesson.id, "pdf");
+    await createLessonExport("free-teacher", communityLesson.id, "docx");
+    await expect(
+      createLessonExport("free-teacher", communityLesson.id, "pdf"),
+    ).rejects.toMatchObject({
+      code: "export-limit-reached",
     } satisfies Partial<LessonActionError>);
 
     await seedNetworkUser("plus-teacher");
@@ -855,6 +897,55 @@ describe("Firestore rules", () => {
         { authorId: "author", status: "active", moderationStatus: "approved" },
       ),
     );
+  });
+
+  it("limits Community resource downloads but exempts the owner", async () => {
+    await seedNetworkUser("author");
+    await seedNetworkUser("downloader");
+    const filePath = "resources/author/download-test/resource.pdf";
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "resources", "download-test"), {
+        authorId: "author",
+        status: "uploading",
+        moderationStatus: "pending",
+        accessTier: "free",
+        filePath,
+        fileName: "resource.pdf",
+        fileType: "application/pdf",
+        fileSize: 4,
+        downloadCount: 0,
+      });
+      await setDoc(
+        doc(
+          context.firestore(),
+          "usage",
+          `downloader_${new Date().toISOString().slice(0, 7)}`,
+        ),
+        { uid: "downloader", resourceDownloads: 5 },
+      );
+    });
+    await uploadBytes(
+      ref(testEnv.authenticatedContext("author").storage(), filePath),
+      new Uint8Array([1, 2, 3, 4]),
+      { contentType: "application/pdf" },
+    );
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), "resources", "download-test"), {
+        status: "active",
+        moderationStatus: "approved",
+      });
+    });
+
+    await expect(
+      downloadResource("downloader", "download-test"),
+    ).rejects.toMatchObject({
+      code: "download-limit-reached",
+    } satisfies Partial<ResourceActionError>);
+    await expect(
+      downloadResource("author", "download-test"),
+    ).resolves.toMatchObject({
+      fileName: "resource.pdf",
+    });
   });
 
   it("upserts one review per educator and maintains rating aggregates", async () => {
