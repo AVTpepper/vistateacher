@@ -79,8 +79,32 @@ export async function getProfileView(
 
 export async function getPrivateUser(
   uid: string,
+  email: string,
 ): Promise<PrivateUserDocument> {
-  const snapshot = await adminDb().doc(`userPrivate/${uid}`).get();
+  const db = adminDb();
+  const reference = db.doc(`userPrivate/${uid}`);
+  let snapshot = await reference.get();
+  if (!snapshot.exists) {
+    const now = FieldValue.serverTimestamp();
+    await reference
+      .create({
+        email,
+        contactDetails: {},
+        privacySettings: { shareContactInfo: false },
+        notificationSettings: { email: true, inApp: true },
+        accountDeletion: { requestedAt: null },
+        createdAt: now,
+        updatedAt: now,
+      })
+      .catch((error: unknown) => {
+        const code =
+          typeof error === "object" && error && "code" in error
+            ? Number(error.code)
+            : 0;
+        if (code !== 6) throw error;
+      });
+    snapshot = await reference.get();
+  }
   return privateUserDocumentSchema.parse(snapshot.data());
 }
 

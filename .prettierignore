@@ -6,4 +6,5 @@ figma-design
 node_modules
 playwright-report
 pnpm-lock.yaml
+src/app/icon.svg
 test-results

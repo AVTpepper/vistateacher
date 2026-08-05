@@ -50,69 +50,91 @@ export async function POST(request: NextRequest) {
 
   const input = parsed.data;
   const db = adminDb();
-  await db.runTransaction(async (transaction) => {
-    const profileRef = db.doc(`users/${account.uid}`);
-    if ((await transaction.get(profileRef)).exists) return;
+  try {
+    await db.runTransaction(async (transaction) => {
+      const profileRef = db.doc(`users/${account.uid}`);
+      const privateRef = db.doc(`userPrivate/${account.uid}`);
+      const subscriptionRef = db.doc(`subscriptions/${account.uid}`);
+      const [profile, privateUser, subscription] = await Promise.all([
+        transaction.get(profileRef),
+        transaction.get(privateRef),
+        transaction.get(subscriptionRef),
+      ]);
+      const now = FieldValue.serverTimestamp();
 
-    const now = FieldValue.serverTimestamp();
-    transaction.set(profileRef, {
-      uid: account.uid,
-      displayName: input.displayName,
-      displayNameLower: normalizeSearchText(input.displayName),
-      photoURL: account.photoURL,
-      coverImageURL: null,
-      role: "educator",
-      gradeLevel: input.gradeLevel,
-      subjects: input.subjects,
-      country: input.country,
-      city: input.city,
-      cityLower: normalizeSearchText(input.city),
-      school: input.school,
-      schoolLower: normalizeSearchText(input.school),
-      yearsOfExperience: input.yearsOfExperience,
-      bio: input.bio,
-      website: null,
-      interests: input.interests,
-      searchKeywords: createSearchKeywords([
-        input.displayName,
-        input.city,
-        input.school,
-        ...input.subjects,
-        ...input.interests,
-      ]),
-      isVerified: false,
-      followerCount: 0,
-      followingCount: 0,
-      resourceCount: 0,
-      postCount: 0,
-      status: "active",
-      createdAt: now,
-      updatedAt: now,
+      if (!profile.exists) {
+        transaction.set(profileRef, {
+          uid: account.uid,
+          displayName: input.displayName,
+          displayNameLower: normalizeSearchText(input.displayName),
+          photoURL: account.photoURL,
+          coverImageURL: null,
+          role: "educator",
+          gradeLevel: input.gradeLevel,
+          subjects: input.subjects,
+          country: input.country,
+          city: input.city,
+          cityLower: normalizeSearchText(input.city),
+          school: input.school,
+          schoolLower: normalizeSearchText(input.school),
+          yearsOfExperience: input.yearsOfExperience,
+          bio: input.bio,
+          website: null,
+          interests: input.interests,
+          searchKeywords: createSearchKeywords([
+            input.displayName,
+            input.city,
+            input.school,
+            ...input.subjects,
+            ...input.interests,
+          ]),
+          isVerified: false,
+          followerCount: 0,
+          followingCount: 0,
+          resourceCount: 0,
+          postCount: 0,
+          status: "active",
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      if (!privateUser.exists) {
+        transaction.set(privateRef, {
+          email: account.email,
+          contactDetails: {},
+          privacySettings: { shareContactInfo: false },
+          notificationSettings: { email: true, inApp: true },
+          accountDeletion: { requestedAt: null },
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      if (!subscription.exists) {
+        transaction.set(subscriptionRef, {
+          plan: "free",
+          status: "free",
+          stripeCustomerId: null,
+          stripeSubscriptionId: null,
+          stripePriceId: null,
+          billingInterval: null,
+          currentPeriodEnd: null,
+          cancelAtPeriodEnd: false,
+          trialStartedAt: null,
+          trialEndsAt: null,
+          trialConsumed: false,
+          updatedAt: now,
+        });
+      }
     });
-    transaction.set(db.doc(`userPrivate/${account.uid}`), {
-      email: account.email,
-      contactDetails: {},
-      privacySettings: { shareContactInfo: false },
-      notificationSettings: { email: true, inApp: true },
-      accountDeletion: { requestedAt: null },
-      createdAt: now,
-      updatedAt: now,
-    });
-    transaction.set(db.doc(`subscriptions/${account.uid}`), {
-      plan: "free",
-      status: "free",
-      stripeCustomerId: null,
-      stripeSubscriptionId: null,
-      stripePriceId: null,
-      billingInterval: null,
-      currentPeriodEnd: null,
-      cancelAtPeriodEnd: false,
-      trialStartedAt: null,
-      trialEndsAt: null,
-      trialConsumed: false,
-      updatedAt: now,
-    });
-  });
+  } catch (error) {
+    console.error("Onboarding account setup failed", error);
+    return NextResponse.json(
+      {
+        error: "We couldn't finish setting up your account. Please try again.",
+      },
+      { status: 503 },
+    );
+  }
 
   return NextResponse.json({ next: "/app" });
 }

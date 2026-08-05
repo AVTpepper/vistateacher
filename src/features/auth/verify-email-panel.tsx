@@ -4,7 +4,7 @@ import { sendEmailVerification } from "firebase/auth";
 import { CheckCircle2, LoaderCircle, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,11 @@ export function VerifyEmailPanel() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [requiresSignIn, setRequiresSignIn] = useState(false);
+  const checkInProgress = useRef(false);
 
   async function checkVerification(silent = false) {
+    if (checkInProgress.current) return;
+    checkInProgress.current = true;
     const { auth } = getFirebaseClient();
     setIsChecking(true);
     setError(null);
@@ -31,6 +34,7 @@ export function VerifyEmailPanel() {
       );
       setRequiresSignIn(true);
       setIsChecking(false);
+      checkInProgress.current = false;
       return;
     }
 
@@ -71,12 +75,28 @@ export function VerifyEmailPanel() {
       }
       router.push(result.next);
       router.refresh();
-    } catch {
-      setError(
-        "We couldn't confirm this session. Open the verification link in the same browser, then sign in again.",
-      );
+    } catch (caught) {
+      const code =
+        typeof caught === "object" && caught && "code" in caught
+          ? String(caught.code)
+          : "";
+      if (
+        code.includes("user-token-expired") ||
+        code.includes("user-disabled") ||
+        code.includes("user-not-found") ||
+        code.includes("invalid-user-token")
+      ) {
+        await auth.signOut().catch(() => undefined);
+        setNotice("Your verification session expired. Sign in to continue.");
+        setRequiresSignIn(true);
+      } else {
+        setError(
+          "We couldn't confirm this session. Open the verification link in the same browser, then sign in again.",
+        );
+      }
     } finally {
       setIsChecking(false);
+      checkInProgress.current = false;
     }
   }
 

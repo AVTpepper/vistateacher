@@ -50,6 +50,7 @@ interface PlatformShellProps {
     displayName: string;
     photoURL: string | null;
     role: UserRole;
+    onboarded: boolean;
     subject: string;
   };
   plan: Plan;
@@ -60,6 +61,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const profileHref = account.onboarded ? "/profile" : "/onboarding";
 
   const sidebar = (
     <div className="flex h-full flex-col">
@@ -167,7 +169,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
       )}
       <div className="border-sidebar-border border-t p-3">
         <Link
-          href={`/profile/${account.uid}`}
+          href={profileHref}
           className={cn(
             "flex items-center gap-3 rounded-xl p-2 hover:bg-white/8",
             collapsed && "justify-center",
@@ -283,7 +285,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
           >
             <Bell aria-hidden="true" className="size-[18px]" />
           </Link>
-          <Link href={`/profile/${account.uid}`} aria-label="My profile">
+          <Link href={profileHref} aria-label="My profile">
             <UserAvatar
               name={account.displayName}
               photoURL={account.photoURL}

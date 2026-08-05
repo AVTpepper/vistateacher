@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Privacy and account" };
 
 export default async function SettingsPage() {
   const account = await requireCurrentAccount();
-  const privateUser = await getPrivateUser(account.uid);
+  const privateUser = await getPrivateUser(account.uid, account.email);
   return (
     <PrivacySettingsForm
       initial={{

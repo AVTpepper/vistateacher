@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, LoaderCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import type { z } from "zod";
 
@@ -38,7 +37,6 @@ const gradeLevels = [
 ] as const;
 
 export function OnboardingForm({ displayName }: { displayName: string }) {
-  const router = useRouter();
   const form = useForm<OnboardingInput, unknown, OnboardingValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
@@ -68,20 +66,29 @@ export function OnboardingForm({ displayName }: { displayName: string }) {
 
   async function submit(values: OnboardingValues) {
     form.clearErrors("root");
-    const response = await fetch("/api/onboarding", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
-    });
-    const result = (await response.json()) as { error?: string; next?: string };
-    if (!response.ok || !result.next) {
-      form.setError("root", {
-        message: result.error ?? "We couldn't save your profile.",
+    try {
+      const response = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
       });
-      return;
+      const result = (await response.json().catch(() => null)) as {
+        error?: string;
+        next?: string;
+      } | null;
+      if (!response.ok || !result?.next) {
+        form.setError("root", {
+          message: result?.error ?? "We couldn't save your profile.",
+        });
+        return;
+      }
+      window.location.assign(result.next);
+    } catch {
+      form.setError("root", {
+        message:
+          "We couldn't save your profile. Check your connection and try again.",
+      });
     }
-    router.push(result.next);
-    router.refresh();
   }
 
   return (
