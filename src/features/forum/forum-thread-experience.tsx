@@ -46,6 +46,46 @@ export function ForumThreadExperience({
   const [pending, setPending] = useState(false);
   const { thread, replies } = data;
 
+  async function saveThreadEdit() {
+    const nextTitle = window.prompt("Edit discussion title", thread.title);
+    if (!nextTitle) return;
+    const nextContent = window.prompt("Edit discussion content", thread.content);
+    if (!nextContent) return;
+    const nextTags = window.prompt(
+      "Edit tags (comma-separated)",
+      thread.tags.join(", "),
+    );
+    const response = await fetch(`/api/forum/${thread.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: nextTitle,
+        content: nextContent,
+        tags: (nextTags ?? "")
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+          .slice(0, 5),
+      }),
+    });
+    if (!response.ok) return toast.error("We couldn't update this discussion.");
+    toast.success("Discussion updated.");
+    router.refresh();
+  }
+
+  async function saveReplyEdit(replyId: string, currentContent: string) {
+    const nextContent = window.prompt("Edit reply", currentContent);
+    if (!nextContent) return;
+    const response = await fetch(`/api/forum/${thread.id}/replies/${replyId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: nextContent }),
+    });
+    if (!response.ok) return toast.error("We couldn't update that reply.");
+    toast.success("Reply updated.");
+    router.refresh();
+  }
+
   async function submitReply() {
     setPending(true);
     const response = await fetch(`/api/forum/${thread.id}/replies`, {
@@ -174,6 +214,9 @@ export function ForumThreadExperience({
         <h1 className="font-serif text-2xl leading-tight sm:text-3xl">
           {thread.title}
         </h1>
+        {thread.editedAt && (
+          <p className="text-muted-foreground mt-1 text-xs">Edited</p>
+        )}
         <div className="mt-4 flex items-center gap-3">
           <UserAvatar
             name={thread.author.displayName}
@@ -232,6 +275,13 @@ export function ForumThreadExperience({
             <ForumReportDialog threadId={thread.id} replyId={null} />
             {thread.canModerate && (
               <>
+                {thread.ownedByViewer && !thread.locked && (
+                  <IconButton
+                    label="Edit discussion"
+                    icon={MessageSquare}
+                    onClick={() => void saveThreadEdit()}
+                  />
+                )}
                 <IconButton
                   label={
                     thread.locked ? "Unlock discussion" : "Lock discussion"
@@ -274,6 +324,7 @@ export function ForumThreadExperience({
             onLike={(liked) => void toggleLike(item.id, liked)}
             onAccept={() => void accept(item.id)}
             onDelete={() => void deleteReply(item.id)}
+            onEdit={() => void saveReplyEdit(item.id, item.content)}
             threadId={thread.id}
           />
         ))}
@@ -325,6 +376,7 @@ function ReplyCard({
   onLike,
   onAccept,
   onDelete,
+  onEdit,
   threadId,
 }: {
   reply: ForumReply;
@@ -333,6 +385,7 @@ function ReplyCard({
   onLike: (liked: boolean) => void;
   onAccept: () => void;
   onDelete: () => void;
+  onEdit: () => void;
   threadId: string;
 }) {
   return (
@@ -365,6 +418,7 @@ function ReplyCard({
                 {formatDistanceToNow(new Date(reply.createdAt), {
                   addSuffix: true,
                 })}
+                {reply.editedAt ? " · edited" : ""}
               </span>
             </div>
             <div className="flex items-center gap-1">
@@ -376,6 +430,13 @@ function ReplyCard({
                 />
               )}
               <ForumReportDialog threadId={threadId} replyId={reply.id} />
+              {reply.canModerate && (
+                <IconButton
+                  label="Edit reply"
+                  icon={MessageSquare}
+                  onClick={onEdit}
+                />
+              )}
               {reply.canModerate && (
                 <IconButton
                   label="Delete reply"

@@ -17,6 +17,8 @@ import type {
   ForumModerationInput,
   ForumQuery,
   ForumReportInput,
+  UpdateForumReplyInput,
+  UpdateForumThreadInput,
 } from "@/schemas/forum";
 import type { UserRole } from "@/types/models";
 
@@ -55,6 +57,9 @@ export interface ForumThreadSummary {
   viewCount: number;
   likeCount: number;
   replyCount: number;
+  createdAt: string;
+  updatedAt: string;
+  editedAt: string | null;
   lastActivityAt: string;
   liked: boolean;
   ownedByViewer: boolean;
@@ -67,6 +72,8 @@ export interface ForumReply {
   content: string;
   likeCount: number;
   createdAt: string;
+  updatedAt: string;
+  editedAt: string | null;
   liked: boolean;
   accepted: boolean;
   ownedByViewer: boolean;
@@ -209,6 +216,12 @@ async function hydrateThreads(
       viewCount: count(data.viewCount),
       likeCount: count(data.likeCount),
       replyCount: count(data.replyCount),
+      createdAt: timestamp(data.createdAt).toDate().toISOString(),
+      updatedAt: timestamp(data.updatedAt).toDate().toISOString(),
+      editedAt:
+        data.editedAt instanceof Timestamp
+          ? data.editedAt.toDate().toISOString()
+          : null,
       lastActivityAt: timestamp(data.lastActivityAt).toDate().toISOString(),
       liked: likes[index]?.exists ?? false,
       ownedByViewer: authorId === viewerUid,
@@ -309,6 +322,11 @@ export async function getForumThread(
         content: String(data.content ?? ""),
         likeCount: count(data.likeCount),
         createdAt: timestamp(data.createdAt).toDate().toISOString(),
+        updatedAt: timestamp(data.updatedAt).toDate().toISOString(),
+        editedAt:
+          data.editedAt instanceof Timestamp
+            ? data.editedAt.toDate().toISOString()
+            : null,
         liked: likes[index]?.exists ?? false,
         accepted: data.accepted === true,
         ownedByViewer: authorId === viewerUid,
@@ -406,6 +424,64 @@ export async function addForumReply(
     });
   });
   return replyRef.id;
+}
+
+export async function updateForumThread(
+  uid: string,
+  input: UpdateForumThreadInput,
+): Promise<void> {
+  const db = adminDb();
+  const threadRef = db.doc(`forumThreads/${input.threadId}`);
+  await db.runTransaction(async (transaction) => {
+    const [thread, user] = await Promise.all([
+      transaction.get(threadRef),
+      transaction.get(db.doc(`users/${uid}`)),
+    ]);
+    if (!thread.exists) throw new ForumActionError("not-found");
+    if (thread.data()?.authorId !== uid) throw new ForumActionError("not-owner");
+    if (thread.data()?.locked === true) throw new ForumActionError("locked");
+    if (!user.exists || user.data()?.status !== "active")
+      throw new ForumActionError("inactive");
+    transaction.update(threadRef, {
+      title: input.title,
+      titleLower: input.title.toLocaleLowerCase("en-US"),
+      content: input.content,
+      tags: [...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US")))],
+      editedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      lastActivityAt: FieldValue.serverTimestamp(),
+    });
+  });
+}
+
+export async function updateForumReply(
+  uid: string,
+  input: UpdateForumReplyInput,
+): Promise<void> {
+  const db = adminDb();
+  const threadRef = db.doc(`forumThreads/${input.threadId}`);
+  const replyRef = threadRef.collection("replies").doc(input.replyId);
+  await db.runTransaction(async (transaction) => {
+    const [thread, reply, user] = await Promise.all([
+      transaction.get(threadRef),
+      transaction.get(replyRef),
+      transaction.get(db.doc(`users/${uid}`)),
+    ]);
+    if (!thread.exists || !reply.exists) throw new ForumActionError("not-found");
+    if (thread.data()?.locked === true) throw new ForumActionError("locked");
+    if (reply.data()?.authorId !== uid) throw new ForumActionError("not-owner");
+    if (!user.exists || user.data()?.status !== "active")
+      throw new ForumActionError("inactive");
+    transaction.update(replyRef, {
+      content: input.content,
+      editedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.update(threadRef, {
+      lastActivityAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
 }
 
 export async function setForumLiked(

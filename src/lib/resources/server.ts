@@ -17,6 +17,7 @@ import type {
   ResourceQuery,
   ResourceReviewInput,
   ResourceType,
+  UpdateResourceInput,
 } from "@/schemas/resource";
 import type { SubscriptionRecord, SubscriptionStatus } from "@/types/models";
 
@@ -54,6 +55,8 @@ export interface ResourceReview {
   rating: number;
   review: string;
   createdAt: string;
+  updatedAt: string;
+  editedAt: string | null;
   ownedByViewer: boolean;
 }
 
@@ -457,6 +460,11 @@ export async function getResourceDetail(
         rating: number(reviewData.rating),
         review: String(reviewData.review),
         createdAt: timestamp(reviewData.createdAt),
+        updatedAt: timestamp(reviewData.updatedAt),
+        editedAt:
+          reviewData.editedAt instanceof Timestamp
+            ? reviewData.editedAt.toDate().toISOString()
+            : null,
         ownedByViewer: authorId === viewerUid,
       };
     }),
@@ -495,12 +503,75 @@ export async function reviewResource(
       rating: input.rating,
       review: input.review,
       createdAt: existing.data()?.createdAt ?? FieldValue.serverTimestamp(),
+      ...(existing.exists ? { editedAt: FieldValue.serverTimestamp() } : {}),
       updatedAt: FieldValue.serverTimestamp(),
     });
     transaction.update(resourceRef, {
       ratingCount,
       ratingTotal,
       ratingAverage: ratingCount ? ratingTotal / ratingCount : 0,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+}
+
+export async function deleteResourceReview(
+  uid: string,
+  resourceId: string,
+): Promise<void> {
+  const db = adminDb();
+  const resourceRef = db.doc(`resources/${resourceId}`);
+  const reviewRef = db.doc(`resourceReviews/${resourceId}_${uid}`);
+  await db.runTransaction(async (transaction) => {
+    const [resource, review] = await Promise.all([
+      transaction.get(resourceRef),
+      transaction.get(reviewRef),
+    ]);
+    if (!resource.exists || resource.data()?.status !== "active")
+      throw new ResourceActionError("not-found");
+    if (!review.exists) throw new ResourceActionError("not-found");
+    const previousRating = number(review.data()?.rating);
+    const previousCount = number(resource.data()?.ratingCount);
+    const previousTotal = number(resource.data()?.ratingTotal);
+    const ratingCount = Math.max(0, previousCount - 1);
+    const ratingTotal = Math.max(0, previousTotal - previousRating);
+    transaction.delete(reviewRef);
+    transaction.update(resourceRef, {
+      ratingCount,
+      ratingTotal,
+      ratingAverage: ratingCount ? ratingTotal / ratingCount : 0,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+}
+
+export async function updateResource(
+  uid: string,
+  input: UpdateResourceInput,
+): Promise<void> {
+  const db = adminDb();
+  const resourceRef = db.doc(`resources/${input.resourceId}`);
+  await db.runTransaction(async (transaction) => {
+    const [resource, user] = await Promise.all([
+      transaction.get(resourceRef),
+      transaction.get(db.doc(`users/${uid}`)),
+    ]);
+    if (!resource.exists) throw new ResourceActionError("not-found");
+    if (resource.data()?.authorId !== uid)
+      throw new ResourceActionError("not-owner");
+    if (user.data()?.status !== "active")
+      throw new ResourceActionError("inactive");
+    transaction.update(resourceRef, {
+      title: input.title,
+      titleLower: input.title.toLocaleLowerCase("en-US"),
+      description: input.description,
+      type: input.type,
+      subject: input.subject,
+      subjectLower: input.subject.toLocaleLowerCase("en-US"),
+      gradeLevel: input.gradeLevel,
+      tags: [...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US")))],
+      accessTier: input.accessTier,
+      editedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
   });

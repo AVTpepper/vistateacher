@@ -18,7 +18,7 @@ export const resourceMimeTypeSchema = z.enum([
   "video/mp4",
 ]);
 
-const resourceMetadataSchema = z.object({
+export const resourceMetadataSchema = z.object({
   title: z.string().trim().min(3).max(140),
   description: z.string().trim().min(10).max(2_000),
   type: resourceTypeSchema,
@@ -56,8 +56,15 @@ export const resourceReviewSchema = resourceActionSchema.extend({
   review: z.string().trim().min(3).max(1_000),
 });
 
+export const updateResourceSchema = resourceMetadataSchema.extend({
+  resourceId: z.string().trim().min(1).max(128),
+});
+
+export const resourceReviewActionSchema = resourceActionSchema;
+
 export type ReserveResourceInput = z.infer<typeof reserveResourceSchema>;
 export type ResourceQuery = z.infer<typeof resourceQuerySchema>;
 export type ResourceReviewInput = z.infer<typeof resourceReviewSchema>;
+export type UpdateResourceInput = z.infer<typeof updateResourceSchema>;
 export type ResourceType = z.infer<typeof resourceTypeSchema>;
 export type ResourceAccess = z.infer<typeof resourceAccessSchema>;

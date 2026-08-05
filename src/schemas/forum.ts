@@ -40,6 +40,16 @@ export const forumReplyActionSchema = forumThreadActionSchema.extend({
   replyId: z.string().trim().min(1).max(128),
 });
 
+export const updateForumThreadSchema = forumThreadActionSchema.extend({
+  title: z.string().trim().min(8).max(180),
+  content: z.string().trim().min(20).max(10_000),
+  tags: z.array(tagSchema).max(5).default([]),
+});
+
+export const updateForumReplySchema = forumReplyActionSchema.extend({
+  content: z.string().trim().min(3).max(5_000),
+});
+
 export const forumLikeSchema = forumThreadActionSchema.extend({
   replyId: z.string().trim().min(1).max(128).nullable().default(null),
   liked: z.boolean(),
@@ -57,6 +67,8 @@ export const forumModerationSchema = forumThreadActionSchema.extend({
 
 export type CreateForumThreadInput = z.infer<typeof createForumThreadSchema>;
 export type CreateForumReplyInput = z.infer<typeof createForumReplySchema>;
+export type UpdateForumThreadInput = z.infer<typeof updateForumThreadSchema>;
+export type UpdateForumReplyInput = z.infer<typeof updateForumReplySchema>;
 export type ForumQuery = z.infer<typeof forumQuerySchema>;
 export type ForumReportInput = z.infer<typeof forumReportSchema>;
 export type ForumModerationInput = z.infer<typeof forumModerationSchema>;

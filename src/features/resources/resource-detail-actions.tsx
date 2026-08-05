@@ -48,6 +48,47 @@ export function ResourceDetailActions({
     router.refresh();
   }
 
+  async function editResourceMetadata() {
+    const title = window.prompt("Resource title", resource.title);
+    if (!title) return;
+    const description = window.prompt("Resource description", resource.description);
+    if (!description) return;
+    const subject = window.prompt("Subject", resource.subject);
+    if (!subject) return;
+    const gradeLevel = window.prompt("Grade level", resource.gradeLevel);
+    if (!gradeLevel) return;
+    const tags = window.prompt("Tags (comma-separated)", resource.tags.join(", "));
+    const response = await fetch(`/api/resources/${resource.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        description,
+        subject,
+        gradeLevel,
+        type: resource.type,
+        accessTier: resource.accessTier,
+        tags: (tags ?? "")
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+          .slice(0, 8),
+      }),
+    });
+    if (!response.ok) return toast.error("We couldn't update this resource.");
+    toast.success("Resource updated.");
+    router.refresh();
+  }
+
+  async function deleteMyReview() {
+    const response = await fetch(`/api/resources/${resource.id}/reviews`, {
+      method: "DELETE",
+    });
+    if (!response.ok) return toast.error("We couldn't delete your review.");
+    toast.success("Review deleted.");
+    router.refresh();
+  }
+
   async function download() {
     setDownloading(true);
     try {
@@ -115,6 +156,15 @@ export function ResourceDetailActions({
         {resource.ownedByViewer && (
           <button
             type="button"
+            onClick={() => void editResourceMetadata()}
+            className="hover:bg-muted h-11 rounded-lg border px-3 text-xs font-bold"
+          >
+            Edit Metadata
+          </button>
+        )}
+        {resource.ownedByViewer && (
+          <button
+            type="button"
             onClick={() => void remove()}
             className="text-destructive hover:bg-muted grid size-11 place-items-center rounded-lg border"
             title="Delete resource"
@@ -158,6 +208,13 @@ export function ResourceDetailActions({
             className="bg-primary text-primary-foreground mt-3 h-9 rounded-lg px-4 text-sm font-bold disabled:opacity-50"
           >
             {submitting ? "Saving..." : "Save review"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void deleteMyReview()}
+            className="text-destructive mt-2 block text-xs font-semibold"
+          >
+            Delete my review
           </button>
         </section>
       )}

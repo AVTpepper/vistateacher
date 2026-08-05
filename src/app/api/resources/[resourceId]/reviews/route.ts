@@ -4,8 +4,11 @@ import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "@/lib/auth/request";
 import { getRouteAccount } from "@/lib/auth/route-account";
 import { resourceErrorResponse } from "@/lib/resources/route-response";
-import { reviewResource } from "@/lib/resources/server";
-import { resourceReviewSchema } from "@/schemas/resource";
+import { deleteResourceReview, reviewResource } from "@/lib/resources/server";
+import {
+  resourceReviewActionSchema,
+  resourceReviewSchema,
+} from "@/schemas/resource";
 
 export async function PUT(
   request: NextRequest,
@@ -35,6 +38,34 @@ export async function PUT(
   try {
     await reviewResource(account.uid, parsed.data);
     return NextResponse.json({ reviewed: true });
+  } catch (error) {
+    const response = resourceErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ resourceId: string }> },
+) {
+  if (!hasTrustedOrigin(request))
+    return NextResponse.json(
+      { error: "Invalid request origin." },
+      { status: 403 },
+    );
+  const account = await getRouteAccount(request);
+  if (!account)
+    return NextResponse.json(
+      { error: "Authentication required." },
+      { status: 401 },
+    );
+  const parsed = resourceReviewActionSchema.safeParse(await params);
+  if (!parsed.success)
+    return NextResponse.json({ error: "Invalid review." }, { status: 400 });
+  try {
+    await deleteResourceReview(account.uid, parsed.data.resourceId);
+    return NextResponse.json({ deleted: true });
   } catch (error) {
     const response = resourceErrorResponse(error);
     if (response) return response;
