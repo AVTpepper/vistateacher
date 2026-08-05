@@ -25,6 +25,10 @@ export function messageErrorResponse(error: unknown) {
       status: 400,
       message: "The attachment could not be verified.",
     },
+    "not-owner": {
+      status: 403,
+      message: "You can only edit or delete your own messages.",
+    },
     "already-reported": {
       status: 409,
       message: "You already reported this message.",

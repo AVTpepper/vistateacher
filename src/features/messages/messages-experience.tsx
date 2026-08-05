@@ -90,6 +90,15 @@ export function MessagesExperience({
                 : null,
             readBy: Array.isArray(data.readBy) ? data.readBy.map(String) : [],
             createdAt: (createdAt ?? new Date()).toISOString(),
+            updatedAt:
+              (data.updatedAt?.toDate?.() as Date | undefined)?.toISOString() ??
+              (createdAt ?? new Date()).toISOString(),
+            editedAt:
+              (data.editedAt?.toDate?.() as Date | undefined)?.toISOString() ??
+              null,
+            deletedAt:
+              (data.deletedAt?.toDate?.() as Date | undefined)?.toISOString() ??
+              null,
           } satisfies DirectMessage;
         });
         setMessagePage((current) => {
@@ -245,6 +254,31 @@ export function MessagesExperience({
     toast.success(blocked ? "Educator blocked." : "Educator unblocked.");
   }
 
+  async function editMessage(message: DirectMessage) {
+    if (!activeId) return;
+    const nextContent = window.prompt("Edit message", message.content);
+    if (!nextContent) return;
+    const response = await fetch(
+      `/api/messages/${activeId}/${message.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: nextContent }),
+      },
+    );
+    if (!response.ok) return toast.error("We couldn't edit that message.");
+    toast.success("Message updated.");
+  }
+
+  async function removeMessage(message: DirectMessage) {
+    if (!activeId) return;
+    const response = await fetch(`/api/messages/${activeId}/${message.id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) return toast.error("We couldn't delete that message.");
+    toast.success("Message deleted.");
+  }
+
   const filtered = conversations.filter((item) =>
     item.participant.displayName.toLowerCase().includes(search.toLowerCase()),
   );
@@ -393,6 +427,8 @@ export function MessagesExperience({
                     message={message}
                     mine={message.senderId === viewer.uid}
                     participant={active.participant}
+                    onEdit={() => void editMessage(message)}
+                    onDelete={() => void removeMessage(message)}
                   />
                 ))}
                 <div ref={messageEnd} />
@@ -496,10 +532,14 @@ function MessageBubble({
   message,
   mine,
   participant,
+  onEdit,
+  onDelete,
 }: {
   message: DirectMessage;
   mine: boolean;
   participant: ConversationSummary["participant"];
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   return (
     <div className={`flex items-end gap-2 ${mine ? "flex-row-reverse" : ""}`}>
@@ -537,6 +577,25 @@ function MessageBubble({
           {formatDistanceToNow(new Date(message.createdAt), {
             addSuffix: true,
           })}
+          {message.deletedAt
+            ? ` · deleted ${formatDistanceToNow(new Date(message.deletedAt), { addSuffix: true })}`
+            : message.editedAt
+              ? ` · edited ${formatDistanceToNow(new Date(message.editedAt), { addSuffix: true })}`
+              : ""}
+          {mine && !message.deletedAt && (
+            <>
+              <button type="button" onClick={onEdit} className="hover:text-foreground">
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                className="text-destructive hover:text-destructive/80"
+              >
+                Delete
+              </button>
+            </>
+          )}
           {!mine && <ReportMessageDialog message={message} />}
         </span>
       </div>

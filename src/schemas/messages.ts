@@ -59,6 +59,10 @@ export const messageActionSchema = conversationActionSchema.extend({
   messageId: documentIdSchema,
 });
 
+export const editMessageSchema = messageActionSchema.extend({
+  content: z.string().trim().min(1).max(5_000),
+});
+
 export const messageReportSchema = messageActionSchema.extend({
   reason: messageReportReasonSchema,
   details: z.string().trim().max(500).default(""),

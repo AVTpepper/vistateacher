@@ -61,6 +61,9 @@ export interface DirectMessage {
   attachment: MessageAttachment | null;
   readBy: string[];
   createdAt: string;
+  updatedAt: string;
+  editedAt: string | null;
+  deletedAt: string | null;
 }
 
 export interface MessagePage {
@@ -95,6 +98,7 @@ export class MessageActionError extends Error {
       | "limit-reached"
       | "invalid-cursor"
       | "invalid-attachment"
+        | "not-owner"
       | "already-reported",
   ) {
     super(code);
@@ -180,6 +184,15 @@ function messageFrom(
         : null,
     readBy: strings(data.readBy),
     createdAt: timestamp(data.createdAt).toDate().toISOString(),
+    updatedAt: timestamp(data.updatedAt).toDate().toISOString(),
+    editedAt:
+      data.editedAt instanceof Timestamp
+        ? data.editedAt.toDate().toISOString()
+        : null,
+    deletedAt:
+      data.deletedAt instanceof Timestamp
+        ? data.deletedAt.toDate().toISOString()
+        : null,
   };
 }
 
@@ -392,6 +405,9 @@ async function writeMessage(
       readBy: [uid],
       moderationStatus: "approved",
       createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      editedAt: null,
+      deletedAt: null,
     });
     transaction.set(
       conversationRef,
@@ -439,6 +455,85 @@ async function writeMessage(
     if (attachment) transaction.update(attachment.ref, { status: "consumed" });
   });
   return { conversationId, messageId: messageRef.id };
+}
+
+export async function editMessage(
+  uid: string,
+  conversationId: string,
+  messageId: string,
+  content: string,
+): Promise<void> {
+  const db = adminDb();
+  const conversationRef = db.doc(`conversations/${conversationId}`);
+  const messageRef = conversationRef.collection("messages").doc(messageId);
+  await db.runTransaction(async (transaction) => {
+    const [conversation, message, user] = await Promise.all([
+      transaction.get(conversationRef),
+      transaction.get(messageRef),
+      transaction.get(db.doc(`users/${uid}`)),
+    ]);
+    if (!conversation.exists || !message.exists)
+      throw new MessageActionError("not-found");
+    if (!strings(conversation.data()?.participantIds).includes(uid))
+      throw new MessageActionError("not-member");
+    if (message.data()?.senderId !== uid) throw new MessageActionError("not-owner");
+    if (user.data()?.status !== "active") throw new MessageActionError("inactive");
+    if (message.data()?.deletedAt instanceof Timestamp)
+      throw new MessageActionError("not-found");
+    transaction.update(messageRef, {
+      content,
+      editedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    if (
+      timestamp(conversation.data()?.lastMessageAt).toMillis() ===
+      timestamp(message.data()?.createdAt).toMillis()
+    ) {
+      transaction.update(conversationRef, {
+        lastMessagePreview: preview(content, Boolean(message.data()?.attachment)),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+  });
+}
+
+export async function deleteMessage(
+  uid: string,
+  conversationId: string,
+  messageId: string,
+): Promise<void> {
+  const db = adminDb();
+  const conversationRef = db.doc(`conversations/${conversationId}`);
+  const messageRef = conversationRef.collection("messages").doc(messageId);
+  await db.runTransaction(async (transaction) => {
+    const [conversation, message, user] = await Promise.all([
+      transaction.get(conversationRef),
+      transaction.get(messageRef),
+      transaction.get(db.doc(`users/${uid}`)),
+    ]);
+    if (!conversation.exists || !message.exists)
+      throw new MessageActionError("not-found");
+    if (!strings(conversation.data()?.participantIds).includes(uid))
+      throw new MessageActionError("not-member");
+    if (message.data()?.senderId !== uid) throw new MessageActionError("not-owner");
+    if (user.data()?.status !== "active") throw new MessageActionError("inactive");
+    const deletedContent = "This message was deleted.";
+    transaction.update(messageRef, {
+      content: deletedContent,
+      attachment: null,
+      deletedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    if (
+      timestamp(conversation.data()?.lastMessageAt).toMillis() ===
+      timestamp(message.data()?.createdAt).toMillis()
+    ) {
+      transaction.update(conversationRef, {
+        lastMessagePreview: deletedContent,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+  });
 }
 
 export async function startConversation(
