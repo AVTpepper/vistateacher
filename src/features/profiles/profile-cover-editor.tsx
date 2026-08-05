@@ -86,7 +86,7 @@ export function ProfileCoverEditor({
         </span>
       </div>
 
-      <div className="from-primary/30 to-sidebar-primary/30 relative aspect-[5/1] min-h-28 overflow-hidden rounded-lg bg-gradient-to-br">
+      <div className="from-primary/30 to-sidebar-primary/30 relative h-44 overflow-hidden rounded-lg bg-gradient-to-br">
         {coverImageURL && (
           // Profile covers use runtime Firebase Storage origins.
           // eslint-disable-next-line @next/next/no-img-element
