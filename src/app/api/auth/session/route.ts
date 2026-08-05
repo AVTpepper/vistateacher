@@ -28,29 +28,44 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let decoded;
   try {
-    const decoded = await adminAuth().verifyIdToken(parsed.data.idToken, true);
-    if (!decoded.email_verified) {
-      return NextResponse.json(
-        { error: "Verify your email first." },
-        { status: 403 },
-      );
-    }
-    if (!isRecentAuthentication(decoded.auth_time)) {
-      return NextResponse.json(
-        { error: "Please sign in again." },
-        { status: 401 },
-      );
+    decoded = await adminAuth().verifyIdToken(parsed.data.idToken, true);
+  } catch (error) {
+    console.error("Firebase ID token verification failed", error);
+    return NextResponse.json(
+      { error: "Unable to verify this sign-in." },
+      { status: 401 },
+    );
+  }
+
+  if (!decoded.email_verified) {
+    return NextResponse.json(
+      { error: "Verify your email first." },
+      { status: 403 },
+    );
+  }
+  if (!isRecentAuthentication(decoded.auth_time)) {
+    return NextResponse.json(
+      { error: "Please sign in again." },
+      { status: 401 },
+    );
+  }
+
+  try {
+    const sessionCookie = await adminAuth().createSessionCookie(
+      parsed.data.idToken,
+      { expiresIn: SESSION_MAX_AGE_MS },
+    );
+    let profileExists = false;
+    try {
+      profileExists = (await adminDb().doc(`users/${decoded.uid}`).get()).exists;
+    } catch (error) {
+      console.error("Firestore profile lookup failed during sign-in", error);
     }
 
-    const [sessionCookie, profile] = await Promise.all([
-      adminAuth().createSessionCookie(parsed.data.idToken, {
-        expiresIn: SESSION_MAX_AGE_MS,
-      }),
-      adminDb().doc(`users/${decoded.uid}`).get(),
-    ]);
     const response = NextResponse.json({
-      next: profile.exists ? "/app" : "/onboarding",
+      next: profileExists ? "/app" : "/onboarding",
     });
     response.cookies.set(SESSION_COOKIE_NAME, sessionCookie, {
       httpOnly: true,
@@ -61,10 +76,11 @@ export async function POST(request: NextRequest) {
       priority: "high",
     });
     return response;
-  } catch {
+  } catch (error) {
+    console.error("Firebase session cookie creation failed", error);
     return NextResponse.json(
       { error: "Unable to create session." },
-      { status: 401 },
+      { status: 500 },
     );
   }
 }

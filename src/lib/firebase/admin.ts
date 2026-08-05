@@ -14,6 +14,8 @@ import { getStorage } from "firebase-admin/storage";
 function getAdminApp() {
   if (getApps().length) return getApp();
 
+  if (process.env.FIREBASE_CONFIG) return initializeApp();
+
   const emulatorProjectId =
     process.env.GCLOUD_PROJECT ?? process.env.FIREBASE_PROJECT_ID;
   if (

@@ -47,6 +47,7 @@ export function MarketingHeader() {
       >
         <Link
           href="/"
+          prefetch={false}
           className="text-foreground flex items-center gap-2 rounded-md font-serif text-xl"
         >
           <span
