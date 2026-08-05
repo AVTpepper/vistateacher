@@ -56,6 +56,16 @@ env:
     secret: STRIPE_PRICE_PLUS_YEARLY
   - variable: OPENAI_API_KEY
     secret: OPENAI_API_KEY
+  - variable: RESEND_API_KEY
+    secret: RESEND_API_KEY
+  - variable: RESEND_FROM_EMAIL
+    value: noreply@mail.vistateacher.com
+    availability:
+      - RUNTIME
+  - variable: RESEND_REPLY_TO_EMAIL
+    value: vistateachersupport@gmail.com
+    availability:
+      - RUNTIME
   - variable: OPENAI_LESSON_MODEL
     value: gpt-4.1-mini
     availability:

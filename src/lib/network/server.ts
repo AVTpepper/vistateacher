@@ -115,10 +115,16 @@ export async function getNetworkList(
         const score = (profile: ProfileDocument) =>
           Number(profile.gradeLevel === current.gradeLevel) +
           Number(profile.city === current.city) +
+          profile.professionalRoles.filter((role) =>
+            current.professionalRoles.includes(role),
+          ).length +
           profile.subjects.filter((subject) =>
             current.subjects.includes(subject),
           ).length *
-            2;
+            2 +
+          profile.languages.filter((language) =>
+            current.languages.includes(language),
+          ).length;
         return score(right.profile) - score(left.profile);
       })
       .slice(0, 20);

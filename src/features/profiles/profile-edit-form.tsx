@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { educationStages } from "@/lib/profiles/options";
 import { profileUpdateSchema, type ProfileUpdate } from "@/schemas/profile";
 
 export function ProfileEditForm({ initial }: { initial: ProfileUpdate }) {
@@ -21,8 +22,16 @@ export function ProfileEditForm({ initial }: { initial: ProfileUpdate }) {
     const form = new FormData(event.currentTarget);
     const parsed = profileUpdateSchema.safeParse({
       displayName: form.get("displayName"),
+      professionalRoles: String(form.get("professionalRoles") ?? "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
       gradeLevel: form.get("gradeLevel"),
       subjects: String(form.get("subjects") ?? "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+      languages: String(form.get("languages") ?? "")
         .split(",")
         .map((value) => value.trim())
         .filter(Boolean),
@@ -71,16 +80,44 @@ export function ProfileEditForm({ initial }: { initial: ProfileUpdate }) {
             required
           />
         </Field>
-        <Field label="Grade level" id="gradeLevel">
+        <Field
+          label="Professional roles"
+          id="professionalRoles"
+          hint="Separate up to four roles with commas."
+        >
           <Input
-            id="gradeLevel"
-            name="gradeLevel"
-            defaultValue={initial.gradeLevel}
+            id="professionalRoles"
+            name="professionalRoles"
+            defaultValue={initial.professionalRoles.join(", ")}
             required
           />
         </Field>
         <Field
-          label="Subjects"
+          label="Education stage"
+          id="gradeLevel"
+          hint="Grade ranges are approximate and vary by country."
+        >
+          <select
+            id="gradeLevel"
+            name="gradeLevel"
+            defaultValue={initial.gradeLevel}
+            className="border-input bg-input/60 h-11 w-full rounded-md border px-3 text-sm shadow-sm"
+            required
+          >
+            {!educationStages.some(
+              ({ value }) => value === initial.gradeLevel,
+            ) && (
+              <option value={initial.gradeLevel}>{initial.gradeLevel}</option>
+            )}
+            {educationStages.map(({ value, label, guidance }) => (
+              <option key={value} value={value}>
+                {label} ({guidance})
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field
+          label="Subjects and expertise"
           id="subjects"
           hint="Separate multiple subjects with commas."
         >
@@ -89,6 +126,17 @@ export function ProfileEditForm({ initial }: { initial: ProfileUpdate }) {
             name="subjects"
             defaultValue={initial.subjects.join(", ")}
             required
+          />
+        </Field>
+        <Field
+          label="Languages taught"
+          id="languages"
+          hint="Optional. Separate multiple languages with commas."
+        >
+          <Input
+            id="languages"
+            name="languages"
+            defaultValue={initial.languages.join(", ")}
           />
         </Field>
         <Field label="Years of experience" id="yearsOfExperience">

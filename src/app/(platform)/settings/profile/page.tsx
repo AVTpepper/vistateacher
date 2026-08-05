@@ -20,8 +20,10 @@ export default async function EditProfilePage() {
       <ProfileEditForm
         initial={{
           displayName: profile.displayName,
+          professionalRoles: profile.professionalRoles,
           gradeLevel: profile.gradeLevel,
           subjects: profile.subjects,
+          languages: profile.languages,
           country: profile.country,
           city: profile.city,
           school: profile.school,

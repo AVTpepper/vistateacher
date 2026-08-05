@@ -8,41 +8,27 @@ import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  educationStages,
+  professionalRoles,
+  subjectAreas,
+  taughtLanguages,
+} from "@/lib/profiles/options";
 import { cn } from "@/lib/utils";
 import { onboardingSchema } from "@/schemas/auth";
 
 type OnboardingInput = z.input<typeof onboardingSchema>;
 type OnboardingValues = z.output<typeof onboardingSchema>;
 
-const subjects = [
-  "Arts",
-  "Early Childhood",
-  "English Language Arts",
-  "Languages",
-  "Mathematics",
-  "Physical Education",
-  "Science",
-  "Social Studies",
-  "Special Education",
-  "Technology",
-];
-
-const gradeLevels = [
-  "Early Childhood",
-  "Elementary",
-  "Middle School",
-  "High School",
-  "Higher Education",
-  "All Grades",
-] as const;
-
 export function OnboardingForm({ displayName }: { displayName: string }) {
   const form = useForm<OnboardingInput, unknown, OnboardingValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       displayName,
-      gradeLevel: "Elementary",
+      professionalRoles: [],
+      gradeLevel: "Primary / Elementary School",
       subjects: [],
+      languages: [],
       country: "",
       city: "",
       school: "",
@@ -53,12 +39,42 @@ export function OnboardingForm({ displayName }: { displayName: string }) {
   });
   const selectedSubjects =
     useWatch({ control: form.control, name: "subjects" }) ?? [];
+  const selectedRoles =
+    useWatch({ control: form.control, name: "professionalRoles" }) ?? [];
+  const selectedLanguages =
+    useWatch({ control: form.control, name: "languages" }) ?? [];
 
-  function toggleSubject(subject: string) {
+  function toggleRole(role: (typeof professionalRoles)[number]) {
+    const next = selectedRoles.includes(role)
+      ? selectedRoles.filter((value) => value !== role)
+      : [...selectedRoles, role];
+    form.setValue("professionalRoles", next, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
+
+  function toggleSubject(subject: (typeof subjectAreas)[number]) {
     const next = selectedSubjects.includes(subject)
       ? selectedSubjects.filter((value) => value !== subject)
       : [...selectedSubjects, subject];
+    if (subject === "Languages" && selectedSubjects.includes(subject)) {
+      form.setValue("languages", [], {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
     form.setValue("subjects", next, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
+
+  function toggleLanguage(language: (typeof taughtLanguages)[number]) {
+    const next = selectedLanguages.includes(language)
+      ? selectedLanguages.filter((value) => value !== language)
+      : [...selectedLanguages, language];
+    form.setValue("languages", next, {
       shouldDirty: true,
       shouldValidate: true,
     });
@@ -99,9 +115,27 @@ export function OnboardingForm({ displayName }: { displayName: string }) {
             Step 1 of 2
           </p>
           <h2 id="professional-details" className="mt-2 font-serif text-2xl">
-            Your teaching context
+            Your professional context
           </h2>
         </div>
+        <ChoiceFieldset
+          legend="Your role"
+          hint="Choose up to four roles. Select the one that best describes your current work first."
+          error={form.formState.errors.professionalRoles?.message}
+        >
+          {professionalRoles.map((role) => {
+            const checked = selectedRoles.includes(role);
+            return (
+              <Choice
+                key={role}
+                label={role}
+                checked={checked}
+                disabled={!checked && selectedRoles.length >= 4}
+                onChange={() => toggleRole(role)}
+              />
+            );
+          })}
+        </ChoiceFieldset>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
             label="Full name"
@@ -115,17 +149,20 @@ export function OnboardingForm({ displayName }: { displayName: string }) {
             />
           </Field>
           <Field
-            label="Grade level"
+            label="Education stage"
             id="gradeLevel"
             error={form.formState.errors.gradeLevel?.message}
+            hint="Grade ranges are approximate and vary by country."
           >
             <select
               id="gradeLevel"
               className="border-input bg-input/60 h-11 w-full rounded-md border px-3 text-sm"
               {...form.register("gradeLevel")}
             >
-              {gradeLevels.map((level) => (
-                <option key={level}>{level}</option>
+              {educationStages.map(({ value, label, guidance }) => (
+                <option key={value} value={value}>
+                  {label} ({guidance})
+                </option>
               ))}
             </select>
           </Field>
@@ -187,40 +224,47 @@ export function OnboardingForm({ displayName }: { displayName: string }) {
             Step 2 of 2
           </p>
           <h2 id="teaching-interests" className="mt-2 font-serif text-2xl">
-            Subjects and perspective
+            Subjects and expertise
           </h2>
         </div>
-        <fieldset>
-          <legend className="text-sm font-bold">Subjects you teach</legend>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {subjects.map((subject) => {
-              const checked = selectedSubjects.includes(subject);
+        <ChoiceFieldset
+          legend="Subjects and areas of expertise"
+          hint="Choose up to six. Leadership and whole-school expertise belong here too."
+          error={form.formState.errors.subjects?.message}
+        >
+          {subjectAreas.map((subject) => {
+            const checked = selectedSubjects.includes(subject);
+            return (
+              <Choice
+                key={subject}
+                label={subject}
+                checked={checked}
+                disabled={!checked && selectedSubjects.length >= 6}
+                onChange={() => toggleSubject(subject)}
+              />
+            );
+          })}
+        </ChoiceFieldset>
+        {selectedSubjects.includes("Languages") && (
+          <ChoiceFieldset
+            legend="Languages you teach"
+            hint="Choose every language that applies."
+            error={form.formState.errors.languages?.message}
+          >
+            {taughtLanguages.map((language) => {
+              const checked = selectedLanguages.includes(language);
               return (
-                <label
-                  key={subject}
-                  className={cn(
-                    "flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 text-sm font-semibold",
-                    checked &&
-                      "border-primary bg-secondary text-secondary-foreground",
-                  )}
-                >
-                  <input
-                    className="accent-primary size-4"
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleSubject(subject)}
-                  />
-                  {subject}
-                </label>
+                <Choice
+                  key={language}
+                  label={language}
+                  checked={checked}
+                  disabled={!checked && selectedLanguages.length >= 8}
+                  onChange={() => toggleLanguage(language)}
+                />
               );
             })}
-          </div>
-          {form.formState.errors.subjects?.message && (
-            <p className="text-destructive mt-2 text-xs" role="alert">
-              {form.formState.errors.subjects.message}
-            </p>
-          )}
-        </fieldset>
+          </ChoiceFieldset>
+        )}
         <Field
           label="Short professional bio"
           id="bio"
@@ -262,22 +306,81 @@ function Field({
   label,
   id,
   error,
+  hint,
   children,
 }: {
   label: string;
   id: string;
   error?: string;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
       {children}
+      {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
       {error && (
         <p className="text-destructive text-xs" role="alert">
           {error}
         </p>
       )}
     </div>
+  );
+}
+
+function ChoiceFieldset({
+  legend,
+  hint,
+  error,
+  children,
+}: {
+  legend: string;
+  hint: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <fieldset>
+      <legend className="text-sm font-bold">{legend}</legend>
+      <p className="text-muted-foreground mt-1 text-xs">{hint}</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">{children}</div>
+      {error && (
+        <p className="text-destructive mt-2 text-xs" role="alert">
+          {error}
+        </p>
+      )}
+    </fieldset>
+  );
+}
+
+function Choice({
+  label,
+  checked,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 text-sm font-semibold",
+        checked && "border-primary bg-secondary text-secondary-foreground",
+        disabled && "cursor-not-allowed opacity-50",
+      )}
+    >
+      <input
+        className="accent-primary size-4"
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={onChange}
+      />
+      {label}
+    </label>
   );
 }

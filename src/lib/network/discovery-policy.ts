@@ -16,7 +16,9 @@ export function matchesDiscoveryFilters(
       profile.school,
       profile.city,
       profile.country,
+      ...profile.professionalRoles,
       ...profile.subjects,
+      ...profile.languages,
       ...profile.interests,
     ].join(" "),
   );

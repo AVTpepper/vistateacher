@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ContentPage } from "@/components/marketing/content-page";
+import { FeedbackForm } from "@/features/marketing/feedback-form";
 
 export const metadata: Metadata = {
   title: "Help",
@@ -54,6 +55,19 @@ export default function HelpPage() {
         </Link>
         .
       </p>
+      <section className="mt-14 grid gap-8 border-t pt-12 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] lg:gap-14">
+        <div>
+          <p className="text-accent font-mono text-xs font-bold uppercase">
+            Contact and feedback
+          </p>
+          <h2 className="mt-3 font-serif text-3xl">Tell us what you need.</h2>
+          <p className="text-muted-foreground mt-4 text-sm leading-6">
+            Share a problem, ask a question, or suggest what VistaTeacher should
+            improve next. Replies go to the email address you provide.
+          </p>
+        </div>
+        <FeedbackForm />
+      </section>
     </ContentPage>
   );
 }

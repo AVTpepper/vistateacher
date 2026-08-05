@@ -21,9 +21,10 @@ const profile = {
 
 describe("profile contracts", () => {
   it("normalizes a valid website", () => {
-    expect(profileUpdateSchema.parse(profile).website).toBe(
-      "https://sarah.example",
-    );
+    const parsed = profileUpdateSchema.parse(profile);
+    expect(parsed.website).toBe("https://sarah.example");
+    expect(parsed.professionalRoles).toEqual(["Educator"]);
+    expect(parsed.languages).toEqual([]);
   });
 
   it("rejects unbounded subjects and malformed websites", () => {

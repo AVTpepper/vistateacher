@@ -6,8 +6,10 @@ import type { ProfileDocument } from "@/schemas/profile";
 const educator = {
   uid: "educator",
   displayName: "José Rivera",
+  professionalRoles: ["Department or subject lead"],
   gradeLevel: "Middle School",
   subjects: ["Earth Science"],
+  languages: ["Spanish"],
   country: "United States",
   city: "Portland",
   school: "Cedar Grove School",
@@ -42,6 +44,18 @@ describe("educator discovery filters", () => {
       matchesDiscoveryFilters(educator, {
         ...emptyFilters,
         query: "jose rivera",
+      }),
+    ).toBe(true);
+    expect(
+      matchesDiscoveryFilters(educator, {
+        ...emptyFilters,
+        query: "department",
+      }),
+    ).toBe(true);
+    expect(
+      matchesDiscoveryFilters(educator, {
+        ...emptyFilters,
+        query: "spanish",
       }),
     ).toBe(true);
     expect(

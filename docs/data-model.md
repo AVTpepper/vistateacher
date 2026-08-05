@@ -4,13 +4,13 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 
 ## Identity and Billing
 
-| Path                   | Ownership and purpose                  | Important fields                                                                                       |
-| ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `users/{uid}`          | Server-created public educator profile | normalized identity/location, professional fields, role, verification, counters, status, timestamps    |
-| `userPrivate/{uid}`    | Server-written; owner/admin reads      | email, contact details, privacy/notification settings, payment reference, moderation/deletion metadata |
-| `subscriptions/{uid}`  | Server-owned; owner reads safe state   | plan/status, Stripe IDs, interval/end/cancellation, event watermark, legacy temporary-access state     |
-| `billingEvents/{id}`   | Server-only Stripe webhook dedup       | event type/user, Stripe creation time, applied state, processing timestamp                             |
-| `usage/{uid}_{period}` | Server-owned monthly or daily counters | messages, resource uploads, AI lessons, period, timestamp                                              |
+| Path                   | Ownership and purpose                  | Important fields                                                                                                                          |
+| ---------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `users/{uid}`          | Server-created public educator profile | normalized identity/location, professional roles, education stage, subjects, taught languages, verification, counters, status, timestamps |
+| `userPrivate/{uid}`    | Server-written; owner/admin reads      | email, contact details, privacy/notification settings, payment reference, moderation/deletion metadata                                    |
+| `subscriptions/{uid}`  | Server-owned; owner reads safe state   | plan/status, Stripe IDs, interval/end/cancellation, event watermark, legacy temporary-access state                                        |
+| `billingEvents/{id}`   | Server-only Stripe webhook dedup       | event type/user, Stripe creation time, applied state, processing timestamp                                                                |
+| `usage/{uid}_{period}` | Server-owned monthly or daily counters | messages, resource uploads, AI lessons, period, timestamp                                                                                 |
 
 ## Community
 

@@ -38,8 +38,10 @@ describe("authentication policy", () => {
 describe("onboarding schema", () => {
   const validInput = {
     displayName: "Ada Teacher",
-    gradeLevel: "Middle School",
-    subjects: ["Science"],
+    professionalRoles: ["Department or subject lead"],
+    gradeLevel: "Lower Secondary / Middle School",
+    subjects: ["Science", "Languages"],
+    languages: ["English"],
     country: "United States",
     city: "Portland",
     school: "Cedar Grove School",
@@ -59,6 +61,12 @@ describe("onboarding schema", () => {
         subjects: [],
         yearsOfExperience: 99,
       }).success,
+    ).toBe(false);
+  });
+
+  it("requires a taught language when Languages is selected", () => {
+    expect(
+      onboardingSchema.safeParse({ ...validInput, languages: [] }).success,
     ).toBe(false);
   });
 });

@@ -86,6 +86,9 @@ export function ProfileView({
               <div>
                 <h1 className="font-serif text-2xl">{profile.displayName}</h1>
                 <p className="text-muted-foreground mt-0.5 text-sm">
+                  {profile.professionalRoles.join(", ")}
+                </p>
+                <p className="text-muted-foreground mt-0.5 text-xs">
                   {profile.gradeLevel} · {profile.subjects.join(", ")}
                 </p>
               </div>
@@ -200,8 +203,20 @@ export function ProfileView({
         bio={profile.bio}
         resources={resources}
         details={[
-          { label: "Subjects", value: profile.subjects.join(", ") },
-          { label: "Grade Level", value: profile.gradeLevel },
+          { label: "Roles", value: profile.professionalRoles.join(", ") },
+          {
+            label: "Subjects and expertise",
+            value: profile.subjects.join(", "),
+          },
+          ...(profile.languages.length
+            ? [
+                {
+                  label: "Languages taught",
+                  value: profile.languages.join(", "),
+                },
+              ]
+            : []),
+          { label: "Education stage", value: profile.gradeLevel },
           { label: "School", value: profile.school },
           { label: "Location", value: location },
           { label: "Experience", value: `${profile.yearsOfExperience} years` },

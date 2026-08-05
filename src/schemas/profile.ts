@@ -24,8 +24,14 @@ const optionalUrl = z
 
 export const profileUpdateSchema = z.object({
   displayName: z.string().trim().min(2).max(80),
+  professionalRoles: z
+    .array(z.string().trim().min(2).max(60))
+    .min(1)
+    .max(4)
+    .default(["Educator"]),
   gradeLevel: z.string().trim().min(2).max(50),
   subjects: z.array(z.string().trim().min(2).max(40)).min(1).max(6),
+  languages: z.array(z.string().trim().min(2).max(40)).max(8).default([]),
   country: z.string().trim().min(2).max(80),
   city: z.string().trim().min(2).max(80),
   school: z.string().trim().max(120),
