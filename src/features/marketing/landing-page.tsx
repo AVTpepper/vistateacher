@@ -14,6 +14,7 @@ import {
   MarketingHeader,
 } from "@/components/marketing/marketing-shell";
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { adminDb } from "@/lib/firebase/admin";
 
 const features = [
@@ -43,6 +44,12 @@ const features = [
   },
 ];
 
+interface HeroParticipant {
+  uid: string;
+  displayName: string;
+  photoURL: string | null;
+}
+
 function roundDownRegisteredUsers(count: number): number {
   if (count < 10) return count;
 
@@ -63,8 +70,41 @@ async function getRegisteredUserCount(): Promise<number> {
   return snapshot.data().count;
 }
 
+async function getHeroParticipants(): Promise<HeroParticipant[]> {
+  const snapshot = await adminDb().collection("users").limit(30).get();
+
+  const participants = snapshot.docs
+    .map((document) => {
+      const data = document.data();
+      if (data.status === "suspended" || data.status === "deleted") {
+        return null;
+      }
+
+      const displayName =
+        typeof data.displayName === "string" ? data.displayName.trim() : "";
+      if (!displayName) return null;
+
+      return {
+        uid: typeof data.uid === "string" ? data.uid : document.id,
+        displayName,
+        photoURL: typeof data.photoURL === "string" ? data.photoURL : null,
+      } satisfies HeroParticipant;
+    })
+    .filter((participant) => participant !== null);
+
+  const withPhotos = participants.filter((participant) => participant.photoURL);
+  const withoutPhotos = participants.filter(
+    (participant) => !participant.photoURL,
+  );
+
+  return [...withPhotos, ...withoutPhotos].slice(0, 5);
+}
+
 export async function LandingPage() {
-  const registeredUsers = await getRegisteredUserCount();
+  const [registeredUsers, heroParticipants] = await Promise.all([
+    getRegisteredUserCount(),
+    getHeroParticipants(),
+  ]);
   const registeredUsersLabel = formatRegisteredUsers(registeredUsers);
 
   return (
@@ -102,13 +142,12 @@ export async function LandingPage() {
             </div>
             <div className="mt-8 flex items-center justify-center gap-3 text-sm text-muted-foreground">
               <div className="-space-x-2 flex">
-                {[47, 12, 5, 33, 9].map((i) => (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    key={i}
-                    src={`https://i.pravatar.cc/32?img=${i}`}
-                    alt=""
-                    className="border-background h-8 w-8 rounded-full border-2 object-cover"
+                {heroParticipants.map((participant) => (
+                  <UserAvatar
+                    key={participant.uid}
+                    name={participant.displayName}
+                    photoURL={participant.photoURL}
+                    className="border-background h-8 w-8 shrink-0 rounded-full border-2 text-[11px] object-cover"
                   />
                 ))}
               </div>
