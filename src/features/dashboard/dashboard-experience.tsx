@@ -131,7 +131,7 @@ export function DashboardExperience({
       <section className="bg-primary relative overflow-hidden rounded-xl px-5 py-6 text-white sm:px-6">
         <div
           aria-hidden="true"
-          className="absolute inset-0 [background-image:linear-gradient(rgba(255,255,255,.35)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.35)_1px,transparent_1px)] [background-size:28px_28px] opacity-10"
+          className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.35)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.35)_1px,transparent_1px)] bg-size-[28px_28px] opacity-10"
         />
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center">
           <UserAvatar

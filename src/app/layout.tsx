@@ -35,6 +35,13 @@ export const metadata: Metadata = {
   description:
     "A professional community where educators connect, share resources, discuss practice, and build thoughtful lessons.",
   alternates: { canonical: "/" },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
+  },
   openGraph: {
     type: "website",
     url: "/",
@@ -42,11 +49,20 @@ export const metadata: Metadata = {
     title: "The network built for teachers",
     description:
       "Connect with educators, share practical resources, and plan stronger lessons.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "VistaTeacher",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "VistaTeacher",
     description: "The professional network built for teachers.",
+    images: ["/twitter-image"],
   },
 };
 
