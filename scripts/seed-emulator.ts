@@ -295,10 +295,45 @@ batch.set(
 batch.set(db.doc("users/free-educator/notifications/demo-notification"), {
   type: "message",
   actorId: "plus-educator",
+  actorName: "Maya Chen",
   entityId: "free-educator_plus-educator",
   message: "Maya Chen sent you a message.",
   href: "/messages?conversation=free-educator_plus-educator",
   read: false,
+  archived: false,
+  createdAt: FieldValue.serverTimestamp(),
+});
+batch.set(db.doc("users/free-educator/notifications/demo-follow"), {
+  type: "follow",
+  actorId: "educator-three",
+  actorName: "Jordan Okafor",
+  entityId: "educator-three",
+  message: "Jordan Okafor followed you.",
+  href: "/profile/educator-three",
+  read: false,
+  archived: false,
+  createdAt: FieldValue.serverTimestamp(),
+});
+batch.set(db.doc("users/free-educator/notifications/demo-like"), {
+  type: "post-like",
+  actorId: "plus-educator",
+  actorName: "Maya Chen",
+  entityId: "demo-post",
+  message: "Maya Chen liked your post.",
+  href: "/app",
+  read: false,
+  archived: false,
+  createdAt: FieldValue.serverTimestamp(),
+});
+batch.set(db.doc("users/free-educator/notifications/demo-download"), {
+  type: "resource-download",
+  actorId: "educator-three",
+  actorName: "Jordan Okafor",
+  entityId: "demo-resource",
+  message: "Jordan Okafor downloaded your resource.",
+  href: "/resources/demo-resource",
+  read: true,
+  archived: false,
   createdAt: FieldValue.serverTimestamp(),
 });
 batch.set(db.doc("reports/demo-report"), {

@@ -357,9 +357,11 @@ export async function setPostLiked(
   await db.runTransaction(async (transaction) => {
     const postRef = db.doc(`posts/${postId}`);
     const likeRef = db.doc(`postLikes/${postId}_${uid}`);
-    const [post, like] = await Promise.all([
+    const actorRef = db.doc(`users/${uid}`);
+    const [post, like, actor] = await Promise.all([
       assertVisiblePost(transaction, postRef),
       transaction.get(likeRef),
+      transaction.get(actorRef),
     ]);
     if (liked === like.exists) return;
     if (liked) {
@@ -375,6 +377,25 @@ export async function setPostLiked(
         nonnegativeCount(post.data()?.likeCount) + (liked ? 1 : -1),
       ),
     });
+    const ownerId = String(post.data()?.authorId ?? "");
+    if (ownerId && ownerId !== uid) {
+      const notificationRef = db.doc(
+        `users/${ownerId}/notifications/post-like_${postId}_${uid}`,
+      );
+      if (liked) {
+        transaction.set(notificationRef, {
+          type: "post-like",
+          actorId: uid,
+          actorName: String(actor.data()?.displayName ?? "An educator"),
+          entityId: postId,
+          message: `${String(actor.data()?.displayName ?? "An educator")} liked your post.`,
+          href: "/app",
+          read: false,
+          archived: false,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      } else transaction.delete(notificationRef);
+    }
   });
 }
 
@@ -427,6 +448,25 @@ export async function addPostComment(
     transaction.update(postRef, {
       commentCount: nonnegativeCount(post.data()?.commentCount) + 1,
     });
+    const ownerId = String(post.data()?.authorId ?? "");
+    if (ownerId && ownerId !== uid) {
+      transaction.create(
+        db.doc(
+          `users/${ownerId}/notifications/post-comment_${commentRef.id}`,
+        ),
+        {
+          type: "post-comment",
+          actorId: uid,
+          actorName: String(user.data()?.displayName ?? "An educator"),
+          entityId: input.postId,
+          message: `${String(user.data()?.displayName ?? "An educator")} commented on your post.`,
+          href: "/app",
+          read: false,
+          archived: false,
+          createdAt: FieldValue.serverTimestamp(),
+        },
+      );
+    }
   });
   return commentRef.id;
 }

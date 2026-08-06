@@ -658,6 +658,27 @@ export async function downloadResource(
     transaction.update(resourceRef, {
       downloadCount: FieldValue.increment(1),
     });
+    const ownerId = String(currentResource.data()?.authorId ?? "");
+    if (!ownsResource && ownerId) {
+      transaction.set(
+        db.doc(
+          `users/${ownerId}/notifications/resource-download_${resourceId}_${uid}`,
+        ),
+        {
+          type: "resource-download",
+          actorId: uid,
+          actorName: String(
+            currentUser.data()?.displayName ?? "An educator",
+          ),
+          entityId: resourceId,
+          message: `${String(currentUser.data()?.displayName ?? "An educator")} downloaded your resource.`,
+          href: `/resources/${resourceId}`,
+          read: false,
+          archived: false,
+          createdAt: FieldValue.serverTimestamp(),
+        },
+      );
+    }
   });
   return {
     bytes,

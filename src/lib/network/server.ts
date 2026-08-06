@@ -220,6 +220,22 @@ export async function followEducator(
       followerCount: following.followerCount + 1,
       updatedAt: now,
     });
+    transaction.set(
+      db.doc(
+        `users/${followingUid}/notifications/follow_${followerUid}`,
+      ),
+      {
+        type: "follow",
+        actorId: followerUid,
+        actorName: follower.displayName,
+        entityId: followerUid,
+        message: `${follower.displayName} followed you.`,
+        href: `/profile/${followerUid}`,
+        read: false,
+        archived: false,
+        createdAt: now,
+      },
+    );
   });
 }
 
@@ -256,5 +272,10 @@ export async function unfollowEducator(
       followerCount: Math.max(0, following.followerCount - 1),
       updatedAt: now,
     });
+    transaction.delete(
+      db.doc(
+        `users/${followingUid}/notifications/follow_${followerUid}`,
+      ),
+    );
   });
 }

@@ -8,8 +8,15 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { getFirebaseClient } from "@/lib/firebase/client";
+import { cn } from "@/lib/utils";
 
-export function LogoutButton({ compact = false }: { compact?: boolean }) {
+export function LogoutButton({
+  compact = false,
+  appearance = "sidebar",
+}: {
+  compact?: boolean;
+  appearance?: "sidebar" | "menu";
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -36,7 +43,12 @@ export function LogoutButton({ compact = false }: { compact?: boolean }) {
     <AlertDialog.Root open={open} onOpenChange={setOpen}>
       <AlertDialog.Trigger asChild>
         <Button
-          className="h-11 flex-1 px-2 text-xs text-white/75 hover:bg-white/8 hover:text-red-200"
+          className={cn(
+            "h-11 flex-1 px-2 text-xs",
+            appearance === "sidebar"
+              ? "text-white/75 hover:bg-white/8 hover:text-red-200"
+              : "text-destructive hover:bg-muted hover:text-destructive w-full justify-start rounded-none px-4 text-sm font-semibold",
+          )}
           variant="ghost"
           title="Sign out"
         >

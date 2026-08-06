@@ -1,20 +1,15 @@
 "use client";
 
 import {
-  Bell,
   BookOpen,
-  ChevronLeft,
   Compass,
   GraduationCap,
   Home,
-  Info,
   LayoutDashboard,
-  LifeBuoy,
   Mail,
   Menu,
   MessageSquare,
   ShieldCheck,
-  Settings,
   Sparkles,
   UsersRound,
   X,
@@ -25,13 +20,14 @@ import { useEffect, useRef, useState } from "react";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { LogoutButton } from "@/features/auth/logout-button";
+import { NotificationMenu } from "@/features/notifications/notification-menu";
 import { GlobalSearch } from "@/features/search/global-search";
 import { cn } from "@/lib/utils";
 import type { Plan } from "@/types/models";
 import type { UserRole } from "@/types/models";
 
-const navigation = [
-  { label: "Home Feed", icon: Home, href: "/app" },
+const primaryNavigation = [
+  { label: "Feed", icon: Home, href: "/app" },
   { label: "Discover", icon: Compass, href: "/discover" },
   { label: "Network", icon: UsersRound, href: "/network" },
   { label: "Resources", icon: BookOpen, href: "/resources" },
@@ -44,9 +40,7 @@ const navigation = [
   },
   { label: "Messages", icon: Mail, href: "/messages" },
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { label: "Help & feedback", icon: LifeBuoy, href: "/support" },
-  { label: "About & policies", icon: Info, href: "/information" },
-];
+] as const;
 
 interface PlatformShellProps {
   account: {
@@ -64,7 +58,6 @@ interface PlatformShellProps {
 export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const mobileDrawerRef = useRef<HTMLElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
@@ -118,35 +111,13 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [userMenuOpen]);
 
-  const sidebar = (
-    <div className="flex h-full flex-col">
-      <div
-        className={cn(
-          "border-sidebar-border flex h-16 items-center gap-3 border-b px-4",
-          collapsed && "justify-center px-2",
-        )}
-      >
-        <span className="bg-sidebar-primary text-primary-foreground grid size-9 shrink-0 place-items-center rounded-xl">
-          <GraduationCap aria-hidden="true" className="size-5" />
-        </span>
-        {!collapsed && (
-          <div className="min-w-0">
-            <p className="truncate font-serif text-base text-white">
-              VistaTeacher
-            </p>
-            {plan === "plus" && (
-              <span className="bg-accent mt-1 inline-block rounded px-1.5 py-0.5 text-[9px] font-bold text-white">
-                PLUS
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+  const mobileMenu = (
+    <div className="p-3">
       <nav
         aria-label="Platform navigation"
-        className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4 lg:scrollbar-none lg:[&::-webkit-scrollbar]:hidden"
+        className="grid max-h-[calc(100dvh-5rem)] gap-1 overflow-y-auto"
       >
-        {navigation.map(({ label, icon: Icon, href, plus }) => {
+        {primaryNavigation.map(({ label, icon: Icon, href, ...item }) => {
           const active =
             pathname === href ||
             (href !== "/app" && pathname.startsWith(`${href}/`));
@@ -155,14 +126,12 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
-              onClick={() => setMobileOpen(false)}
-              title={collapsed ? label : undefined}
+              onClick={closeMobileMenu}
               className={cn(
                 "relative flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
                 active
                   ? "bg-white/12 text-white"
                   : "text-white/75 hover:bg-white/8 hover:text-white",
-                collapsed && "justify-center px-0",
               )}
             >
               <Icon
@@ -172,15 +141,11 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                   active && "text-sidebar-primary",
                 )}
               />
-              {!collapsed && (
-                <>
-                  <span className="min-w-0 flex-1 truncate">{label}</span>
-                  {plus && (
-                    <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-white">
-                      Plus
-                    </span>
-                  )}
-                </>
+              <span className="min-w-0 flex-1 truncate">{label}</span>
+              {"plus" in item && item.plus && (
+                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                  Plus
+                </span>
               )}
               {active && (
                 <span className="bg-sidebar-primary absolute top-2 right-0 h-6 w-0.5 rounded-l" />
@@ -192,108 +157,28 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
           <Link
             href="/admin"
             aria-current={pathname.startsWith("/admin") ? "page" : undefined}
-            onClick={() => setMobileOpen(false)}
-            title={collapsed ? "Administration" : undefined}
+            onClick={closeMobileMenu}
             className={cn(
               "relative flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
               pathname.startsWith("/admin")
                 ? "bg-white/12 text-white"
                 : "text-white/75 hover:bg-white/8 hover:text-white",
-              collapsed && "justify-center px-0",
             )}
           >
-            <ShieldCheck className="size-4.5 shrink-0" />
-            {!collapsed && <span>Administration</span>}
+            <ShieldCheck aria-hidden="true" className="size-4.5 shrink-0" />
+            <span>Administration</span>
           </Link>
         )}
       </nav>
-      {plan === "free" && !collapsed && (
-        <div className="mx-3 mb-3 rounded-xl border border-white/10 bg-white/5 p-3.5">
-          <p className="flex items-center gap-1.5 text-xs font-bold text-white">
-            <Sparkles aria-hidden="true" className="size-3.5 text-[#ffaaa2]" />
-            Upgrade to Plus
-          </p>
-          <p className="mt-1 text-[11px] leading-4 text-white/75">
-            AI tools and expanded limits.
-          </p>
-          <Link
-            href="/settings/billing"
-            onClick={() => setMobileOpen(false)}
-            className="bg-accent mt-2.5 block rounded-lg py-1.5 text-center text-xs font-bold text-white"
-          >
-            Compare plans
-          </Link>
-        </div>
-      )}
-      <div className="border-sidebar-border border-t p-3">
-        <Link
-          href={profileHref}
-          onClick={closeMobileMenu}
-          className={cn(
-            "flex items-center gap-3 rounded-xl p-2 hover:bg-white/8",
-            collapsed && "justify-center",
-          )}
-        >
-          <UserAvatar
-            name={account.displayName}
-            photoURL={account.photoURL}
-            className="size-8 shrink-0 rounded-full text-[10px] ring-2 ring-white/10"
-          />
-          {!collapsed && (
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-white">
-                {account.displayName}
-              </span>
-              <span className="block truncate text-xs text-white/75">
-                {account.subject}
-              </span>
-            </span>
-          )}
-        </Link>
-        <div className={cn("mt-1 flex gap-1", collapsed && "flex-col")}>
-          <Link
-            href="/settings"
-            title="Settings"
-            onClick={closeMobileMenu}
-            className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg text-xs text-white/75 hover:bg-white/8 hover:text-white"
-          >
-            <Settings aria-hidden="true" className="size-3.5" />
-            {!collapsed && "Settings"}
-          </Link>
-          <LogoutButton compact={collapsed} />
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={() => setCollapsed((value) => !value)}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="mb-2 hidden h-11 items-center justify-center rounded-lg text-white/75 hover:bg-white/8 hover:text-white lg:mx-3 lg:flex"
-      >
-        <ChevronLeft
-          aria-hidden="true"
-          className={cn(
-            "size-4 transition-transform",
-            collapsed && "rotate-180",
-          )}
-        />
-      </button>
     </div>
   );
 
   return (
-    <div className="bg-background flex h-dvh overflow-hidden">
-      <aside
-        className={cn(
-          "bg-sidebar hidden h-full shrink-0 transition-[width] duration-200 lg:block",
-          collapsed ? "w-16" : "w-60",
-        )}
-      >
-        {sidebar}
-      </aside>
+    <div className="bg-background flex h-dvh flex-col overflow-hidden">
       <div
         aria-hidden={!mobileOpen}
         className={cn(
-          "fixed inset-0 z-40 bg-black/50 transition-opacity lg:hidden",
+          "fixed inset-x-0 top-16 bottom-0 z-40 bg-black/50 transition-opacity lg:hidden",
           mobileOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         onClick={() => setMobileOpen(false)}
@@ -307,61 +192,61 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
         inert={!mobileOpen}
         role="dialog"
         className={cn(
-          "bg-sidebar fixed inset-y-0 left-0 z-50 w-72 transition-transform duration-200 lg:hidden",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          "bg-sidebar fixed inset-x-0 top-16 z-50 max-h-[calc(100dvh-4rem)] overflow-hidden rounded-b-xl shadow-xl transition-[transform,opacity] duration-200 lg:hidden",
+          mobileOpen
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-3 opacity-0",
         )}
       >
-        <button
-          type="button"
-          onClick={() => setMobileOpen(false)}
-          aria-label="Close menu"
-          className="absolute top-2.5 right-2.5 z-10 grid size-11 place-items-center rounded-lg text-white/75 hover:bg-white/10 hover:text-white"
-        >
-          <X aria-hidden="true" className="size-5" />
-        </button>
-        {sidebar}
+        {mobileMenu}
       </aside>
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="bg-card flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:gap-3 sm:px-4">
-          <div className="flex shrink-0 items-center gap-2">
+      <header className="bg-sidebar text-sidebar-foreground border-sidebar-border shrink-0 border-b">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-4 lg:px-6">
+          <div className="flex shrink-0 items-center gap-2 lg:hidden">
             <button
               ref={mobileTriggerRef}
               type="button"
               onClick={() => {
-                setMobileOpen(true);
+                setMobileOpen((value) => !value);
                 setUserMenuOpen(false);
               }}
-              aria-label="Open menu"
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
               aria-controls="platform-mobile-navigation"
               aria-expanded={mobileOpen}
-              className="text-muted-foreground hover:bg-muted grid size-11 place-items-center rounded-xl lg:hidden"
+              className="grid size-11 place-items-center rounded-xl text-white/80 hover:bg-white/10 hover:text-white lg:hidden"
             >
-              <Menu aria-hidden="true" className="size-5" />
+              {mobileOpen ? (
+                <X aria-hidden="true" className="size-5" />
+              ) : (
+                <Menu aria-hidden="true" className="size-5" />
+              )}
             </button>
             <Link
               href="/app"
               aria-label="VistaTeacher home"
               className="flex shrink-0 items-center gap-2 lg:hidden"
             >
-              <span className="bg-primary text-primary-foreground grid size-7 place-items-center rounded-lg">
+              <span className="bg-sidebar-primary text-primary-foreground grid size-7 place-items-center rounded-lg">
                 <GraduationCap aria-hidden="true" className="size-4" />
               </span>
-              <span className="hidden font-serif text-sm sm:inline">
+              <span className="hidden font-serif text-sm text-white sm:inline">
                 VistaTeacher
               </span>
             </Link>
           </div>
-          <div className="min-w-0 flex-1">
+          <Link
+            href="/app"
+            className="hidden min-h-11 shrink-0 items-center gap-2.5 rounded-lg lg:flex"
+          >
+            <span className="bg-sidebar-primary text-primary-foreground grid size-9 place-items-center rounded-lg">
+              <GraduationCap aria-hidden="true" className="size-5" />
+            </span>
+            <span className="font-serif text-lg text-white">VistaTeacher</span>
+          </Link>
+          <div className="min-w-0 flex-1 lg:px-5">
             <GlobalSearch />
           </div>
-          <Link
-            href="/notifications"
-            aria-label="Notifications"
-            onClick={() => setUserMenuOpen(false)}
-            className="text-muted-foreground hover:bg-muted hover:text-foreground relative grid size-11 shrink-0 place-items-center rounded-xl"
-          >
-            <Bell aria-hidden="true" className="size-4.5" />
-          </Link>
+          <NotificationMenu onOpen={() => setUserMenuOpen(false)} />
           <div className="relative">
             <button
               type="button"
@@ -370,7 +255,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
               aria-expanded={userMenuOpen}
               aria-haspopup="true"
               onClick={() => setUserMenuOpen((value) => !value)}
-              className="ring-border grid size-11 place-items-center rounded-xl ring-2 transition-colors hover:ring-primary/35"
+              className="grid size-11 place-items-center rounded-xl ring-2 ring-white/25 transition-colors hover:ring-white/60"
             >
               <UserAvatar
                 name={account.displayName}
@@ -390,7 +275,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                 <div
                   id="profile-navigation"
                   aria-label="Profile navigation"
-                  className="bg-card border-border absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-2xl border py-1 shadow-xl"
+                  className="bg-card text-card-foreground border-border absolute right-0 top-12 z-50 w-60 overflow-hidden rounded-xl border py-1 shadow-xl"
                 >
                   <div className="border-border border-b px-4 py-3">
                     <p className="truncate text-sm font-bold">{account.displayName}</p>
@@ -411,21 +296,21 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                   <Link
                     href={profileHref}
                     onClick={() => setUserMenuOpen(false)}
-                    className="hover:bg-muted block px-4 py-2.5 text-sm"
+                    className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
                   >
                     My Profile
                   </Link>
                   <Link
                     href="/dashboard"
                     onClick={() => setUserMenuOpen(false)}
-                    className="hover:bg-muted block px-4 py-2.5 text-sm"
+                    className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
                   >
                     Dashboard
                   </Link>
                   <Link
                     href="/resources"
                     onClick={() => setUserMenuOpen(false)}
-                    className="hover:bg-muted block px-4 py-2.5 text-sm"
+                    className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
                   >
                     My Resources
                   </Link>
@@ -433,18 +318,118 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                     <Link
                       href="/pricing"
                       onClick={() => setUserMenuOpen(false)}
-                      className="hover:bg-muted block px-4 py-2.5 text-sm"
+                      className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
                     >
                       Pricing &amp; Plans
                     </Link>
                   )}
+                  {account.role === "platform_admin" && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
+                    >
+                      Administration
+                    </Link>
+                  )}
+                  <Link
+                    href="/settings"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
+                  >
+                    Settings
+                  </Link>
+                  <div className="border-border border-t">
+                    <LogoutButton appearance="menu" />
+                  </div>
                 </div>
               </>
             )}
           </div>
-        </header>
-        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+        </div>
+        <nav
+          aria-label="Primary platform navigation"
+          className="border-sidebar-border hidden border-t lg:block"
+        >
+          <div className="mx-auto flex max-w-7xl items-center justify-center gap-1 overflow-x-auto px-6">
+            {primaryNavigation.map(({ label, href, ...item }) => {
+              const active =
+                pathname === href ||
+                (href !== "/app" && pathname.startsWith(`${href}/`));
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "relative flex min-h-12 shrink-0 items-center gap-1.5 px-3 text-sm font-semibold transition-colors",
+                    active
+                      ? "text-white"
+                      : "text-white/75 hover:text-white",
+                  )}
+                >
+                  {label}
+                  {"plus" in item && item.plus && (
+                    <span className="text-[9px] font-bold text-[#ffaaa2]">
+                      Plus
+                    </span>
+                  )}
+                  {active && (
+                    <span className="bg-accent absolute inset-x-3 bottom-0 h-0.5 rounded-t" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <main className="flex-1">{children}</main>
+        <PlatformFooter />
       </div>
     </div>
+  );
+}
+
+function PlatformFooter() {
+  return (
+    <footer className="bg-sidebar text-sidebar-foreground/75 border-sidebar-border mt-auto border-t px-5 py-8 lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-6 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+        <div>
+          <Link
+            href="/app"
+            className="text-sidebar-foreground font-serif text-lg"
+          >
+            VistaTeacher
+          </Link>
+          <p className="mt-1 max-w-md">
+            A professional community built around the work educators share.
+          </p>
+        </div>
+        <nav
+          aria-label="Platform footer navigation"
+          className="flex flex-wrap gap-x-5 gap-y-3"
+        >
+          <Link className="hover:text-white" href="/support">
+            Help &amp; feedback
+          </Link>
+          <Link className="hover:text-white" href="/settings/billing">
+            Compare plans
+          </Link>
+          <Link className="hover:text-white" href="/about">
+            About
+          </Link>
+          <Link className="hover:text-white" href="/information">
+            About &amp; policies
+          </Link>
+          <Link className="hover:text-white" href="/privacy">
+            Privacy
+          </Link>
+          <Link className="hover:text-white" href="/terms">
+            Terms
+          </Link>
+        </nav>
+      </div>
+    </footer>
   );
 }

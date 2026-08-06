@@ -1,12 +1,32 @@
 "use client";
 
-import { Bell, CheckCheck, MessageSquare } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Bell,
+  Check,
+  CheckCheck,
+  Download,
+  Heart,
+  MessageSquare,
+  Trash2,
+  UserPlus,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
 import type { NotificationItem, NotificationPage } from "@/lib/messages/server";
+import { cn } from "@/lib/utils";
+
+type NotificationFilter = "all" | "unread" | "archived";
+type NotificationAction =
+  | "mark-read"
+  | "mark-unread"
+  | "archive"
+  | "restore"
+  | "delete";
 
 export function NotificationsExperience({
   initialPage,
@@ -15,25 +35,49 @@ export function NotificationsExperience({
 }) {
   const [page, setPage] = useState(initialPage);
   const [pending, setPending] = useState(false);
-  const unread = page.notifications.filter((item) => !item.read).length;
+  const [filter, setFilter] = useState<NotificationFilter>("all");
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const unread = page.notifications.filter(
+    (item) => !item.read && !item.archived,
+  ).length;
+  const visibleNotifications = page.notifications.filter((item) => {
+    if (filter === "archived") return item.archived;
+    if (filter === "unread") return !item.archived && !item.read;
+    return !item.archived;
+  });
 
-  async function markRead(notificationId: string | null) {
-    setPending(true);
+  async function updateNotification(
+    notificationId: string | null,
+    action: NotificationAction,
+  ) {
+    if (notificationId) setPendingId(notificationId);
+    else setPending(true);
     const response = await fetch("/api/notifications", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notificationId }),
+      body: JSON.stringify({ notificationId, action }),
     });
-    setPending(false);
-    if (!response.ok) return toast.error("We couldn't update notifications.");
+    if (notificationId) setPendingId(null);
+    else setPending(false);
+    if (!response.ok) {
+      toast.error("We couldn't update notifications.");
+      return false;
+    }
     setPage((current) => ({
       ...current,
-      notifications: current.notifications.map((item) =>
-        !notificationId || item.id === notificationId
-          ? { ...item, read: true }
-          : item,
-      ),
+      notifications:
+        action === "delete"
+          ? current.notifications.filter((item) => item.id !== notificationId)
+          : current.notifications.map((item) => {
+              if (notificationId && item.id !== notificationId) return item;
+              if (action === "mark-read") return { ...item, read: true };
+              if (action === "mark-unread") return { ...item, read: false };
+              if (action === "archive") return { ...item, archived: true };
+              if (action === "restore") return { ...item, archived: false };
+              return item;
+            }),
     }));
+    return true;
   }
 
   async function loadMore() {
@@ -68,7 +112,7 @@ export function NotificationsExperience({
             <button
               type="button"
               disabled={pending}
-              onClick={() => void markRead(null)}
+              onClick={() => void updateNotification(null, "mark-read")}
               className="text-primary hover:bg-muted flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold disabled:opacity-50"
             >
               <CheckCheck aria-hidden="true" className="size-4" />
@@ -77,13 +121,38 @@ export function NotificationsExperience({
           )}
         </header>
 
-        {page.notifications.length ? (
+        <div
+          aria-label="Notification filters"
+          className="bg-muted mb-4 flex w-full gap-1 rounded-lg p-1 sm:w-fit"
+        >
+          {(["all", "unread", "archived"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={filter === value}
+              onClick={() => setFilter(value)}
+              className={cn(
+                "min-h-11 flex-1 rounded-md px-4 text-sm font-semibold capitalize sm:flex-none",
+                filter === value
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+
+        {visibleNotifications.length ? (
           <div className="bg-card overflow-hidden rounded-xl border">
-            {page.notifications.map((notification) => (
+            {visibleNotifications.map((notification) => (
               <NotificationRow
                 key={notification.id}
                 notification={notification}
-                onRead={() => void markRead(notification.id)}
+                pending={pendingId === notification.id}
+                onAction={(action) =>
+                  void updateNotification(notification.id, action)
+                }
               />
             ))}
           </div>
@@ -94,10 +163,12 @@ export function NotificationsExperience({
               className="text-muted-foreground/30 mx-auto size-9"
             />
             <h2 className="mt-3 font-serif text-xl">
-              You&apos;re all caught up
+              {filter === "archived" ? "No archived updates" : "You're all caught up"}
             </h2>
             <p className="text-muted-foreground mt-1 text-sm">
-              New community updates will appear here.
+              {filter === "archived"
+                ? "Notifications you archive will appear here."
+                : "New community updates will appear here."}
             </p>
           </div>
         )}
@@ -118,43 +189,113 @@ export function NotificationsExperience({
 
 function NotificationRow({
   notification,
-  onRead,
+  pending,
+  onAction,
 }: {
   notification: NotificationItem;
-  onRead: () => void;
+  pending: boolean;
+  onAction: (action: NotificationAction) => void;
 }) {
   return (
-    <Link
-      href={notification.href}
-      onClick={() => {
-        if (!notification.read) onRead();
-      }}
-      className={`hover:bg-muted/50 flex gap-3 border-b p-4 last:border-b-0 ${
-        notification.read ? "" : "bg-secondary/20"
-      }`}
+    <article
+      className={cn(
+        "flex gap-3 border-b p-4 last:border-b-0",
+        !notification.read && "bg-secondary/20",
+      )}
     >
       <span className="bg-secondary text-primary grid size-10 shrink-0 place-items-center rounded-full">
-        {notification.type === "message" ? (
-          <MessageSquare aria-hidden="true" className="size-4" />
-        ) : (
-          <Bell aria-hidden="true" className="size-4" />
-        )}
+        <NotificationIcon type={notification.type} />
       </span>
       <span className="min-w-0 flex-1">
-        <span
-          className={`block text-sm ${notification.read ? "" : "font-bold"}`}
+        <Link
+          href={notification.href}
+          onClick={() => {
+            if (!notification.read) onAction("mark-read");
+          }}
+          className={cn(
+            "hover:text-primary block text-sm",
+            !notification.read && "font-bold",
+          )}
         >
           {notification.message}
-        </span>
+        </Link>
         <span className="text-muted-foreground mt-1 block text-xs">
           {formatDistanceToNow(new Date(notification.createdAt), {
             addSuffix: true,
           })}
         </span>
+        <span className="mt-2 flex flex-wrap gap-1">
+          <NotificationActionButton
+            label={notification.read ? "Mark as unread" : "Mark as read"}
+            disabled={pending}
+            onClick={() =>
+              onAction(notification.read ? "mark-unread" : "mark-read")
+            }
+          >
+            <Check aria-hidden="true" className="size-3.5" />
+          </NotificationActionButton>
+          <NotificationActionButton
+            label={notification.archived ? "Restore" : "Archive"}
+            disabled={pending}
+            onClick={() =>
+              onAction(notification.archived ? "restore" : "archive")
+            }
+          >
+            {notification.archived ? (
+              <ArchiveRestore aria-hidden="true" className="size-3.5" />
+            ) : (
+              <Archive aria-hidden="true" className="size-3.5" />
+            )}
+          </NotificationActionButton>
+          <NotificationActionButton
+            label="Delete"
+            disabled={pending}
+            onClick={() => onAction("delete")}
+          >
+            <Trash2 aria-hidden="true" className="size-3.5" />
+          </NotificationActionButton>
+        </span>
       </span>
       {!notification.read && (
         <span className="bg-primary mt-2 size-2 shrink-0 rounded-full" />
       )}
-    </Link>
+    </article>
   );
+}
+
+function NotificationActionButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="text-muted-foreground hover:bg-muted hover:text-foreground flex min-h-11 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold disabled:opacity-50"
+    >
+      {children}
+      {label}
+    </button>
+  );
+}
+
+function NotificationIcon({ type }: { type: string }) {
+  const className = "size-4";
+  if (type === "message" || type === "post-comment")
+    return <MessageSquare aria-hidden="true" className={className} />;
+  if (type === "follow")
+    return <UserPlus aria-hidden="true" className={className} />;
+  if (type === "post-like")
+    return <Heart aria-hidden="true" className={className} />;
+  if (type === "resource-download")
+    return <Download aria-hidden="true" className={className} />;
+  return <Bell aria-hidden="true" className={className} />;
 }

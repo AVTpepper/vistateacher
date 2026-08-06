@@ -45,16 +45,31 @@ test("signs in a seeded educator and protects platform workflows", async ({
   await expect(page.getByRole("button", { name: "All Posts" })).toBeVisible();
   await expectNoPageOverflow(page);
   const mobileMenu = page.getByRole("button", { name: "Open menu" });
-  if (await mobileMenu.isVisible()) await mobileMenu.click();
-  await expect(
-    page.getByRole("link", { name: "Compare plans" }),
-  ).toHaveAttribute("href", "/settings/billing");
-  await expect(
-    page.getByRole("link", { name: "Help & feedback" }),
-  ).toHaveAttribute("href", "/support");
-  await expect(
-    page.getByRole("link", { name: "About & policies" }),
-  ).toHaveAttribute("href", "/information");
+  if (await mobileMenu.isVisible()) {
+    await mobileMenu.click();
+    const navigation = page
+      .getByLabel("Platform menu")
+      .getByRole("navigation", { name: "Platform navigation" });
+    await expect(navigation.getByRole("link", { name: "Feed" })).toBeVisible();
+    await expect(
+      navigation.getByRole("link", { name: "Dashboard" }),
+    ).toBeVisible();
+    await expect(navigation.getByRole("link", { name: "Help & feedback" })).toHaveCount(0);
+    await expect(navigation.getByRole("link", { name: "About & policies" })).toHaveCount(0);
+    await expect(navigation.getByRole("link", { name: "Settings" })).toHaveCount(0);
+    await expect(navigation.getByRole("button", { name: "Log out" })).toHaveCount(0);
+  } else {
+    const footerNavigation = page.getByLabel("Platform footer navigation");
+    await expect(
+      footerNavigation.getByRole("link", { name: "Compare plans" }),
+    ).toHaveAttribute("href", "/settings/billing");
+    await expect(
+      footerNavigation.getByRole("link", { name: "Help & feedback" }),
+    ).toHaveAttribute("href", "/support");
+    await expect(
+      footerNavigation.getByRole("link", { name: "About & policies" }),
+    ).toHaveAttribute("href", "/information");
+  }
 
   await page.goto("/pricing");
   const marketingMenu = page.getByRole("button", { name: "Open main menu" });
@@ -156,6 +171,43 @@ test("keeps authenticated educator routes responsive and accessible", async ({
   }
 });
 
+test("previews and manages contextual notifications", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium");
+  await signIn(page, "community@vista.local");
+
+  await page
+    .getByRole("button", { name: /^Notifications(?:, \d+ unread)?$/ })
+    .click();
+  const menu = page.getByLabel("Recent notifications");
+  await expect(menu).toBeVisible();
+  await expect(
+    menu.getByRole("link", { name: /Jordan Okafor followed you/ }),
+  ).toHaveAttribute("href", "/profile/educator-three");
+  await menu
+    .getByRole("button", { name: /Mark as read: Jordan Okafor followed you/ })
+    .click();
+  await menu.getByRole("link", { name: "View all notifications" }).click();
+  await expect(page).toHaveURL(/\/notifications$/);
+
+  const notification = page
+    .getByRole("article")
+    .filter({ hasText: "Jordan Okafor followed you." });
+  await notification.getByRole("button", { name: "Archive" }).click();
+  await page.getByRole("button", { name: "Archived" }).click();
+  await expect(notification).toBeVisible();
+  await notification.getByRole("button", { name: "Restore" }).click();
+
+  await page.getByRole("button", { name: "All", exact: true }).click();
+  await notification.getByRole("button", { name: "Mark as unread" }).click();
+  await expect(
+    notification.getByRole("button", { name: "Mark as read" }),
+  ).toBeVisible();
+  await notification.getByRole("button", { name: "Delete" }).click();
+  await expect(notification).toHaveCount(0);
+});
+
 test("keeps administration routes responsive and accessible", async ({ page }) => {
   test.setTimeout(90_000);
   await signIn(page, "admin@vista.local");
@@ -178,7 +230,7 @@ test("keeps administration routes responsive and accessible", async ({ page }) =
   }
 });
 
-test("keeps the short desktop sidebar scrollable without a visible scrollbar", async ({
+test("keeps desktop platform navigation complete and within the viewport", async ({
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium");
@@ -186,23 +238,39 @@ test("keeps the short desktop sidebar scrollable without a visible scrollbar", a
   await signIn(page, "community@vista.local");
 
   const navigation = page.getByRole("navigation", {
-    name: "Platform navigation",
+    name: "Primary platform navigation",
   });
   await expect(navigation).toBeVisible();
   expect(
     await navigation.evaluate(
-      (element) => element.scrollHeight > element.clientHeight,
+      (element) => element.scrollWidth <= element.clientWidth,
     ),
   ).toBe(true);
-  expect(
-    await navigation.evaluate(
-      (element) => getComputedStyle(element).scrollbarWidth,
-    ),
-  ).toBe("none");
-  await navigation.hover();
-  await page.mouse.wheel(0, 600);
+  for (const label of [
+    "Feed",
+    "Discover",
+    "Network",
+    "Resources",
+    "Forum",
+    "AI Lesson Builder",
+    "Messages",
+    "Dashboard",
+  ]) {
+    await expect(navigation.getByRole("link", { name: label })).toBeVisible();
+  }
+
+  await page.getByRole("button", { name: "Open profile menu" }).click();
+  const profileNavigation = page.getByLabel("Profile navigation");
+  await expect(profileNavigation.getByRole("link", { name: "Settings" })).toBeVisible();
+  await expect(profileNavigation.getByRole("button", { name: "Log out" })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  const footerNavigation = page.getByRole("navigation", {
+    name: "Platform footer navigation",
+  });
+  await footerNavigation.scrollIntoViewIfNeeded();
   await expect(
-    page.getByRole("link", { name: "About & policies" }),
+    footerNavigation.getByRole("link", { name: "About & policies" }),
   ).toBeVisible();
 });
 

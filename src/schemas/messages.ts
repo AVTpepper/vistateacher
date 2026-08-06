@@ -77,9 +77,17 @@ export const notificationQuerySchema = z.object({
   cursor: z.string().trim().min(1).max(512).optional(),
 });
 
-export const notificationReadSchema = z.object({
-  notificationId: documentIdSchema.nullable().default(null),
-});
+export const notificationActionSchema = z
+  .object({
+    notificationId: documentIdSchema.nullable().default(null),
+    action: z
+      .enum(["mark-read", "mark-unread", "archive", "restore", "delete"])
+      .default("mark-read"),
+  })
+  .refine(
+    (value) => value.notificationId !== null || value.action === "mark-read",
+    { message: "This action requires a notification." },
+  );
 
 export type StartConversationInput = z.infer<typeof startConversationSchema>;
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;

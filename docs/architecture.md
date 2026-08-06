@@ -45,7 +45,7 @@ Manual edits and duplication also create immutable versions transactionally. PDF
 
 ## Notifications and Analytics
 
-Trusted operations create notifications alongside the causing action, skip self-notifications, and expose only recipient-owned read state. Clients cannot create notifications.
+Trusted message, follow, post engagement, and resource download operations create notifications alongside the causing action and skip self-notifications. Each record carries a server-owned contextual destination and actor identity; clients cannot create notifications. The header dropdown shows recent active updates, aggregates likes and comments by post, and permits only mark-as-read actions. The full notification center owns all, unread, and archived filters plus read, unread, archive, restore, and delete controls.
 
 Normal requests do not scan activity collections. Trusted writes and reconciliation jobs maintain `platformStats/current` and `userAnalytics/{uid}`. The dashboard composes personalized recommendations through existing bounded network, resource, feed, and forum readers, while analytics reads only the educator profile, exact usage periods, subscription state, and one owner aggregate.
 
@@ -69,7 +69,7 @@ The Firebase MVP uses normalized fields, keyword arrays, and bounded parallel qu
 
 Public profile routes read `users/{uid}` and join effective subscription state on the server. Contact details are loaded from `userPrivate/{uid}` only for the owner or when the owner explicitly enables public sharing. Profile and settings forms submit bounded Zod contracts to same-origin route handlers; Firestore rules deny direct identity-document mutations so clients cannot bypass server validation. Profile image uploads are bounded server-side writes for JPG/PNG/WebP avatars, while banner customization is limited to server-validated Plus style presets (no custom banner image uploads). Account deletion records a reviewable request rather than deleting data synchronously.
 
-Authenticated workspace pages use a fixed application shell rather than repeated page footers. The sidebar links to one in-app information hub for About, support, plan, privacy, and terms destinations. On short desktop viewports the navigation remains independently scrollable while its native scrollbar is visually suppressed; the mobile drawer retains normal scrolling.
+Authenticated workspace pages use a fixed application shell with a two-tier desktop header and a shared footer inside the shell's scroll region. The header keeps search and account controls above the primary workspace destinations; secondary support, company, privacy, and terms destinations live in the footer. Smaller viewports use a focus-trapped dropdown menu containing only primary workspace navigation.
 
 ## Discovery and Network
 

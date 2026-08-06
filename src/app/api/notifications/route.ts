@@ -4,10 +4,10 @@ import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "@/lib/auth/request";
 import { getRouteAccount } from "@/lib/auth/route-account";
 import { messageErrorResponse } from "@/lib/messages/route-response";
-import { getNotifications, markNotificationsRead } from "@/lib/messages/server";
+import { getNotifications, updateNotification } from "@/lib/messages/server";
 import {
+  notificationActionSchema,
   notificationQuerySchema,
-  notificationReadSchema,
 } from "@/schemas/messages";
 
 export async function GET(request: NextRequest) {
@@ -48,7 +48,7 @@ export async function PATCH(request: NextRequest) {
       { error: "Authentication required." },
       { status: 401 },
     );
-  const parsed = notificationReadSchema.safeParse(
+  const parsed = notificationActionSchema.safeParse(
     await request.json().catch(() => null),
   );
   if (!parsed.success)
@@ -57,7 +57,11 @@ export async function PATCH(request: NextRequest) {
       { status: 400 },
     );
   try {
-    await markNotificationsRead(account.uid, parsed.data.notificationId);
+    await updateNotification(
+      account.uid,
+      parsed.data.notificationId,
+      parsed.data.action,
+    );
     return NextResponse.json({ ok: true });
   } catch (error) {
     const response = messageErrorResponse(error);

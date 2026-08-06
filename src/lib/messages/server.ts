@@ -75,10 +75,12 @@ export interface NotificationItem {
   id: string;
   type: string;
   actorId: string | null;
+  actorName: string | null;
   entityId: string | null;
   message: string;
   href: string;
   read: boolean;
+  archived: boolean;
   createdAt: string;
 }
 
@@ -446,10 +448,12 @@ async function writeMessage(
       {
         type: "message",
         actorId: uid,
+        actorName: String(sender.data()?.displayName ?? "An educator"),
         entityId: conversationId,
         message: `${String(sender.data()?.displayName ?? "An educator")} sent you a message.`,
         href: `/messages?conversation=${conversationId}`,
         read: false,
+        archived: false,
         createdAt: FieldValue.serverTimestamp(),
       },
     );
@@ -741,10 +745,12 @@ export async function getNotifications(
         id: document.id,
         type: String(data.type ?? "update"),
         actorId: typeof data.actorId === "string" ? data.actorId : null,
+        actorName: typeof data.actorName === "string" ? data.actorName : null,
         entityId: typeof data.entityId === "string" ? data.entityId : null,
         message: String(data.message ?? "You have a new update."),
         href: String(data.href ?? "/app"),
         read: data.read === true,
+        archived: data.archived === true,
         createdAt: timestamp(data.createdAt).toDate().toISOString(),
       };
     }),
@@ -758,16 +764,34 @@ export async function getNotifications(
   };
 }
 
-export async function markNotificationsRead(
+export type NotificationAction =
+  | "mark-read"
+  | "mark-unread"
+  | "archive"
+  | "restore"
+  | "delete";
+
+export async function updateNotification(
   uid: string,
   notificationId: string | null,
+  action: NotificationAction,
 ) {
   const db = adminDb();
   if (notificationId) {
     const reference = db.doc(`users/${uid}/notifications/${notificationId}`);
     if (!(await reference.get()).exists)
       throw new MessageActionError("not-found");
-    await reference.update({ read: true });
+    if (action === "delete") {
+      await reference.delete();
+      return;
+    }
+    const updates = {
+      "mark-read": { read: true },
+      "mark-unread": { read: false },
+      archive: { archived: true },
+      restore: { archived: false },
+    } as const;
+    await reference.update(updates[action]);
     return;
   }
   const unread = await db
