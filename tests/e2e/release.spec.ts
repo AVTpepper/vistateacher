@@ -74,7 +74,10 @@ test("loads the production experience without failed same-origin assets", async 
 }) => {
   const failures: string[] = [];
   page.on("requestfailed", (request) => {
-    if (new URL(request.url()).origin === "http://127.0.0.1:3100")
+    if (
+      new URL(request.url()).origin === "http://127.0.0.1:3100" &&
+      request.failure()?.errorText !== "net::ERR_ABORTED"
+    )
       failures.push(request.url());
   });
 

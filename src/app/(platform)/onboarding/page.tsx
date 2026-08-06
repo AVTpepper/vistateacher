@@ -20,7 +20,7 @@ export default async function OnboardingPage({
     );
 
   return (
-    <main className="mx-auto max-w-4xl px-5 py-12 lg:px-8 lg:py-16">
+    <div className="mx-auto max-w-4xl px-5 py-12 lg:px-8 lg:py-16">
       <div className="mb-10 max-w-2xl">
         <p className="text-primary font-mono text-xs font-bold uppercase">
           Educator profile
@@ -39,6 +39,6 @@ export default async function OnboardingPage({
           planIntent={planIntent}
         />
       </div>
-    </main>
+    </div>
   );
 }

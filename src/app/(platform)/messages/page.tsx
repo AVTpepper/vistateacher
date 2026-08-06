@@ -12,14 +12,22 @@ export const metadata: Metadata = { title: "Messages" };
 export default async function MessagesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ conversation?: string }>;
+  searchParams: Promise<{ conversation?: string; compose?: string }>;
 }) {
   const account = await requireCurrentAccount();
   const conversations = await getConversationSummaries(account.uid);
-  const requestedId = (await searchParams).conversation;
+  const params = await searchParams;
+  const requestedId = params.conversation;
+  const composeUid = params.compose?.trim() || null;
+  const composeConversationId = composeUid
+    ? (conversations.find((item) => item.participant.uid === composeUid)?.id ??
+      null)
+    : null;
   const activeId =
     requestedId && conversations.some((item) => item.id === requestedId)
       ? requestedId
+      : composeConversationId
+        ? composeConversationId
       : (conversations[0]?.id ?? null);
   const initialMessages = activeId
     ? await getMessagePage(account.uid, { conversationId: activeId })
@@ -33,6 +41,7 @@ export default async function MessagesPage({
       }}
       initialConversations={conversations}
       initialConversationId={activeId}
+      initialComposeUid={composeUid && !composeConversationId ? composeUid : null}
       initialMessages={initialMessages}
     />
   );

@@ -17,13 +17,13 @@ const buttonVariants = cva(
           "border bg-transparent text-foreground hover:bg-secondary hover:text-secondary-foreground",
         ghost: "text-foreground hover:bg-muted",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 active:bg-destructive/80",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/80",
       },
       size: {
-        sm: "h-9 px-3",
-        default: "h-10 px-4",
+        sm: "h-11 px-3",
+        default: "h-11 px-4",
         lg: "h-12 px-6",
-        icon: "size-10",
+        icon: "size-11",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

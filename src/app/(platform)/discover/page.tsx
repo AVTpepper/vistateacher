@@ -55,7 +55,7 @@ export default async function DiscoverPage({
   const educators = await discoverEducators(account.uid, filters);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6 lg:px-6">
+    <div className="mx-auto max-w-6xl px-4 py-6 lg:px-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl">Discover teachers</h1>
@@ -115,6 +115,6 @@ export default async function DiscoverPage({
           </p>
         </section>
       )}
-    </main>
+    </div>
   );
 }

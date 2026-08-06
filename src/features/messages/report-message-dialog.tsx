@@ -37,14 +37,14 @@ export function ReportMessageDialog({ message }: { message: DirectMessage }) {
           type="button"
           aria-label="Report message"
           title="Report message"
-          className="hover:text-destructive"
+          className="grid size-11 place-items-center rounded-lg hover:text-destructive"
         >
           <Flag aria-hidden="true" className="size-3" />
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
-        <Dialog.Content className="bg-card fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border p-5 shadow-xl">
+        <Dialog.Content className="bg-card fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border p-5 shadow-xl">
           <Dialog.Title className="font-serif text-xl">
             Report message
           </Dialog.Title>

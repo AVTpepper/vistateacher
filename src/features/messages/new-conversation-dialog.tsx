@@ -8,12 +8,19 @@ import { toast } from "sonner";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { ProfileSearchResult } from "@/types/models";
 
-export function NewConversationDialog({ viewerUid }: { viewerUid: string }) {
-  const [open, setOpen] = useState(false);
+export function NewConversationDialog({
+  viewerUid,
+  initialRecipientUid = null,
+}: {
+  viewerUid: string;
+  initialRecipientUid?: string | null;
+}) {
+  const [open, setOpen] = useState(Boolean(initialRecipientUid));
   const [search, setSearch] = useState("");
   const [educators, setEducators] = useState<ProfileSearchResult[]>([]);
   const [recipient, setRecipient] = useState<ProfileSearchResult | null>(null);
   const [content, setContent] = useState("");
+  const [initialRecipientLoaded, setInitialRecipientLoaded] = useState(false);
 
   useEffect(() => {
     if (search.trim().length < 2) return;
@@ -35,6 +42,38 @@ export function NewConversationDialog({ viewerUid }: { viewerUid: string }) {
       controller.abort();
     };
   }, [search, viewerUid]);
+
+  useEffect(() => {
+    if (!initialRecipientUid || initialRecipientLoaded || recipient) return;
+
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/profile/${initialRecipientUid}/summary`,
+          { signal: controller.signal },
+        );
+        const result = (await response.json().catch(() => null)) as {
+          educator?: ProfileSearchResult;
+        } | null;
+        if (!response.ok || !result?.educator) {
+          setInitialRecipientLoaded(true);
+          return;
+        }
+        if (result.educator.uid !== viewerUid) {
+          setRecipient(result.educator);
+        }
+        setInitialRecipientLoaded(true);
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setInitialRecipientLoaded(true);
+        }
+      }
+    })();
+
+    return () => controller.abort();
+  }, [initialRecipientLoaded, initialRecipientUid, recipient, viewerUid]);
+
   const visibleEducators = search.trim().length >= 2 ? educators : [];
 
   async function startConversation() {
@@ -63,14 +102,14 @@ export function NewConversationDialog({ viewerUid }: { viewerUid: string }) {
           type="button"
           aria-label="New conversation"
           title="New conversation"
-          className="text-primary hover:bg-muted grid size-8 place-items-center rounded-lg"
+          className="text-primary hover:bg-muted grid size-11 place-items-center rounded-lg"
         >
           <MessageSquarePlus aria-hidden="true" className="size-4" />
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
-        <Dialog.Content className="bg-card fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border p-5 shadow-xl">
+        <Dialog.Content className="bg-card fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border p-5 shadow-xl">
           <Dialog.Title className="font-serif text-xl">
             New conversation
           </Dialog.Title>
@@ -80,6 +119,7 @@ export function NewConversationDialog({ viewerUid }: { viewerUid: string }) {
           {!recipient ? (
             <>
               <input
+                aria-label="Search educators"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search educators..."
@@ -127,6 +167,7 @@ export function NewConversationDialog({ viewerUid }: { viewerUid: string }) {
                 </span>
               </button>
               <textarea
+                aria-label="Message"
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
                 maxLength={5_000}

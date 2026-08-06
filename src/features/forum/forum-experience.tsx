@@ -399,7 +399,10 @@ function NewThreadDialog({
       open={open}
       onOpenChange={(next) => !submitting && onOpenChange(next)}
     >
-      <Dialog.Trigger className="bg-primary text-primary-foreground flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-bold">
+      <Dialog.Trigger
+        aria-label="Start a new discussion"
+        className="bg-primary text-primary-foreground flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold"
+      >
         <PlusCircle aria-hidden="true" className="size-4" />
         <span className="hidden sm:inline">New Thread</span>
       </Dialog.Trigger>
@@ -414,7 +417,7 @@ function NewThreadDialog({
           </Dialog.Description>
           <Dialog.Close
             aria-label="Close discussion form"
-            className="text-muted-foreground hover:bg-muted absolute top-4 right-4 grid size-8 place-items-center rounded-lg"
+            className="text-muted-foreground hover:bg-muted absolute top-2.5 right-2.5 grid size-11 place-items-center rounded-lg"
           >
             <X aria-hidden="true" className="size-4" />
           </Dialog.Close>

@@ -202,7 +202,8 @@ async function requireActiveUser(
 ) {
   const snapshot = await transaction.get(reference);
   if (!snapshot.exists) throw new MessageActionError("not-found");
-  if (snapshot.data()?.status !== "active")
+  const status = snapshot.data()?.status;
+  if (status && status !== "active")
     throw new MessageActionError("inactive");
   return snapshot;
 }

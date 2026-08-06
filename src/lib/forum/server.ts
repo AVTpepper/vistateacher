@@ -25,6 +25,18 @@ import type { UserRole } from "@/types/models";
 const PAGE_SIZE = 10;
 const REPLY_LIMIT = 100;
 
+const DEFAULT_FORUM_CATEGORIES = [
+  {
+    id: "inspiration-and-ideas",
+    name: "Inspiration and Ideas",
+    description:
+      "Bring back inspiration with educator stories, useful links, and sparks for practice.",
+    icon: "Lightbulb",
+    color: "#E3645B",
+    order: 8,
+  },
+] as const;
+
 export interface ForumAuthor {
   uid: string;
   displayName: string;
@@ -140,7 +152,35 @@ function isPlatformAdmin(role: UserRole): boolean {
   return role === "platform_admin";
 }
 
+async function ensureDefaultForumCategories(): Promise<void> {
+  const db = adminDb();
+  const refs = DEFAULT_FORUM_CATEGORIES.map((category) =>
+    db.doc(`forumCategories/${category.id}`),
+  );
+  const snapshots = await db.getAll(...refs);
+  const missing = DEFAULT_FORUM_CATEGORIES.filter(
+    (_, index) => !snapshots[index]?.exists,
+  );
+  if (!missing.length) return;
+
+  const batch = db.batch();
+  for (const category of missing) {
+    batch.set(db.doc(`forumCategories/${category.id}`), {
+      name: category.name,
+      description: category.description,
+      icon: category.icon,
+      color: category.color,
+      threadCount: 0,
+      postCount: 0,
+      order: category.order,
+      active: true,
+    });
+  }
+  await batch.commit();
+}
+
 export async function getForumCategories(): Promise<ForumCategory[]> {
+  await ensureDefaultForumCategories();
   const snapshot = await adminDb()
     .collection("forumCategories")
     .where("active", "==", true)

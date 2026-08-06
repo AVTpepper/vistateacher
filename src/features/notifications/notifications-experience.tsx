@@ -55,9 +55,9 @@ export function NotificationsExperience({
   }
 
   return (
-    <main className="h-full overflow-y-auto px-4 py-5 lg:px-6">
+    <div className="px-4 py-5 lg:px-6">
       <div className="mx-auto max-w-3xl">
-        <header className="mb-5 flex items-start justify-between gap-4">
+        <header className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
           <div>
             <h1 className="font-serif text-3xl">Notifications</h1>
             <p className="text-muted-foreground mt-1 text-sm">
@@ -69,7 +69,7 @@ export function NotificationsExperience({
               type="button"
               disabled={pending}
               onClick={() => void markRead(null)}
-              className="text-primary hover:bg-muted flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold disabled:opacity-50"
+              className="text-primary hover:bg-muted flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold disabled:opacity-50"
             >
               <CheckCheck aria-hidden="true" className="size-4" />
               Mark all read
@@ -106,13 +106,13 @@ export function NotificationsExperience({
             type="button"
             disabled={pending}
             onClick={() => void loadMore()}
-            className="bg-card hover:bg-muted mx-auto mt-5 block rounded-lg border px-5 py-2 text-sm font-bold disabled:opacity-50"
+            className="bg-card hover:bg-muted mx-auto mt-5 block min-h-11 rounded-lg border px-5 text-sm font-bold disabled:opacity-50"
           >
             {pending ? "Loading..." : "Load more"}
           </button>
         )}
       </div>
-    </main>
+    </div>
   );
 }
 

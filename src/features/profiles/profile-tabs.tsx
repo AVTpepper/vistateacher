@@ -32,9 +32,10 @@ export function ProfileTabs({
           <button
             key={key}
             type="button"
+            aria-pressed={active === key}
             onClick={() => setActive(key)}
             className={cn(
-              "text-muted-foreground hover:text-foreground hover:bg-muted flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors",
+              "text-muted-foreground hover:text-foreground hover:bg-muted flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors",
               active === key &&
                 "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
             )}

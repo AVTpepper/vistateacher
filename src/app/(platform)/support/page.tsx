@@ -29,7 +29,7 @@ export default async function SupportPage() {
   const account = await requireCurrentAccount();
 
   return (
-    <main className="h-full overflow-y-auto">
+    <div>
       <div className="mx-auto max-w-5xl px-4 py-6 lg:px-6">
         <header className="max-w-2xl">
           <p className="text-primary font-mono text-[10px] font-bold uppercase">
@@ -65,6 +65,6 @@ export default async function SupportPage() {
           </section>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

@@ -42,6 +42,7 @@ export function DiscoverFilters({
         <button
           type="button"
           onClick={() => setShowFilters((value) => !value)}
+          aria-label={showFilters ? "Hide filters" : "Show filters"}
           aria-expanded={showFilters}
           className="bg-card text-muted-foreground hover:text-foreground flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-semibold"
         >

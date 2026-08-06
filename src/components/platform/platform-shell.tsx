@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { LogoutButton } from "@/features/auth/logout-button";
@@ -66,8 +66,57 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const mobileDrawerRef = useRef<HTMLElement>(null);
+  const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const profileHref = account.onboarded ? "/profile" : "/onboarding";
   const closeMobileMenu = () => setMobileOpen(false);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const trigger = mobileTriggerRef.current;
+    document.body.style.overflow = "hidden";
+    const drawer = mobileDrawerRef.current;
+    const focusable = drawer?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    focusable?.[0]?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !focusable?.length) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+      trigger?.focus();
+    };
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setUserMenuOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [userMenuOpen]);
 
   const sidebar = (
     <div className="flex h-full flex-col">
@@ -77,7 +126,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
           collapsed && "justify-center px-2",
         )}
       >
-        <span className="bg-sidebar-primary grid size-9 shrink-0 place-items-center rounded-xl text-white">
+        <span className="bg-sidebar-primary text-primary-foreground grid size-9 shrink-0 place-items-center rounded-xl">
           <GraduationCap aria-hidden="true" className="size-5" />
         </span>
         {!collapsed && (
@@ -105,13 +154,14 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             <Link
               key={href}
               href={href}
+              aria-current={active ? "page" : undefined}
               onClick={() => setMobileOpen(false)}
               title={collapsed ? label : undefined}
               className={cn(
-                "relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
+                "relative flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
                 active
                   ? "bg-white/12 text-white"
-                  : "text-white/60 hover:bg-white/8 hover:text-white",
+                  : "text-white/75 hover:bg-white/8 hover:text-white",
                 collapsed && "justify-center px-0",
               )}
             >
@@ -126,7 +176,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                 <>
                   <span className="min-w-0 flex-1 truncate">{label}</span>
                   {plus && (
-                    <span className="bg-accent/20 text-accent rounded px-1.5 py-0.5 text-[9px]">
+                    <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-white">
                       Plus
                     </span>
                   )}
@@ -141,13 +191,14 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
         {account.role === "platform_admin" && (
           <Link
             href="/admin"
+            aria-current={pathname.startsWith("/admin") ? "page" : undefined}
             onClick={() => setMobileOpen(false)}
             title={collapsed ? "Administration" : undefined}
             className={cn(
-              "relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
+              "relative flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
               pathname.startsWith("/admin")
                 ? "bg-white/12 text-white"
-                : "text-white/60 hover:bg-white/8 hover:text-white",
+                : "text-white/75 hover:bg-white/8 hover:text-white",
               collapsed && "justify-center px-0",
             )}
           >
@@ -159,10 +210,10 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
       {plan === "free" && !collapsed && (
         <div className="mx-3 mb-3 rounded-xl border border-white/10 bg-white/5 p-3.5">
           <p className="flex items-center gap-1.5 text-xs font-bold text-white">
-            <Sparkles aria-hidden="true" className="text-accent size-3.5" />
+            <Sparkles aria-hidden="true" className="size-3.5 text-[#ffaaa2]" />
             Upgrade to Plus
           </p>
-          <p className="mt-1 text-[11px] leading-4 text-white/50">
+          <p className="mt-1 text-[11px] leading-4 text-white/75">
             AI tools and expanded limits.
           </p>
           <Link
@@ -193,7 +244,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
               <span className="block truncate text-sm font-semibold text-white">
                 {account.displayName}
               </span>
-              <span className="block truncate text-xs text-white/40">
+              <span className="block truncate text-xs text-white/75">
                 {account.subject}
               </span>
             </span>
@@ -204,7 +255,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             href="/settings"
             title="Settings"
             onClick={closeMobileMenu}
-            className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-xs text-white/40 hover:bg-white/8 hover:text-white/75"
+            className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg text-xs text-white/75 hover:bg-white/8 hover:text-white"
           >
             <Settings aria-hidden="true" className="size-3.5" />
             {!collapsed && "Settings"}
@@ -216,7 +267,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
         type="button"
         onClick={() => setCollapsed((value) => !value)}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="mb-2 hidden h-8 items-center justify-center rounded-lg text-white/30 hover:bg-white/8 hover:text-white/60 lg:mx-3 lg:flex"
+        className="mb-2 hidden h-11 items-center justify-center rounded-lg text-white/75 hover:bg-white/8 hover:text-white lg:mx-3 lg:flex"
       >
         <ChevronLeft
           aria-hidden="true"
@@ -230,7 +281,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   );
 
   return (
-    <div className="bg-background flex h-screen overflow-hidden">
+    <div className="bg-background flex h-dvh overflow-hidden">
       <aside
         className={cn(
           "bg-sidebar hidden h-full shrink-0 transition-[width] duration-200 lg:block",
@@ -248,6 +299,13 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
         onClick={() => setMobileOpen(false)}
       />
       <aside
+        ref={mobileDrawerRef}
+        id="platform-mobile-navigation"
+        aria-hidden={!mobileOpen}
+        aria-label="Platform menu"
+        aria-modal="true"
+        inert={!mobileOpen}
+        role="dialog"
         className={cn(
           "bg-sidebar fixed inset-y-0 left-0 z-50 w-72 transition-transform duration-200 lg:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
@@ -257,7 +315,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
           type="button"
           onClick={() => setMobileOpen(false)}
           aria-label="Close menu"
-          className="absolute top-4 right-4 z-10 grid size-8 place-items-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white"
+          className="absolute top-2.5 right-2.5 z-10 grid size-11 place-items-center rounded-lg text-white/75 hover:bg-white/10 hover:text-white"
         >
           <X aria-hidden="true" className="size-5" />
         </button>
@@ -267,21 +325,25 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
         <header className="bg-card flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:gap-3 sm:px-4">
           <div className="flex shrink-0 items-center gap-2">
             <button
+              ref={mobileTriggerRef}
               type="button"
               onClick={() => {
                 setMobileOpen(true);
                 setUserMenuOpen(false);
               }}
               aria-label="Open menu"
-              className="text-muted-foreground hover:bg-muted grid size-9 place-items-center rounded-xl lg:hidden"
+              aria-controls="platform-mobile-navigation"
+              aria-expanded={mobileOpen}
+              className="text-muted-foreground hover:bg-muted grid size-11 place-items-center rounded-xl lg:hidden"
             >
               <Menu aria-hidden="true" className="size-5" />
             </button>
             <Link
               href="/app"
+              aria-label="VistaTeacher home"
               className="flex shrink-0 items-center gap-2 lg:hidden"
             >
-              <span className="bg-primary grid size-7 place-items-center rounded-lg text-white">
+              <span className="bg-primary text-primary-foreground grid size-7 place-items-center rounded-lg">
                 <GraduationCap aria-hidden="true" className="size-4" />
               </span>
               <span className="hidden font-serif text-sm sm:inline">
@@ -296,7 +358,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             href="/notifications"
             aria-label="Notifications"
             onClick={() => setUserMenuOpen(false)}
-            className="text-muted-foreground hover:bg-muted hover:text-foreground relative grid size-9 shrink-0 place-items-center rounded-xl"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground relative grid size-11 shrink-0 place-items-center rounded-xl"
           >
             <Bell aria-hidden="true" className="size-4.5" />
           </Link>
@@ -304,10 +366,11 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             <button
               type="button"
               aria-label="Open profile menu"
-              aria-haspopup="menu"
+              aria-controls="profile-navigation"
               aria-expanded={userMenuOpen}
+              aria-haspopup="true"
               onClick={() => setUserMenuOpen((value) => !value)}
-              className="ring-border rounded-xl ring-2 transition-colors hover:ring-primary/35"
+              className="ring-border grid size-11 place-items-center rounded-xl ring-2 transition-colors hover:ring-primary/35"
             >
               <UserAvatar
                 name={account.displayName}
@@ -321,11 +384,13 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                   type="button"
                   aria-label="Close profile menu"
                   onClick={() => setUserMenuOpen(false)}
+                  tabIndex={-1}
                   className="fixed inset-0 z-40"
                 />
                 <div
-                  role="menu"
-                  className="bg-card border-border absolute right-0 top-11 z-50 w-56 overflow-hidden rounded-2xl border py-1 shadow-xl"
+                  id="profile-navigation"
+                  aria-label="Profile navigation"
+                  className="bg-card border-border absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-2xl border py-1 shadow-xl"
                 >
                   <div className="border-border border-b px-4 py-3">
                     <p className="truncate text-sm font-bold">{account.displayName}</p>
@@ -347,7 +412,6 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                     href={profileHref}
                     onClick={() => setUserMenuOpen(false)}
                     className="hover:bg-muted block px-4 py-2.5 text-sm"
-                    role="menuitem"
                   >
                     My Profile
                   </Link>
@@ -355,7 +419,6 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                     href="/dashboard"
                     onClick={() => setUserMenuOpen(false)}
                     className="hover:bg-muted block px-4 py-2.5 text-sm"
-                    role="menuitem"
                   >
                     Dashboard
                   </Link>
@@ -363,7 +426,6 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                     href="/resources"
                     onClick={() => setUserMenuOpen(false)}
                     className="hover:bg-muted block px-4 py-2.5 text-sm"
-                    role="menuitem"
                   >
                     My Resources
                   </Link>
@@ -372,7 +434,6 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                       href="/pricing"
                       onClick={() => setUserMenuOpen(false)}
                       className="hover:bg-muted block px-4 py-2.5 text-sm"
-                      role="menuitem"
                     >
                       Pricing &amp; Plans
                     </Link>

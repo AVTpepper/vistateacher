@@ -10,10 +10,12 @@ import { cn } from "@/lib/utils";
 export function FollowButton({
   targetUid,
   initialFollowing,
+  mode = "follow",
   className,
 }: {
   targetUid: string;
   initialFollowing: boolean;
+  mode?: "follow" | "connect";
   className?: string;
 }) {
   const router = useRouter();
@@ -61,7 +63,13 @@ export function FollowButton({
       ) : (
         <UserPlus aria-hidden="true" className="size-3.5" />
       )}
-      {following ? "Following" : "Follow"}
+      {mode === "connect"
+        ? following
+          ? "Connected"
+          : "Connect"
+        : following
+          ? "Following"
+          : "Follow"}
     </button>
   );
 }

@@ -297,16 +297,16 @@ export function PostCard({
             aria-label="Post options"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
-            className="text-muted-foreground hover:bg-muted grid size-8 place-items-center rounded-lg"
+            className="text-muted-foreground hover:bg-muted grid size-11 place-items-center rounded-lg"
           >
             <MoreHorizontal aria-hidden="true" className="size-4" />
           </button>
           {menuOpen && (
-            <div className="bg-popover absolute top-9 right-0 z-20 w-40 overflow-hidden rounded-lg border py-1 shadow-lg">
+            <div className="bg-popover absolute top-12 right-0 z-20 w-40 overflow-hidden rounded-lg border py-1 shadow-lg">
               <button
                 type="button"
                 onClick={() => void toggleBookmark()}
-                className="hover:bg-muted w-full px-3 py-2 text-left text-sm"
+                className="hover:bg-muted min-h-11 w-full px-3 py-2 text-left text-sm"
               >
                 {post.bookmarked ? "Remove saved post" : "Save post"}
               </button>
@@ -386,7 +386,7 @@ export function PostCard({
         )}
       </div>
       {post.imageURLs[0] && (
-        <div className="bg-muted relative mx-4 mb-3 aspect-[16/9] overflow-hidden rounded-lg">
+        <div className="bg-muted relative mx-4 mb-3 aspect-video overflow-hidden rounded-lg">
           <Image
             src={post.imageURLs[0]}
             alt="Shared post image"
@@ -407,9 +407,10 @@ export function PostCard({
       <div className="flex px-2 py-1">
         <button
           type="button"
+          aria-label={post.liked ? "Unlike post" : "Like post"}
           onClick={() => void toggleLike()}
           className={cn(
-            "hover:bg-muted flex h-10 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold",
+            "hover:bg-muted flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold",
             post.liked ? "text-destructive" : "text-muted-foreground",
           )}
         >
@@ -423,25 +424,28 @@ export function PostCard({
         </button>
         <button
           type="button"
+          aria-label="Comment on post"
           onClick={() => void openComments()}
-          className="text-muted-foreground hover:bg-muted flex h-10 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold"
+          className="text-muted-foreground hover:bg-muted flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold"
         >
           <MessageCircle aria-hidden="true" className="size-4" />
           <span className="hidden sm:inline">Comment</span>
         </button>
         <button
           type="button"
+          aria-label="Share post"
           onClick={() => void share()}
-          className="text-muted-foreground hover:bg-muted flex h-10 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold"
+          className="text-muted-foreground hover:bg-muted flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold"
         >
           <Share2 aria-hidden="true" className="size-4" />
           <span className="hidden sm:inline">Share</span>
         </button>
         <button
           type="button"
+          aria-label={post.bookmarked ? "Remove saved post" : "Save post"}
           onClick={() => void toggleBookmark()}
           className={cn(
-            "hover:bg-muted flex h-10 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold",
+            "hover:bg-muted flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold",
             post.bookmarked ? "text-primary" : "text-muted-foreground",
           )}
         >
@@ -503,7 +507,7 @@ export function PostCard({
                       </div>
                     </div>
                   ) : (
-                    <p className="mt-0.5 text-xs leading-5 break-words">
+                    <p className="mt-0.5 wrap-break-word text-xs leading-5">
                       {item.content}
                     </p>
                   )}

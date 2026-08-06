@@ -18,11 +18,11 @@ export default async function AiLessonsPage({
   const lesson = selectedId ? await getLesson(account.uid, selectedId) : null;
 
   return (
-    <main className="h-full overflow-y-auto px-4 py-5 lg:px-6">
+    <div className="px-4 py-5 lg:px-6">
       <LessonBuilderExperience
         initialWorkspace={workspace}
         initialLesson={lesson}
       />
-    </main>
+    </div>
   );
 }

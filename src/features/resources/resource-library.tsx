@@ -106,6 +106,7 @@ export function ResourceLibrary({
         <button
           type="button"
           onClick={() => setFilters((open) => !open)}
+          aria-label={filters ? "Hide filters" : "Show filters"}
           aria-expanded={filters}
           className={cn(
             "bg-card text-muted-foreground flex h-11 items-center gap-2 rounded-xl border px-3 text-sm font-semibold",
@@ -381,10 +382,11 @@ function ViewButton({
     <button
       type="button"
       aria-label={label}
+      aria-pressed={active}
       title={label}
       onClick={onClick}
       className={cn(
-        "text-muted-foreground grid size-9 place-items-center rounded-lg",
+        "text-muted-foreground grid size-11 place-items-center rounded-lg",
         active && "bg-primary text-primary-foreground",
       )}
     >

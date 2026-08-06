@@ -33,7 +33,7 @@ export default async function NetworkPage({
   const educators = await getNetworkList(account.uid, profileUid, view);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6 lg:px-6">
+    <div className="mx-auto max-w-6xl px-4 py-6 lg:px-6">
       <div>
         <h1 className="font-serif text-3xl">Educator network</h1>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -89,6 +89,6 @@ export default async function NetworkPage({
           </Link>
         </section>
       )}
-    </main>
+    </div>
   );
 }

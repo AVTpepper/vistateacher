@@ -38,11 +38,13 @@ export function MessagesExperience({
   viewer,
   initialConversations,
   initialConversationId,
+  initialComposeUid,
   initialMessages,
 }: {
   viewer: { uid: string; displayName: string; photoURL: string | null };
   initialConversations: ConversationSummary[];
   initialConversationId: string | null;
+  initialComposeUid: string | null;
   initialMessages: MessagePage | null;
 }) {
   const router = useRouter();
@@ -301,7 +303,10 @@ export function MessagesExperience({
                   {unread}
                 </span>
               )}
-              <NewConversationDialog viewerUid={viewer.uid} />
+              <NewConversationDialog
+                viewerUid={viewer.uid}
+                initialRecipientUid={initialComposeUid}
+              />
             </div>
           </div>
           <label className="bg-muted flex items-center gap-2 rounded-lg px-3 py-2">
@@ -375,7 +380,7 @@ export function MessagesExperience({
                 type="button"
                 aria-label="Back to conversations"
                 onClick={() => setMobileChat(false)}
-                className="text-muted-foreground hover:bg-muted grid size-9 place-items-center rounded-lg lg:hidden"
+                className="text-muted-foreground hover:bg-muted grid size-11 place-items-center rounded-lg lg:hidden"
               >
                 <ArrowLeft aria-hidden="true" className="size-5" />
               </button>
@@ -404,7 +409,7 @@ export function MessagesExperience({
                   active.blockedByViewer ? "Unblock educator" : "Block educator"
                 }
                 onClick={() => void toggleBlock()}
-                className={`hover:bg-muted grid size-9 place-items-center rounded-lg ${active.blockedByViewer ? "text-destructive" : "text-muted-foreground"}`}
+                className={`hover:bg-muted grid size-11 place-items-center rounded-lg ${active.blockedByViewer ? "text-destructive" : "text-muted-foreground"}`}
               >
                 <Ban aria-hidden="true" className="size-4" />
               </button>
@@ -451,6 +456,7 @@ export function MessagesExperience({
                         type="button"
                         aria-label="Remove attachment"
                         onClick={() => setAttachment(null)}
+                        className="grid size-11 shrink-0 place-items-center rounded-lg"
                       >
                         <X aria-hidden="true" className="size-4" />
                       </button>
@@ -471,11 +477,12 @@ export function MessagesExperience({
                       aria-label="Attach file"
                       title="Attach file"
                       onClick={() => fileInput.current?.click()}
-                      className="text-muted-foreground hover:bg-card grid size-9 shrink-0 place-items-center rounded-lg"
+                      className="text-muted-foreground hover:bg-card grid size-11 shrink-0 place-items-center rounded-lg"
                     >
                       <Paperclip aria-hidden="true" className="size-4" />
                     </button>
                     <textarea
+                      aria-label="Message"
                       value={content}
                       onChange={(event) => setContent(event.target.value)}
                       onKeyDown={(event) => {
@@ -494,7 +501,7 @@ export function MessagesExperience({
                       aria-label="Send message"
                       disabled={pending || (!content.trim() && !attachment)}
                       onClick={() => void sendMessage()}
-                      className="bg-primary text-primary-foreground grid size-9 shrink-0 place-items-center rounded-lg disabled:opacity-40"
+                      className="bg-primary text-primary-foreground grid size-11 shrink-0 place-items-center rounded-lg disabled:opacity-40"
                     >
                       {pending ? (
                         <Loader2
@@ -561,7 +568,7 @@ function MessageBubble({
           }`}
         >
           {message.content && (
-            <p className="whitespace-pre-wrap">{message.content}</p>
+            <p className="wrap-anywhere whitespace-pre-wrap">{message.content}</p>
           )}
           {message.attachment && (
             <a
@@ -584,13 +591,17 @@ function MessageBubble({
               : ""}
           {mine && !message.deletedAt && (
             <>
-              <button type="button" onClick={onEdit} className="hover:text-foreground">
+              <button
+                type="button"
+                onClick={onEdit}
+                className="min-h-11 px-1 hover:text-foreground"
+              >
                 Edit
               </button>
               <button
                 type="button"
                 onClick={onDelete}
-                className="text-destructive hover:text-destructive/80"
+                className="text-destructive min-h-11 px-1 hover:text-destructive/80"
               >
                 Delete
               </button>

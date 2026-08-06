@@ -156,7 +156,7 @@ export function ResourceUploadDialog() {
       open={open}
       onOpenChange={(next) => !submitting && setOpen(next)}
     >
-      <Dialog.Trigger className="bg-primary text-primary-foreground flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-bold">
+      <Dialog.Trigger className="bg-primary text-primary-foreground flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold">
         <Upload aria-hidden="true" className="size-4" /> Upload
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -170,7 +170,7 @@ export function ResourceUploadDialog() {
           </Dialog.Description>
           <Dialog.Close
             aria-label="Close upload"
-            className="text-muted-foreground hover:bg-muted absolute top-4 right-4 grid size-8 place-items-center rounded-lg"
+            className="text-muted-foreground hover:bg-muted absolute top-2.5 right-2.5 grid size-11 place-items-center rounded-lg"
           >
             <X aria-hidden="true" className="size-4" />
           </Dialog.Close>

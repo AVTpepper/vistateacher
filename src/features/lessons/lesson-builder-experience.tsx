@@ -297,8 +297,8 @@ function LessonEditor({
           />
         </div>
       </div>
-      <div className="mt-5 flex justify-end gap-2">
-        <div className="mr-auto flex-1">
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-end">
+        <div className="w-full min-w-0 sm:mr-auto sm:flex-1">
           <label className="grid gap-1.5 text-xs font-bold">
             AI feedback for fresh regeneration
             <textarea
@@ -307,14 +307,14 @@ function LessonEditor({
               onChange={(event) => setFeedback(event.target.value)}
               rows={3}
               placeholder="Example: Keep the objective, but add a hands-on station rotation and stronger differentiation for multilingual learners."
-              className="bg-muted resize-none rounded-lg px-3 py-2 text-sm font-normal outline-none"
+              className="bg-muted w-full resize-none rounded-lg px-3 py-2 text-sm font-normal outline-none"
             />
           </label>
           <button
             type="button"
             disabled={saving || !canRefine || feedback.trim().length < 3}
             onClick={() => onRefine(feedback, draft)}
-            className="border-primary text-primary mt-2 inline-flex h-9 items-center rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
+            className="border-primary text-primary mt-2 inline-flex min-h-11 items-center rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
           >
             Regenerate With AI Feedback
           </button>
@@ -322,7 +322,7 @@ function LessonEditor({
         <button
           type="button"
           onClick={onCancel}
-          className="h-10 rounded-lg border px-4 text-sm font-bold"
+          className="min-h-11 rounded-lg border px-4 text-sm font-bold"
         >
           Cancel
         </button>
@@ -330,7 +330,7 @@ function LessonEditor({
           type="button"
           disabled={saving}
           onClick={() => onSave(draft, draftVisibility)}
-          className="bg-primary text-primary-foreground flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-bold disabled:opacity-50"
+          className="bg-primary text-primary-foreground flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-bold disabled:opacity-50"
         >
           {saving ? (
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
@@ -563,13 +563,16 @@ function LessonDisplay({
           return (
             <div key={section.key}>
               <button
+                id={`lesson-section-trigger-${section.key}`}
                 type="button"
+                aria-controls={`lesson-section-panel-${section.key}`}
+                aria-expanded={open}
                 onClick={() => setExpanded(open ? "" : section.key)}
                 className="hover:bg-muted/40 flex w-full items-center justify-between p-4 text-left"
               >
                 <span className="flex min-w-0 items-center gap-3">
                   <span className="bg-primary/10 grid size-8 shrink-0 place-items-center rounded-lg">
-                    <Icon className="text-primary size-4" />
+                    <Icon aria-hidden="true" className="text-primary size-4" />
                   </span>
                   <span className="truncate text-sm font-bold">
                     {section.label}
@@ -586,13 +589,18 @@ function LessonDisplay({
                   )}
                 </span>
                 {open ? (
-                  <ChevronDown className="size-4" />
+                  <ChevronDown aria-hidden="true" className="size-4" />
                 ) : (
-                  <ChevronRight className="size-4" />
+                  <ChevronRight aria-hidden="true" className="size-4" />
                 )}
               </button>
               {open && (
-                <div className="px-4 pb-5 text-sm leading-6 sm:px-5">
+                <div
+                  id={`lesson-section-panel-${section.key}`}
+                  role="region"
+                  aria-labelledby={`lesson-section-trigger-${section.key}`}
+                  className="px-4 pb-5 text-sm leading-6 sm:px-5"
+                >
                   {body(section.key)}
                 </div>
               )}

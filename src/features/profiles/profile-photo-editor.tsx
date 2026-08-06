@@ -95,6 +95,7 @@ export function ProfilePhotoEditor({
           <input
             ref={inputRef}
             type="file"
+            aria-label="Choose profile image"
             accept="image/jpeg,image/png,image/webp"
             className="sr-only"
             onChange={(event) => {

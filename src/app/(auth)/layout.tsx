@@ -20,7 +20,7 @@ export default function AuthLayout({
             Better teaching grows through useful conversation, shared practice,
             and professional trust.
           </blockquote>
-          <p className="text-sidebar-foreground/65 absolute bottom-12 text-sm">
+          <p className="text-sidebar-foreground/75 absolute bottom-12 text-sm">
             A professional community for educators.
           </p>
         </section>

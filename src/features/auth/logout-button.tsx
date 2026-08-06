@@ -36,7 +36,7 @@ export function LogoutButton({ compact = false }: { compact?: boolean }) {
     <AlertDialog.Root open={open} onOpenChange={setOpen}>
       <AlertDialog.Trigger asChild>
         <Button
-          className="h-8 flex-1 px-2 text-xs text-white/40 hover:bg-white/8 hover:text-red-300"
+          className="h-11 flex-1 px-2 text-xs text-white/75 hover:bg-white/8 hover:text-red-200"
           variant="ghost"
           title="Sign out"
         >

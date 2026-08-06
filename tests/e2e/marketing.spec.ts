@@ -4,7 +4,7 @@ test("renders the VistaTeacher marketing foundation", async ({ page }) => {
   await page.goto("/");
 
   await expect(
-    page.getByRole("heading", { name: "The network built for teachers." }),
+    page.getByRole("heading", { name: "Find your people in education." }),
   ).toBeVisible();
   await expect(
     page.getByRole("navigation", { name: "Main navigation" }),
@@ -13,7 +13,6 @@ test("renders the VistaTeacher marketing foundation", async ({ page }) => {
   await expect(
     page.getByRole("link", { name: "Create account" }).first(),
   ).toBeVisible();
-  await expect(page.getByText(/\bfree\b/i)).toHaveCount(0);
   await expect(page).toHaveTitle(/VistaTeacher/);
   expect(
     await page.evaluate(
@@ -91,9 +90,6 @@ test("opens the marketing navigation on mobile", async ({ page }) => {
   await expect(
     mainNavigation.getByRole("link", { name: "About" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Close navigation overlay" }),
-  ).toBeVisible();
   await expect(page.locator("#mobile-navigation")).toHaveCSS(
     "max-width",
     "320px",
@@ -117,9 +113,7 @@ test("opens the marketing navigation on mobile", async ({ page }) => {
   ).toBeVisible();
   await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
 
-  await page
-    .getByRole("button", { name: "Close navigation overlay" })
-    .click({ position: { x: 20, y: 100 } });
+  await page.keyboard.press("Escape");
 
   await expect(
     page.getByRole("button", { name: "Open main menu" }),

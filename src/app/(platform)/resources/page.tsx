@@ -34,8 +34,8 @@ export default async function ResourcesPage() {
       : null,
   );
   return (
-    <main className="h-full overflow-y-auto px-4 py-5 lg:px-6">
+    <div className="px-4 py-5 lg:px-6">
       <ResourceLibrary resources={resources} plan={plan} />
-    </main>
+    </div>
   );
 }

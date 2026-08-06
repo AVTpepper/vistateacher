@@ -47,7 +47,7 @@ const destinations = [
 
 export default function InformationPage() {
   return (
-    <main className="h-full overflow-y-auto">
+    <div>
       <div className="mx-auto max-w-4xl px-4 py-6 lg:px-6">
         <header className="max-w-2xl">
           <p className="text-primary font-mono text-[10px] font-bold uppercase">
@@ -86,6 +86,6 @@ export default function InformationPage() {
           ))}
         </nav>
       </div>
-    </main>
+    </div>
   );
 }

@@ -184,7 +184,7 @@ export function ResourceDetailActions({
                 key={value}
                 onClick={() => setRating(value)}
                 aria-label={`${value} stars`}
-                className="grid size-8 place-items-center"
+                className="grid size-11 place-items-center"
               >
                 <Star
                   aria-hidden="true"

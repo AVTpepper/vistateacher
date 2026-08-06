@@ -135,16 +135,15 @@ export function FeedExperience({ initialPage, account }: FeedExperienceProps) {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <div className="bg-card flex gap-1 rounded-xl border p-1" role="tablist">
+      <div className="bg-card flex gap-1 rounded-xl border p-1">
         {tabs.map((tab) => (
           <button
             type="button"
-            role="tab"
-            aria-selected={view === tab.value}
+            aria-pressed={view === tab.value}
             key={tab.value}
             onClick={() => void selectView(tab.value)}
             className={cn(
-              "h-9 flex-1 rounded-lg text-sm font-semibold transition-colors",
+              "min-h-11 flex-1 rounded-lg text-sm font-semibold transition-colors",
               view === tab.value
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",

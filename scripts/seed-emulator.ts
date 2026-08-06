@@ -200,12 +200,12 @@ const categoryNames = [
   "Classroom Management",
   "Lesson Planning",
   "Student Engagement",
-  "Educational Technology",
+  "Technology in Education",
   "Teacher Support",
-  "Special Education",
-  "Subject-Specific Teaching",
-  "New Teacher Questions",
-  "AI in Education",
+  "Grade-Level Discussions",
+  "General Discussion",
+  "Q&A",
+  "Inspiration and Ideas",
 ];
 const categoryIcons = [
   "LayoutGrid",
@@ -214,9 +214,9 @@ const categoryIcons = [
   "Monitor",
   "Heart",
   "Users",
-  "MessageCircle",
+  "MessageSquare",
   "HelpCircle",
-  "Sparkles",
+  "Lightbulb",
 ];
 const categoryColors = [
   "#3B6B5C",
@@ -227,7 +227,7 @@ const categoryColors = [
   "#3C8A78",
   "#A36A42",
   "#58799B",
-  "#8A5C9E",
+  "#E3645B",
 ];
 for (const [order, name] of categoryNames.entries()) {
   const id = name.toLocaleLowerCase("en-US").replaceAll(" ", "-");

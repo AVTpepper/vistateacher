@@ -503,13 +503,13 @@ function ForumReportDialog({
       <Dialog.Trigger
         aria-label={replyId ? "Report reply" : "Report discussion"}
         title={replyId ? "Report reply" : "Report discussion"}
-        className="text-muted-foreground hover:bg-muted hover:text-foreground grid size-8 place-items-center rounded-lg"
+        className="text-muted-foreground hover:bg-muted hover:text-foreground grid size-11 place-items-center rounded-lg"
       >
         <Flag aria-hidden="true" className="size-4" />
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-        <Dialog.Content className="bg-card fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border p-5 shadow-2xl">
+        <Dialog.Content className="bg-card fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border p-5 shadow-2xl">
           <Dialog.Title className="font-serif text-xl">
             Report content
           </Dialog.Title>
@@ -518,7 +518,7 @@ function ForumReportDialog({
           </Dialog.Description>
           <Dialog.Close
             aria-label="Close report"
-            className="text-muted-foreground absolute top-4 right-4 grid size-8 place-items-center rounded-lg"
+            className="text-muted-foreground hover:bg-muted absolute top-2.5 right-2.5 grid size-11 place-items-center rounded-lg"
           >
             <X aria-hidden="true" className="size-4" />
           </Dialog.Close>

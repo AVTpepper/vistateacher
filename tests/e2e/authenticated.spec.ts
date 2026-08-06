@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 async function signIn(page: Page, email: string) {
@@ -41,8 +42,10 @@ test("signs in a seeded educator and protects platform workflows", async ({
 }) => {
   await signIn(page, "community@vista.local");
 
-  await expect(page.getByRole("tab", { name: "All Posts" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "All Posts" })).toBeVisible();
   await expectNoPageOverflow(page);
+  const mobileMenu = page.getByRole("button", { name: "Open menu" });
+  if (await mobileMenu.isVisible()) await mobileMenu.click();
   await expect(
     page.getByRole("link", { name: "Compare plans" }),
   ).toHaveAttribute("href", "/settings/billing");
@@ -54,6 +57,8 @@ test("signs in a seeded educator and protects platform workflows", async ({
   ).toHaveAttribute("href", "/information");
 
   await page.goto("/pricing");
+  const marketingMenu = page.getByRole("button", { name: "Open main menu" });
+  if (await marketingMenu.isVisible()) await marketingMenu.click();
   await expect(
     page.getByRole("link", { name: "Dashboard", exact: true }),
   ).toHaveAttribute("href", "/app");
@@ -90,7 +95,7 @@ test("signs in a seeded educator and protects platform workflows", async ({
   await expect(
     page.getByRole("heading", { name: "Help & feedback" }),
   ).toBeVisible();
-  await expect(page.getByLabel("Name")).toHaveValue("Alex Morgan");
+  await expect(page.getByLabel("Name")).toHaveValue("Alex Rivera");
   await expect(page.getByLabel("Email")).toHaveValue("community@vista.local");
   await expectNoPageOverflow(page);
 
@@ -108,6 +113,69 @@ test("signs in a seeded educator and protects platform workflows", async ({
 
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/app$/);
+});
+
+test("keeps authenticated educator routes responsive and accessible", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await signIn(page, "community@vista.local");
+
+  const routes = [
+    "/app",
+    "/dashboard",
+    "/discover",
+    "/network?view=followers",
+    "/network?view=following",
+    "/network?view=suggestions",
+    "/forum",
+    "/forum/demo-thread",
+    "/messages",
+    "/notifications",
+    "/resources",
+    "/resources/demo-resource",
+    "/ai-lessons",
+    "/profile",
+    "/profile/plus-educator",
+    "/settings",
+    "/settings/profile",
+    "/settings/billing",
+    "/support",
+    "/information",
+  ];
+
+  for (const route of routes) {
+    const response = await page.goto(route);
+    expect(response?.ok(), `${route} response`).toBe(true);
+    await expectNoPageOverflow(page);
+    await expect(page.locator("main")).toHaveCount(1);
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations, `${route} accessibility violations`).toEqual([]);
+  }
+});
+
+test("keeps administration routes responsive and accessible", async ({ page }) => {
+  test.setTimeout(90_000);
+  await signIn(page, "admin@vista.local");
+
+  for (const route of [
+    "/admin",
+    "/admin/users",
+    "/admin/content",
+    "/admin/reports",
+    "/admin/verification",
+  ]) {
+    const response = await page.goto(route);
+    expect(response?.ok(), `${route} response`).toBe(true);
+    await expectNoPageOverflow(page);
+    await expect(page.locator("main")).toHaveCount(1);
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations, `${route} accessibility violations`).toEqual([]);
+  }
 });
 
 test("keeps the short desktop sidebar scrollable without a visible scrollbar", async ({

@@ -38,7 +38,7 @@ export default async function ResourcePage({
   const { resource, reviews } = data;
   const Icon = icons[resource.type];
   return (
-    <main className="h-full overflow-y-auto px-4 py-5 lg:px-6">
+    <div className="px-4 py-5 lg:px-6">
       <div className="mx-auto max-w-4xl">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
           <article className="bg-card overflow-hidden rounded-xl border">
@@ -165,6 +165,6 @@ export default async function ResourcePage({
           )}
         </section>
       </div>
-    </main>
+    </div>
   );
 }

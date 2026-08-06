@@ -16,8 +16,8 @@ export default async function ForumPage() {
     }),
   ]);
   return (
-    <main className="h-full overflow-y-auto px-4 py-5 lg:px-6">
+    <div className="px-4 py-5 lg:px-6">
       <ForumExperience categories={categories} initialPage={initialPage} />
-    </main>
+    </div>
   );
 }

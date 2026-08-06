@@ -19,7 +19,7 @@ export default async function ForumThreadPage({
   const data = await getForumThread(threadId, account.uid, account.role);
   if (!data) notFound();
   return (
-    <main className="h-full overflow-y-auto px-4 py-5 lg:px-6">
+    <div className="px-4 py-5 lg:px-6">
       <ForumThreadExperience
         key={data.thread.viewCount}
         initialData={data}
@@ -30,6 +30,6 @@ export default async function ForumThreadPage({
           role: account.role,
         }}
       />
-    </main>
+    </div>
   );
 }

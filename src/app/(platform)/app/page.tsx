@@ -18,7 +18,7 @@ export default async function AppPage() {
   const profileData = profile.data();
 
   return (
-    <main className="h-full overflow-y-auto px-4 py-5 lg:px-6">
+    <div className="px-4 py-5 lg:px-6">
       <FeedExperience
         initialPage={initialPage}
         account={{
@@ -29,6 +29,6 @@ export default async function AppPage() {
           school: String(profileData?.school ?? ""),
         }}
       />
-    </main>
+    </div>
   );
 }

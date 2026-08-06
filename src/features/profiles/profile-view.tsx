@@ -6,6 +6,7 @@ import {
   Globe,
   Mail,
   MapPin,
+  MessageCircle,
   Phone,
   School,
   UserPlus,
@@ -58,7 +59,7 @@ export function ProfileView({
         className="relative mb-4 h-44 overflow-hidden rounded-2xl"
         style={{ background: coverTheme.background }}
       >
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
       </div>
       <section className="bg-card relative -mt-12 rounded-2xl border p-5 sm:p-6">
         <div className="flex flex-col items-start gap-4 sm:flex-row">
@@ -88,7 +89,7 @@ export function ProfileView({
                   {profile.gradeLevel} · {profile.subjects.join(", ")}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                 {data.plan === "plus" && (
                   <span className="bg-accent/10 text-accent rounded-full px-2.5 py-1 text-xs font-bold">
                     ✦ Plus
@@ -102,17 +103,34 @@ export function ProfileView({
                     </Link>
                   </Button>
                 ) : data.isFollowing === null ? (
-                  <Button asChild size="sm">
-                    <Link href="/sign-in">
-                      <UserPlus aria-hidden="true" />
-                      Sign in to follow
-                    </Link>
-                  </Button>
+                  <>
+                    <Button asChild size="sm">
+                      <Link href="/sign-in">
+                        <UserPlus aria-hidden="true" />
+                        Sign in to connect
+                      </Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline">
+                      <Link href="/sign-in">
+                        <MessageCircle aria-hidden="true" />
+                        Sign in to message
+                      </Link>
+                    </Button>
+                  </>
                 ) : (
-                  <FollowButton
-                    targetUid={profile.uid}
-                    initialFollowing={data.isFollowing}
-                  />
+                  <>
+                    <FollowButton
+                      targetUid={profile.uid}
+                      initialFollowing={data.isFollowing}
+                      mode="connect"
+                    />
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/messages?compose=${encodeURIComponent(profile.uid)}`}>
+                        <MessageCircle aria-hidden="true" />
+                        Message
+                      </Link>
+                    </Button>
+                  </>
                 )}
               </div>
             </div>

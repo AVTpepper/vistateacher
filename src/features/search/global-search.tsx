@@ -84,7 +84,7 @@ export function GlobalSearch() {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        <button className="bg-muted text-muted-foreground hover:text-foreground flex h-9 w-full max-w-xl items-center gap-2 rounded-xl px-3 text-left text-sm transition-colors">
+        <button className="bg-muted text-muted-foreground hover:text-foreground flex h-11 w-full max-w-xl items-center gap-2 rounded-xl px-3 text-left text-sm transition-colors">
           <Search aria-hidden="true" className="size-4 shrink-0" />
           <span className="min-w-0 flex-1 truncate">
             Search teachers, resources...
@@ -115,13 +115,14 @@ export function GlobalSearch() {
             )}
             <input
               autoFocus
+              aria-label="Search VistaTeacher"
               value={query}
               onChange={(event) => updateQuery(event.target.value)}
               placeholder="Search teachers, resources, discussions..."
               className="h-10 min-w-0 flex-1 rounded-sm bg-transparent text-sm outline-none"
             />
             <Dialog.Close
-              className="text-muted-foreground hover:text-foreground hover:bg-muted grid size-8 place-items-center rounded-lg"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted grid size-11 place-items-center rounded-lg"
               aria-label="Close search"
             >
               <X aria-hidden="true" className="size-4" />

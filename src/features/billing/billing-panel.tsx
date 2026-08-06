@@ -44,13 +44,13 @@ export function BillingPanel({
               <h2 id="stripe-test-mode-heading" className="text-sm font-bold">
                 Stripe test mode
               </h2>
-              <p className="text-muted-foreground mt-1 text-xs leading-5">
+              <p className="text-foreground mt-1 text-xs leading-5">
                 Checkout is using Stripe&apos;s sandbox. No real payment will be
                 collected. To simulate a successful subscription, use:
               </p>
               <dl className="mt-3 grid gap-x-6 gap-y-2 text-xs sm:grid-cols-2">
                 <div>
-                  <dt className="text-muted-foreground">Card number</dt>
+                  <dt className="text-foreground">Card number</dt>
                   <dd>
                     <code className="font-mono font-bold">
                       4242 4242 4242 4242
@@ -58,25 +58,25 @@ export function BillingPanel({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Expiry</dt>
+                  <dt className="text-foreground">Expiry</dt>
                   <dd>
                     <code className="font-mono font-bold">12/34</code>
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">CVC</dt>
+                  <dt className="text-foreground">CVC</dt>
                   <dd>
                     <code className="font-mono font-bold">123</code>
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Postal code</dt>
+                  <dt className="text-foreground">Postal code</dt>
                   <dd>
                     <code className="font-mono font-bold">Any valid value</code>
                   </dd>
                 </div>
               </dl>
-              <p className="text-muted-foreground mt-3 text-[11px] leading-4">
+              <p className="text-foreground mt-3 text-[11px] leading-4">
                 Never enter a real card while this test notice is shown.
               </p>
             </div>

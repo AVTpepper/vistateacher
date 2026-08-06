@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     template: "%s | VistaTeacher",
   },
   description:
-    "A professional community where educators connect, share resources, discuss practice, and build thoughtful lessons.",
+    "Connect, collaborate, share resources, and grow professionally with educators who understand your work.",
   alternates: { canonical: "/" },
   icons: {
     icon: [
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     siteName: "VistaTeacher",
     title: "The network built for teachers",
     description:
-      "Connect with educators, share practical resources, and plan stronger lessons.",
+      "Build your professional network, exchange practical ideas, and strengthen classroom practice together.",
     images: [
       {
         url: "/opengraph-image",
@@ -61,7 +61,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "VistaTeacher",
-    description: "The professional network built for teachers.",
+    description:
+      "Connect, collaborate, and grow with an educator-first professional network.",
     images: ["/twitter-image"],
   },
 };
