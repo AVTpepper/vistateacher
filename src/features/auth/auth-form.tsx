@@ -40,6 +40,7 @@ function authErrorMessage(error: unknown): string {
     typeof error === "object" && error && "code" in error
       ? String(error.code)
       : "";
+  const message = error instanceof Error ? `${error.name}: ${error.message}` : "";
 
   if (code.includes("invalid-credential"))
     return "Email or password is incorrect.";
@@ -48,6 +49,12 @@ function authErrorMessage(error: unknown): string {
   if (code.includes("popup-closed")) return "Google sign-in was canceled.";
   if (code.includes("too-many-requests"))
     return "Too many attempts. Try again later.";
+  if (
+    code.includes("network-request-failed") ||
+    /127\.0\.0\.1:9099|ECONNREFUSED|ERR_CONNECTION_REFUSED/i.test(message)
+  ) {
+    return "The Firebase Auth emulator is not running on 127.0.0.1:9099. Start the emulator suite, or set NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false for local sign-in.";
+  }
   if (error instanceof Error && error.message === "Unable to create session.")
     return "Sign-in succeeded, but the server could not create your session. Please try again shortly.";
   if (error instanceof Error && error.message === "Invalid request origin.")

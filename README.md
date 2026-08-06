@@ -18,17 +18,15 @@ pnpm install --frozen-lockfile
 cp .env.example .env.local
 ```
 
-On Windows PowerShell, use `Copy-Item .env.example .env.local`. Populate the public Firebase web configuration. For emulator development, use one demo project ID consistently and set `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true`. Never commit `.env.local`.
+On Windows PowerShell, use `Copy-Item .env.example .env.local`. Populate the public Firebase web configuration. For localhost testing against your real Firebase project, set `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false` and add `http://localhost:3000` to Firebase Authentication authorized domains. For emulator development, use one demo project ID consistently and set `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true`. Never commit `.env.local`.
 
 ## Local Development
 
 ```bash
-pnpm emulators # terminal 1
-pnpm seed      # terminal 2, development data only
-pnpm dev       # terminal 2
+pnpm dev
 ```
 
-The app runs at `http://localhost:3000`; Emulator UI runs at `http://localhost:4000`.
+The app runs at `http://localhost:3000`. If you want emulator-backed development instead, start the Firebase Emulator Suite in a separate terminal and switch `NEXT_PUBLIC_USE_FIREBASE_EMULATORS` back to `true`.
 
 ## Firebase Setup
 

@@ -65,7 +65,9 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const profileHref = account.onboarded ? "/profile" : "/onboarding";
+  const closeMobileMenu = () => setMobileOpen(false);
 
   const sidebar = (
     <div className="flex h-full flex-col">
@@ -93,7 +95,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
       </div>
       <nav
         aria-label="Platform navigation"
-        className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4 lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden"
+        className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4 lg:scrollbar-none lg:[&::-webkit-scrollbar]:hidden"
       >
         {navigation.map(({ label, icon: Icon, href, plus }) => {
           const active =
@@ -116,7 +118,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
               <Icon
                 aria-hidden="true"
                 className={cn(
-                  "size-[18px] shrink-0",
+                  "size-4.5 shrink-0",
                   active && "text-sidebar-primary",
                 )}
               />
@@ -149,7 +151,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
               collapsed && "justify-center px-0",
             )}
           >
-            <ShieldCheck className="size-[18px] shrink-0" />
+            <ShieldCheck className="size-4.5 shrink-0" />
             {!collapsed && <span>Administration</span>}
           </Link>
         )}
@@ -175,6 +177,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
       <div className="border-sidebar-border border-t p-3">
         <Link
           href={profileHref}
+          onClick={closeMobileMenu}
           className={cn(
             "flex items-center gap-3 rounded-xl p-2 hover:bg-white/8",
             collapsed && "justify-center",
@@ -200,6 +203,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
           <Link
             href="/settings"
             title="Settings"
+            onClick={closeMobileMenu}
             className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-xs text-white/40 hover:bg-white/8 hover:text-white/75"
           >
             <Settings aria-hidden="true" className="size-3.5" />
@@ -261,42 +265,122 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
       </aside>
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="bg-card flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:gap-3 sm:px-4">
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            aria-label="Open menu"
-            className="text-muted-foreground hover:bg-muted grid size-9 shrink-0 place-items-center rounded-xl lg:hidden"
-          >
-            <Menu aria-hidden="true" className="size-5" />
-          </button>
-          <Link
-            href="/app"
-            className="flex shrink-0 items-center gap-2 lg:hidden"
-          >
-            <span className="bg-primary grid size-7 place-items-center rounded-lg text-white">
-              <GraduationCap aria-hidden="true" className="size-4" />
-            </span>
-            <span className="hidden font-serif text-sm sm:inline">
-              VistaTeacher
-            </span>
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setMobileOpen(true);
+                setUserMenuOpen(false);
+              }}
+              aria-label="Open menu"
+              className="text-muted-foreground hover:bg-muted grid size-9 place-items-center rounded-xl lg:hidden"
+            >
+              <Menu aria-hidden="true" className="size-5" />
+            </button>
+            <Link
+              href="/app"
+              className="flex shrink-0 items-center gap-2 lg:hidden"
+            >
+              <span className="bg-primary grid size-7 place-items-center rounded-lg text-white">
+                <GraduationCap aria-hidden="true" className="size-4" />
+              </span>
+              <span className="hidden font-serif text-sm sm:inline">
+                VistaTeacher
+              </span>
+            </Link>
+          </div>
           <div className="min-w-0 flex-1">
             <GlobalSearch />
           </div>
           <Link
             href="/notifications"
             aria-label="Notifications"
+            onClick={() => setUserMenuOpen(false)}
             className="text-muted-foreground hover:bg-muted hover:text-foreground relative grid size-9 shrink-0 place-items-center rounded-xl"
           >
-            <Bell aria-hidden="true" className="size-[18px]" />
+            <Bell aria-hidden="true" className="size-4.5" />
           </Link>
-          <Link href={profileHref} aria-label="My profile">
-            <UserAvatar
-              name={account.displayName}
-              photoURL={account.photoURL}
-              className="ring-border size-9 rounded-xl text-xs ring-2"
-            />
-          </Link>
+          <div className="relative">
+            <button
+              type="button"
+              aria-label="Open profile menu"
+              aria-haspopup="menu"
+              aria-expanded={userMenuOpen}
+              onClick={() => setUserMenuOpen((value) => !value)}
+              className="ring-border rounded-xl ring-2 transition-colors hover:ring-primary/35"
+            >
+              <UserAvatar
+                name={account.displayName}
+                photoURL={account.photoURL}
+                className="size-9 rounded-xl text-xs"
+              />
+            </button>
+            {userMenuOpen && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Close profile menu"
+                  onClick={() => setUserMenuOpen(false)}
+                  className="fixed inset-0 z-40"
+                />
+                <div
+                  role="menu"
+                  className="bg-card border-border absolute right-0 top-11 z-50 w-56 overflow-hidden rounded-2xl border py-1 shadow-xl"
+                >
+                  <div className="border-border border-b px-4 py-3">
+                    <p className="truncate text-sm font-bold">{account.displayName}</p>
+                    <p className="text-muted-foreground mt-0.5 truncate text-xs">
+                      {account.subject}
+                    </p>
+                    <span
+                      className={cn(
+                        "mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        plan === "plus"
+                          ? "bg-accent/15 text-accent"
+                          : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {plan === "plus" ? "Plus Plan" : "Community Plan"}
+                    </span>
+                  </div>
+                  <Link
+                    href={profileHref}
+                    onClick={() => setUserMenuOpen(false)}
+                    className="hover:bg-muted block px-4 py-2.5 text-sm"
+                    role="menuitem"
+                  >
+                    My Profile
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="hover:bg-muted block px-4 py-2.5 text-sm"
+                    role="menuitem"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/resources"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="hover:bg-muted block px-4 py-2.5 text-sm"
+                    role="menuitem"
+                  >
+                    My Resources
+                  </Link>
+                  {plan === "free" && (
+                    <Link
+                      href="/pricing"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="hover:bg-muted block px-4 py-2.5 text-sm"
+                      role="menuitem"
+                    >
+                      Pricing &amp; Plans
+                    </Link>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </header>
         <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
       </div>

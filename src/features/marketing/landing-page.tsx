@@ -14,6 +14,7 @@ import {
   MarketingHeader,
 } from "@/components/marketing/marketing-shell";
 import { Button } from "@/components/ui/button";
+import { adminDb } from "@/lib/firebase/admin";
 
 const features = [
   {
@@ -42,7 +43,30 @@ const features = [
   },
 ];
 
-export function LandingPage() {
+function roundDownRegisteredUsers(count: number): number {
+  if (count < 10) return count;
+
+  const digits = Math.floor(Math.log10(count)) + 1;
+  const precision = Math.max(0, digits - 2);
+  const factor = 10 ** precision;
+
+  return Math.floor(count / factor) * factor;
+}
+
+function formatRegisteredUsers(count: number): string {
+  return new Intl.NumberFormat("en-US").format(roundDownRegisteredUsers(count));
+}
+
+async function getRegisteredUserCount(): Promise<number> {
+  const snapshot = await adminDb().collection("users").count().get();
+
+  return snapshot.data().count;
+}
+
+export async function LandingPage() {
+  const registeredUsers = await getRegisteredUserCount();
+  const registeredUsersLabel = formatRegisteredUsers(registeredUsers);
+
   return (
     <div className="bg-background min-h-screen overflow-x-clip">
       <MarketingHeader />
@@ -50,7 +74,7 @@ export function LandingPage() {
         <section className="relative overflow-hidden">
           <div
             aria-hidden="true"
-            className="from-primary/5 to-accent/5 pointer-events-none absolute inset-0 bg-gradient-to-br via-transparent"
+            className="from-primary/5 to-accent/5 pointer-events-none absolute inset-0 bg-linear-to-br via-transparent"
           />
           <div className="relative mx-auto max-w-6xl px-4 pt-14 pb-12 text-center sm:px-6 sm:pt-20 sm:pb-16">
             <div className="bg-accent/10 text-accent mb-5 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold">
@@ -75,6 +99,22 @@ export function LandingPage() {
               <Button asChild size="lg" variant="outline">
                 <Link href="/sign-in">Sign in</Link>
               </Button>
+            </div>
+            <div className="mt-8 flex items-center justify-center gap-3 text-sm text-muted-foreground">
+              <div className="-space-x-2 flex">
+                {[47, 12, 5, 33, 9].map((i) => (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    key={i}
+                    src={`https://i.pravatar.cc/32?img=${i}`}
+                    alt=""
+                    className="border-background h-8 w-8 rounded-full border-2 object-cover"
+                  />
+                ))}
+              </div>
+              <span>
+                Joined by <strong className="text-foreground">{registeredUsersLabel}</strong> teachers
+              </span>
             </div>
           </div>
           <div className="relative mx-auto max-w-5xl px-4 pb-14 sm:px-6 sm:pb-20">
@@ -200,6 +240,25 @@ export function LandingPage() {
                 ]}
               />
             </div>
+          </div>
+        </section>
+
+        <section className="bg-linear-to-br from-primary to-[#4A9FC0] py-16 text-white sm:py-24">
+          <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
+            <GraduationCap aria-hidden="true" className="mx-auto mb-6 size-12 opacity-80" />
+            <h2 className="mb-4 font-serif text-3xl sm:text-4xl md:text-5xl">
+              Ready to find your people?
+            </h2>
+            <p className="mb-2 text-base leading-relaxed text-white/80 sm:text-lg">
+              Join {registeredUsersLabel} registered teachers already
+              connecting, sharing resources, and building stronger classrooms
+              together.
+            </p>
+            <Button asChild size="lg" className="bg-white text-primary hover:bg-white/90">
+              <Link href="/sign-up">
+                Create your free account <ArrowRight aria-hidden="true" />
+              </Link>
+            </Button>
           </div>
         </section>
       </main>
