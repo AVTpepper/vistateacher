@@ -168,7 +168,7 @@ export function ResourceLibrary({
           />
         </div>
       )}
-      <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+      <div className="mb-5 flex gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1">
         {[
           { value: "", label: "All Types" },
           { value: "lesson-plan", label: "Lesson plans" },
@@ -240,7 +240,7 @@ function ResourceCard({
   const locked = resource.accessTier === "plus" && plan === "free";
   if (view === "list")
     return (
-      <article className="bg-card flex items-center gap-4 rounded-xl border p-4">
+      <article className="bg-card border-accent/20 group hover:border-accent/45 flex items-center gap-4 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5">
         <Link
           href={`/resources/${resource.id}`}
           className={cn(
@@ -266,7 +266,7 @@ function ResourceCard({
       </article>
     );
   return (
-    <article className="bg-card group overflow-hidden rounded-xl border">
+    <article className="bg-card border-accent/20 hover:border-accent/45 group overflow-hidden rounded-xl border transition-all duration-200 hover:-translate-y-1">
       <Link
         href={`/resources/${resource.id}`}
         className={cn(
@@ -274,7 +274,10 @@ function ResourceCard({
           typeColor[resource.type],
         )}
       >
-        <Icon aria-hidden="true" className="size-12 opacity-80" />
+        <Icon
+          aria-hidden="true"
+          className="size-12 opacity-80 transition-transform duration-200 group-hover:scale-110"
+        />
         {locked && (
           <span className="absolute inset-0 grid place-items-center bg-black/45">
             <span className="flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-bold backdrop-blur">

@@ -96,6 +96,15 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 - [x] Verify App Hosting deployment configuration and documentation.
 - [x] Pass the complete locked-install CI pipeline.
 
+## Phase 13 - Authenticated Experience Refresh
+
+- [x] Refine the mobile platform menu with a capped width, persistent VistaTeacher brand, and in-menu global search.
+- [x] Apply a warm, dimensional authenticated theme without changing marketing or authentication surfaces.
+- [x] Add consistent hover, focus, and elevation behavior to interactive cards and shared controls.
+- [x] Refine high-traffic feed, dashboard, discovery, resources, forum, messaging, notification, profile, lesson, settings, and administration surfaces through shared patterns.
+- [x] Restore the complete nine-category legacy forum taxonomy with production-safe defaults.
+- [x] Verify responsive behavior at mobile and desktop widths, accessibility diagnostics, lint, unit tests, and a production build without emulator-backed tests.
+
 ## Release Gates
 
 - [x] `pnpm install --frozen-lockfile`

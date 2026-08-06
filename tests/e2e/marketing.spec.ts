@@ -80,7 +80,7 @@ test("opens the marketing navigation on mobile", async ({ page }) => {
         .evaluate((header) => Math.round(header.getBoundingClientRect().top)),
     )
     .toBe(0);
-  await page.evaluate(() => window.scrollTo(0, 0));
+  const scrollPosition = await page.evaluate(() => window.scrollY);
 
   await menuButton.click();
 
@@ -90,6 +90,14 @@ test("opens the marketing navigation on mobile", async ({ page }) => {
   await expect(
     mainNavigation.getByRole("link", { name: "About" }),
   ).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator("#mobile-navigation")
+        .evaluate((menu) => Math.round(menu.getBoundingClientRect().top)),
+    )
+    .toBe(64);
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrollPosition);
   await expect(page.locator("#mobile-navigation")).toHaveCSS(
     "max-width",
     "320px",
@@ -111,7 +119,17 @@ test("opens the marketing navigation on mobile", async ({ page }) => {
   await expect(
     mainNavigation.getByRole("link", { name: "Create account" }),
   ).toBeVisible();
-  await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
+  const mobileSignIn = mainNavigation.getByRole("link", {
+    name: "Sign in",
+    exact: true,
+  });
+  await expect(mobileSignIn).toBeVisible();
+  await expect(mobileSignIn).toHaveCSS("color", "rgb(255, 255, 255)");
+  await expect(mobileSignIn).toHaveCSS("border-top-style", "solid");
+  expect(
+    await mobileSignIn.evaluate((link) => link.getBoundingClientRect().height),
+  ).toBeGreaterThanOrEqual(44);
+  await expect(page.locator("html")).toHaveCSS("overflow", "hidden");
 
   await page.keyboard.press("Escape");
 
@@ -121,13 +139,18 @@ test("opens the marketing navigation on mobile", async ({ page }) => {
   await expect(
     mainNavigation.getByRole("link", { name: "About" }),
   ).toBeHidden();
-  await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+  await expect(page.locator("html")).not.toHaveCSS("overflow", "hidden");
 
   await menuButton.click();
 
   await mainNavigation.getByRole("link", { name: "About" }).click();
 
   await expect(page).toHaveURL(/\/about$/);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
   await expect(
     page.getByRole("button", { name: "Open main menu" }),
   ).toHaveAttribute("aria-expanded", "false");

@@ -210,17 +210,18 @@ export function PostCard({
       toast.error("We couldn't update that comment.");
       return;
     }
-    setComments((current) =>
-      current?.map((item) =>
-        item.id === commentId
-          ? {
-              ...item,
-              content,
-              updatedAt: new Date().toISOString(),
-              editedAt: new Date().toISOString(),
-            }
-          : item,
-      ) ?? [],
+    setComments(
+      (current) =>
+        current?.map((item) =>
+          item.id === commentId
+            ? {
+                ...item,
+                content,
+                updatedAt: new Date().toISOString(),
+                editedAt: new Date().toISOString(),
+              }
+            : item,
+        ) ?? [],
     );
     setEditingCommentId(null);
     setCommentDraft("");
@@ -228,12 +229,17 @@ export function PostCard({
   }
 
   async function removeComment(commentId: string) {
-    const response = await mutation(`/api/feed/${post.id}/comments/${commentId}`, "DELETE");
+    const response = await mutation(
+      `/api/feed/${post.id}/comments/${commentId}`,
+      "DELETE",
+    );
     if (!response.ok) {
       toast.error("We couldn't delete that comment.");
       return;
     }
-    setComments((current) => current?.filter((item) => item.id !== commentId) ?? []);
+    setComments(
+      (current) => current?.filter((item) => item.id !== commentId) ?? [],
+    );
     setPost((current) => ({
       ...current,
       commentCount: Math.max(0, current.commentCount - 1),
@@ -261,7 +267,7 @@ export function PostCard({
   }
 
   return (
-    <article className="bg-card overflow-hidden rounded-xl border">
+    <article className="bg-card border-primary/15 hover:border-primary/30 overflow-hidden rounded-xl border transition-[border-color,box-shadow] hover:shadow-lg">
       <header className="flex items-start gap-3 p-4 pb-3">
         <UserAvatar
           name={post.author.displayName}
@@ -373,7 +379,9 @@ export function PostCard({
             </div>
           </div>
         ) : (
-          <p className="text-sm leading-6 whitespace-pre-line">{post.content}</p>
+          <p className="text-sm leading-6 whitespace-pre-line">
+            {post.content}
+          </p>
         )}
         {post.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
@@ -470,7 +478,9 @@ export function PostCard({
                 />
                 <div className="bg-muted min-w-0 flex-1 rounded-lg px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-bold">{item.author.displayName}</p>
+                    <p className="text-xs font-bold">
+                      {item.author.displayName}
+                    </p>
                     <p className="text-muted-foreground text-[10px]">
                       {formatDistanceToNow(new Date(item.createdAt), {
                         addSuffix: true,
@@ -484,7 +494,9 @@ export function PostCard({
                     <div className="mt-1 space-y-1">
                       <textarea
                         value={commentDraft}
-                        onChange={(event) => setCommentDraft(event.target.value)}
+                        onChange={(event) =>
+                          setCommentDraft(event.target.value)
+                        }
                         rows={2}
                         maxLength={1000}
                         className="bg-background w-full resize-none rounded-lg px-2 py-1.5 text-xs outline-none"
@@ -507,7 +519,7 @@ export function PostCard({
                       </div>
                     </div>
                   ) : (
-                    <p className="mt-0.5 wrap-break-word text-xs leading-5">
+                    <p className="mt-0.5 text-xs leading-5 wrap-break-word">
                       {item.content}
                     </p>
                   )}

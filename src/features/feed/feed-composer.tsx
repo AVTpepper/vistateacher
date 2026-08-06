@@ -95,7 +95,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
   }
 
   return (
-    <section className="bg-card rounded-xl border p-4">
+    <section className="bg-card border-accent/25 before:from-primary before:to-accent relative overflow-hidden rounded-xl border p-4 pt-5 before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-linear-to-r">
       <div className="flex items-center gap-3">
         <UserAvatar
           name={account.displayName}
@@ -218,9 +218,12 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
                 setType(value);
                 setExpanded(true);
               }}
-              className="text-muted-foreground hover:bg-muted flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold"
+              className="text-muted-foreground hover:bg-secondary hover:text-primary group flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors"
             >
-              <Icon aria-hidden="true" className="text-primary size-4" />
+              <Icon
+                aria-hidden="true"
+                className="text-primary group-hover:text-accent size-4 transition-colors"
+              />
               {action}
             </button>
           ))}

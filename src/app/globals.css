@@ -100,10 +100,19 @@
 }
 
 html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
   scroll-behavior: smooth;
 }
 
 body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
   min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
@@ -130,6 +139,102 @@ body {
   color: var(--foreground);
   font-size: 0.875rem;
   outline: none;
+}
+
+.platform-shell {
+  background-color: var(--background);
+  background-image:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--secondary) 78%, var(--background)) 0,
+      var(--background) 24rem
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 5rem,
+      color-mix(in srgb, var(--primary) 2.5%, transparent) 5rem,
+      color-mix(in srgb, var(--primary) 2.5%, transparent) calc(5rem + 1px)
+    );
+}
+
+.platform-shell main :where(.bg-card.border) {
+  border-color: color-mix(in srgb, var(--border) 62%, transparent);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--foreground) 7%, transparent),
+    0 10px 28px color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.platform-shell main :where(a.bg-card, button.bg-card, .group.bg-card) {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.platform-shell main :where(a.bg-card, button.bg-card, .group.bg-card):hover {
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+  box-shadow:
+    0 3px 8px color-mix(in srgb, var(--foreground) 8%, transparent),
+    0 16px 32px color-mix(in srgb, var(--primary) 11%, transparent);
+  transform: translateY(-2px);
+}
+
+.platform-shell
+  main
+  :where(a.bg-card, button.bg-card, .group.bg-card):focus-visible,
+.platform-shell main :where(.group.bg-card):focus-within {
+  border-color: var(--ring);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent),
+    0 14px 30px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.platform-shell main :where(a.bg-primary, button.bg-primary) {
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--primary) 22%, transparent);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.platform-shell main :where(a.bg-primary, button.bg-primary):hover {
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 28%, transparent);
+  transform: translateY(-1px);
+}
+
+.platform-shell main .resource-input {
+  background: color-mix(in srgb, var(--card) 86%, var(--secondary));
+  border-color: color-mix(in srgb, var(--border) 72%, transparent);
+  box-shadow: inset 0 1px 2px
+    color-mix(in srgb, var(--foreground) 5%, transparent);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.platform-shell main .resource-input:focus {
+  background: var(--card);
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 15%, transparent);
+}
+
+.platform-shell main > * {
+  animation: platform-reveal 260ms ease-out both;
+}
+
+@keyframes platform-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

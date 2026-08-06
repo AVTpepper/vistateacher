@@ -2,6 +2,8 @@ import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
+import { DEFAULT_FORUM_CATEGORIES } from "../src/lib/forum/categories";
+
 const projectId =
   process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "demo-vista-teacher";
 
@@ -196,49 +198,15 @@ batch.set(db.doc("resources/demo-resource"), {
   updatedAt: FieldValue.serverTimestamp(),
 });
 
-const categoryNames = [
-  "Classroom Management",
-  "Lesson Planning",
-  "Student Engagement",
-  "Technology in Education",
-  "Teacher Support",
-  "Grade-Level Discussions",
-  "General Discussion",
-  "Q&A",
-  "Inspiration and Ideas",
-];
-const categoryIcons = [
-  "LayoutGrid",
-  "BookOpen",
-  "Zap",
-  "Monitor",
-  "Heart",
-  "Users",
-  "MessageSquare",
-  "HelpCircle",
-  "Lightbulb",
-];
-const categoryColors = [
-  "#3B6B5C",
-  "#3D70A2",
-  "#D18B34",
-  "#6F5A98",
-  "#B95D65",
-  "#3C8A78",
-  "#A36A42",
-  "#58799B",
-  "#E3645B",
-];
-for (const [order, name] of categoryNames.entries()) {
-  const id = name.toLocaleLowerCase("en-US").replaceAll(" ", "-");
-  batch.set(db.doc(`forumCategories/${id}`), {
-    name,
-    description: `Development-only ${name.toLocaleLowerCase("en-US")} discussions.`,
-    icon: categoryIcons[order],
-    color: categoryColors[order],
-    threadCount: id === "student-engagement" ? 1 : 0,
-    postCount: id === "student-engagement" ? 2 : 0,
-    order,
+for (const category of DEFAULT_FORUM_CATEGORIES) {
+  batch.set(db.doc(`forumCategories/${category.id}`), {
+    name: category.name,
+    description: category.description,
+    icon: category.icon,
+    color: category.color,
+    threadCount: category.id === "student-engagement" ? 1 : 0,
+    postCount: category.id === "student-engagement" ? 2 : 0,
+    order: category.order,
     active: true,
   });
 }

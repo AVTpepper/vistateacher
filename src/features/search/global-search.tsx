@@ -14,7 +14,13 @@ const emptyResults: GroupedSearchResults = {
   discussions: [],
 };
 
-export function GlobalSearch() {
+export function GlobalSearch({
+  enableShortcut = true,
+  onOpen,
+}: {
+  enableShortcut?: boolean;
+  onOpen?: () => void;
+} = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -47,6 +53,7 @@ export function GlobalSearch() {
   }, [deferredQuery, open]);
 
   useEffect(() => {
+    if (!enableShortcut) return;
     function openSearch(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -55,7 +62,7 @@ export function GlobalSearch() {
     }
     window.addEventListener("keydown", openSearch);
     return () => window.removeEventListener("keydown", openSearch);
-  }, []);
+  }, [enableShortcut]);
 
   function navigate(href: string) {
     setOpen(false);
@@ -84,7 +91,10 @@ export function GlobalSearch() {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        <button className="bg-muted text-muted-foreground hover:text-foreground flex h-11 w-full max-w-xl items-center gap-2 rounded-xl px-3 text-left text-sm transition-colors">
+        <button
+          onClick={onOpen}
+          className="bg-muted text-muted-foreground hover:text-foreground flex h-11 w-full max-w-xl items-center gap-2 rounded-xl px-3 text-left text-sm transition-colors"
+        >
           <Search aria-hidden="true" className="size-4 shrink-0" />
           <span className="min-w-0 flex-1 truncate">
             Search teachers, resources...

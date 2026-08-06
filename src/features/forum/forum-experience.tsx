@@ -212,7 +212,7 @@ function CategoryCard({
     <button
       type="button"
       onClick={onClick}
-      className="bg-card group w-full rounded-xl border p-5 text-left hover:shadow-sm"
+      className="bg-card border-accent/25 hover:border-accent/55 group w-full rounded-xl border p-5 text-left transition-all duration-200 hover:-translate-y-1"
     >
       <div className="flex items-start gap-4">
         <span
@@ -222,7 +222,10 @@ function CategoryCard({
             color: category.color,
           }}
         >
-          <Icon aria-hidden="true" className="size-5" />
+          <Icon
+            aria-hidden="true"
+            className="size-5 transition-transform duration-200 group-hover:scale-110"
+          />
         </span>
         <span className="min-w-0 flex-1">
           <span className="group-hover:text-primary block text-sm font-bold">
@@ -244,7 +247,7 @@ function CategoryCard({
         </span>
         <ChevronRight
           aria-hidden="true"
-          className="text-muted-foreground group-hover:text-primary size-4 shrink-0"
+          className="text-muted-foreground group-hover:text-accent size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-1"
         />
       </div>
     </button>
@@ -255,7 +258,7 @@ function ThreadRow({ thread }: { thread: ForumThreadSummary }) {
   return (
     <Link
       href={`/forum/${thread.id}`}
-      className="bg-card group block rounded-xl border p-4 hover:shadow-sm"
+      className="bg-card border-primary/15 group hover:border-primary/35 block rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5"
     >
       <div className="flex items-start gap-3">
         <UserAvatar

@@ -205,10 +205,10 @@ export function DashboardExperience({
             <Link
               key={action.href}
               href={action.href}
-              className="bg-card hover:border-primary/25 rounded-xl border p-4 transition-colors"
+              className="bg-card border-accent/20 hover:border-accent/50 group rounded-xl border p-4 transition-all duration-200 hover:-translate-y-1"
             >
               <span
-                className={`grid size-9 place-items-center rounded-lg ${action.tone}`}
+                className={`grid size-9 place-items-center rounded-lg transition-transform duration-200 group-hover:scale-110 ${action.tone}`}
               >
                 <Icon className="size-4" />
               </span>
@@ -245,7 +245,7 @@ export function DashboardExperience({
             return (
               <div
                 key={metric.label}
-                className="bg-card min-w-0 rounded-xl border p-4"
+                className="bg-card border-primary/15 min-w-0 rounded-xl border p-4"
               >
                 <span
                   className={`grid size-8 place-items-center rounded-lg ${metric.tone}`}

@@ -69,7 +69,7 @@ The Firebase MVP uses normalized fields, keyword arrays, and bounded parallel qu
 
 Public profile routes read `users/{uid}` and join effective subscription state on the server. Contact details are loaded from `userPrivate/{uid}` only for the owner or when the owner explicitly enables public sharing. Profile and settings forms submit bounded Zod contracts to same-origin route handlers; Firestore rules deny direct identity-document mutations so clients cannot bypass server validation. Profile image uploads are bounded server-side writes for JPG/PNG/WebP avatars, while banner customization is limited to server-validated Plus style presets (no custom banner image uploads). Account deletion records a reviewable request rather than deleting data synchronously.
 
-Authenticated workspace pages use a fixed application shell with a two-tier desktop header and a shared footer inside the shell's scroll region. The header keeps search and account controls above the primary workspace destinations; secondary support, company, privacy, and terms destinations live in the footer. Smaller viewports use a focus-trapped dropdown menu containing only primary workspace navigation.
+Authenticated workspace pages use a fixed application shell with a two-tier desktop header and a shared footer inside the shell's scroll region. The header keeps search and account controls above the primary workspace destinations; secondary support, company, privacy, and terms destinations live in the footer. Smaller viewports keep the VistaTeacher brand in the header and use a focus-trapped, width-capped dropdown containing global search and primary workspace navigation. A shell-scoped visual layer supplies warm background depth, softer surfaces, and consistent interactive elevation without affecting marketing or authentication routes.
 
 ## Discovery and Network
 
@@ -95,7 +95,7 @@ Resource objects deny direct reads. The download route re-resolves account statu
 
 ## Forum
 
-The forum renders active category aggregates and the first approved discussion page in Server Components. Later pages use an authenticated route and an opaque cursor containing only the last activity timestamp and document ID. Category filtering, stable ordering, and bounded reply reads use committed compound indexes.
+The forum renders active category aggregates and the first approved discussion page in Server Components. A shared nine-category taxonomy supplies production defaults and development seed data; bounded self-healing creates only missing category documents so existing counters and administration changes remain intact. Later pages use an authenticated route and an opaque cursor containing only the last activity timestamp and document ID. Category filtering, stable ordering, and bounded reply reads use committed compound indexes.
 
 Thread, reply, like, report, accepted-answer, and moderation writes are server-owned. Transactions verify active users and visible targets, initialize trusted counters, update category/thread aggregates, and use deterministic reaction and report IDs for idempotency. Only a thread owner or platform administrator can lock or delete a discussion; pinning is platform-administrator-only. Thread owners and administrators can select one approved reply as the accepted answer.
 

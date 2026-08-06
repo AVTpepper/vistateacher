@@ -10,6 +10,7 @@ import {
 } from "firebase-admin/firestore";
 
 import { decodeForumCursor, encodeForumCursor } from "@/lib/forum/cursor";
+import { DEFAULT_FORUM_CATEGORIES } from "@/lib/forum/categories";
 import { adminDb } from "@/lib/firebase/admin";
 import type {
   CreateForumReplyInput,
@@ -24,18 +25,6 @@ import type { UserRole } from "@/types/models";
 
 const PAGE_SIZE = 10;
 const REPLY_LIMIT = 100;
-
-const DEFAULT_FORUM_CATEGORIES = [
-  {
-    id: "inspiration-and-ideas",
-    name: "Inspiration and Ideas",
-    description:
-      "Bring back inspiration with educator stories, useful links, and sparks for practice.",
-    icon: "Lightbulb",
-    color: "#E3645B",
-    order: 8,
-  },
-] as const;
 
 export interface ForumAuthor {
   uid: string;
@@ -478,7 +467,8 @@ export async function updateForumThread(
       transaction.get(db.doc(`users/${uid}`)),
     ]);
     if (!thread.exists) throw new ForumActionError("not-found");
-    if (thread.data()?.authorId !== uid) throw new ForumActionError("not-owner");
+    if (thread.data()?.authorId !== uid)
+      throw new ForumActionError("not-owner");
     if (thread.data()?.locked === true) throw new ForumActionError("locked");
     if (!user.exists || user.data()?.status !== "active")
       throw new ForumActionError("inactive");
@@ -486,7 +476,9 @@ export async function updateForumThread(
       title: input.title,
       titleLower: input.title.toLocaleLowerCase("en-US"),
       content: input.content,
-      tags: [...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US")))],
+      tags: [
+        ...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US"))),
+      ],
       editedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       lastActivityAt: FieldValue.serverTimestamp(),
@@ -507,7 +499,8 @@ export async function updateForumReply(
       transaction.get(replyRef),
       transaction.get(db.doc(`users/${uid}`)),
     ]);
-    if (!thread.exists || !reply.exists) throw new ForumActionError("not-found");
+    if (!thread.exists || !reply.exists)
+      throw new ForumActionError("not-found");
     if (thread.data()?.locked === true) throw new ForumActionError("locked");
     if (reply.data()?.authorId !== uid) throw new ForumActionError("not-owner");
     if (!user.exists || user.data()?.status !== "active")

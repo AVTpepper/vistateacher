@@ -24,7 +24,10 @@ export function AdminNavigation() {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Administration" className="flex gap-1 overflow-x-auto">
+    <nav
+      aria-label="Administration"
+      className="flex gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain"
+    >
       {navigation.map(([label, href, Icon]) => {
         const active =
           href === "/admin"

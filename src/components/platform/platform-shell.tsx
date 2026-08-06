@@ -67,9 +67,10 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   useEffect(() => {
     if (!mobileOpen) return;
 
-    const previousOverflow = document.body.style.overflow;
+    const root = document.documentElement;
+    const previousOverflow = root.style.overflow;
     const trigger = mobileTriggerRef.current;
-    document.body.style.overflow = "hidden";
+    root.style.overflow = "hidden";
     const drawer = mobileDrawerRef.current;
     const focusable = drawer?.querySelectorAll<HTMLElement>(
       'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
@@ -96,7 +97,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
+      root.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
       trigger?.focus();
     };
@@ -113,6 +114,9 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
 
   const mobileMenu = (
     <div className="p-3">
+      <div className="border-sidebar-border mb-3 border-b pb-3">
+        <GlobalSearch enableShortcut={false} onOpen={closeMobileMenu} />
+      </div>
       <nav
         aria-label="Platform navigation"
         className="grid max-h-[calc(100dvh-5rem)] gap-1 overflow-y-auto"
@@ -174,7 +178,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   );
 
   return (
-    <div className="bg-background flex h-dvh flex-col overflow-hidden">
+    <div className="platform-shell bg-background flex min-h-dvh flex-col">
       <div
         aria-hidden={!mobileOpen}
         className={cn(
@@ -192,7 +196,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
         inert={!mobileOpen}
         role="dialog"
         className={cn(
-          "bg-sidebar fixed inset-x-0 top-16 z-50 max-h-[calc(100dvh-4rem)] overflow-hidden rounded-b-xl shadow-xl transition-[transform,opacity] duration-200 lg:hidden",
+          "bg-sidebar fixed top-18 left-3 z-50 max-h-[calc(100dvh-5.25rem)] w-[calc(100%-1.5rem)] max-w-80 overflow-hidden rounded-xl shadow-2xl transition-[transform,opacity] duration-200 lg:hidden",
           mobileOpen
             ? "translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-3 opacity-0",
@@ -200,9 +204,9 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
       >
         {mobileMenu}
       </aside>
-      <header className="bg-sidebar text-sidebar-foreground border-sidebar-border shrink-0 border-b">
+      <header className="bg-sidebar text-sidebar-foreground border-sidebar-border sticky top-0 z-30 shrink-0 border-b">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-4 lg:px-6">
-          <div className="flex shrink-0 items-center gap-2 lg:hidden">
+          <div className="flex min-w-0 flex-1 items-center gap-2 lg:hidden">
             <button
               ref={mobileTriggerRef}
               type="button"
@@ -229,7 +233,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
               <span className="bg-sidebar-primary text-primary-foreground grid size-7 place-items-center rounded-lg">
                 <GraduationCap aria-hidden="true" className="size-4" />
               </span>
-              <span className="hidden font-serif text-sm text-white sm:inline">
+              <span className="truncate font-serif text-sm text-white">
                 VistaTeacher
               </span>
             </Link>
@@ -243,7 +247,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             </span>
             <span className="font-serif text-lg text-white">VistaTeacher</span>
           </Link>
-          <div className="min-w-0 flex-1 lg:px-5">
+          <div className="hidden min-w-0 flex-1 lg:block lg:px-5">
             <GlobalSearch />
           </div>
           <NotificationMenu onOpen={() => setUserMenuOpen(false)} />
@@ -275,10 +279,12 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                 <div
                   id="profile-navigation"
                   aria-label="Profile navigation"
-                  className="bg-card text-card-foreground border-border absolute right-0 top-12 z-50 w-60 overflow-hidden rounded-xl border py-1 shadow-xl"
+                  className="bg-card text-card-foreground border-border absolute top-12 right-0 z-50 w-60 overflow-hidden rounded-xl border py-1 shadow-xl"
                 >
                   <div className="border-border border-b px-4 py-3">
-                    <p className="truncate text-sm font-bold">{account.displayName}</p>
+                    <p className="truncate text-sm font-bold">
+                      {account.displayName}
+                    </p>
                     <p className="text-muted-foreground mt-0.5 truncate text-xs">
                       {account.subject}
                     </p>
@@ -363,9 +369,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "relative flex min-h-12 shrink-0 items-center gap-1.5 px-3 text-sm font-semibold transition-colors",
-                    active
-                      ? "text-white"
-                      : "text-white/75 hover:text-white",
+                    active ? "text-white" : "text-white/75 hover:text-white",
                   )}
                 >
                   {label}
@@ -383,7 +387,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
           </div>
         </nav>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="flex min-h-0 flex-1 flex-col">
         <main className="flex-1">{children}</main>
         <PlatformFooter />
       </div>

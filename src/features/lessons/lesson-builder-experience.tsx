@@ -903,7 +903,9 @@ export function LessonBuilderExperience({
     }
     setWorking(true);
     try {
-      const response = await fetch(`/api/ai-lessons/${lesson.id}/export/pdf?preview=1`);
+      const response = await fetch(
+        `/api/ai-lessons/${lesson.id}/export/pdf?preview=1`,
+      );
       if (!response.ok) {
         const result = (await response.json().catch(() => null)) as {
           error?: string;
@@ -951,18 +953,19 @@ export function LessonBuilderExperience({
               >
                 <strong>{String(label)}</strong>{" "}
                 {(usage as typeof workspace.usage.creations).used}/
-                {(usage as typeof workspace.usage.creations).limit ?? "Unlimited"}
+                {(usage as typeof workspace.usage.creations).limit ??
+                  "Unlimited"}
               </span>
             ))}
             <span className="bg-muted rounded-lg px-3 py-2">
-              <strong>{workspace.usage.used}</strong> / {workspace.usage.limit} AI
-              generations this month
+              <strong>{workspace.usage.used}</strong> / {workspace.usage.limit}{" "}
+              AI generations this month
             </span>
           </div>
         </div>
       </header>
 
-      <div className="mb-5 flex items-center gap-2 overflow-x-auto pb-1">
+      <div className="mb-5 flex items-center gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1">
         <button
           type="button"
           onClick={() => {

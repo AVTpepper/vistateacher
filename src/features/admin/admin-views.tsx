@@ -309,7 +309,7 @@ function AdminTable({
       role="region"
       aria-label="Administration data table"
       tabIndex={0}
-      className="bg-card overflow-x-auto rounded-lg border"
+      className="bg-card overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-lg border"
     >
       <table className="w-full min-w-190 border-collapse text-left">
         <thead className="bg-muted/60">
