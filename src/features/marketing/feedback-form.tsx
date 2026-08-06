@@ -34,7 +34,7 @@ export function FeedbackForm({
       } | null;
       if (!response.ok) throw new Error(result?.error);
       form.reset();
-      toast.success("Message sent. We'll get back to you soon.");
+      toast.success("Message sent. Check your inbox for a confirmation email.");
     } catch (error) {
       toast.error(
         error instanceof Error && error.message

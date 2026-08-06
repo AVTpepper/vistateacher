@@ -60,8 +60,9 @@ export async function sendFeedback(
 
   await consumeDailyAllowance(clientAddress);
 
+  const resend = new Resend(apiKey);
   const category = input.category[0].toUpperCase() + input.category.slice(1);
-  const { error } = await new Resend(apiKey).emails.send({
+  const { error: supportDeliveryError } = await resend.emails.send({
     from: `VistaTeacher <${from}>`,
     to: supportEmail,
     replyTo: input.email,
@@ -74,5 +75,41 @@ export async function sendFeedback(
     ].join("\n"),
     html: `<h2>New VistaTeacher message</h2><p><strong>Category:</strong> ${escapeHtml(category)}</p><p><strong>From:</strong> ${escapeHtml(input.name)} &lt;${escapeHtml(input.email)}&gt;</p><hr><p style="white-space:pre-wrap">${escapeHtml(input.message)}</p>`,
   });
-  if (error) throw new Error(`Resend delivery failed: ${error.name}`);
+  if (supportDeliveryError) {
+    throw new Error(`Resend delivery failed: ${supportDeliveryError.name}`);
+  }
+
+  const { error: confirmationDeliveryError } = await resend.emails.send({
+    from: `VistaTeacher <${from}>`,
+    to: input.email,
+    replyTo: supportEmail,
+    subject: "We received your VistaTeacher message",
+    text: [
+      `Hi ${input.name},`,
+      "",
+      "Thanks for contacting VistaTeacher support.",
+      "We've received your message and our team will review it as soon as possible.",
+      "",
+      `Category: ${category}`,
+      "",
+      "For your records, here's what you sent:",
+      input.message,
+      "",
+      "- VistaTeacher Support",
+    ].join("\n"),
+    html: [
+      `<p>Hi ${escapeHtml(input.name)},</p>`,
+      "<p>Thanks for contacting VistaTeacher support.</p>",
+      "<p>We've received your message and our team will review it as soon as possible.</p>",
+      `<p><strong>Category:</strong> ${escapeHtml(category)}</p>`,
+      "<p><strong>For your records, here's what you sent:</strong></p>",
+      `<p style="white-space:pre-wrap">${escapeHtml(input.message)}</p>`,
+      "<p>- VistaTeacher Support</p>",
+    ].join(""),
+  });
+  if (confirmationDeliveryError) {
+    throw new Error(
+      `Resend confirmation delivery failed: ${confirmationDeliveryError.name}`,
+    );
+  }
 }
