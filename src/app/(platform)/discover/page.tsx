@@ -102,7 +102,7 @@ export default async function DiscoverPage({
           ))}
         </div>
       ) : (
-        <section className="bg-card mt-4 rounded-2xl border p-12 text-center">
+        <section className="surface-card mt-4 rounded-2xl p-12 text-center">
           <Users
             aria-hidden="true"
             className="text-muted-foreground/40 mx-auto size-9"

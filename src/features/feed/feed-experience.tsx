@@ -135,7 +135,7 @@ export function FeedExperience({ initialPage, account }: FeedExperienceProps) {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <div className="bg-card flex gap-1 rounded-xl border p-1">
+      <div className="surface-card flex gap-1 p-1">
         {tabs.map((tab) => (
           <button
             type="button"
@@ -162,7 +162,7 @@ export function FeedExperience({ initialPage, account }: FeedExperienceProps) {
           />
         </div>
       ) : posts.length === 0 ? (
-        <section className="bg-card rounded-xl border px-6 py-14 text-center">
+        <section className="surface-card px-6 py-14 text-center">
           <FileText
             aria-hidden="true"
             className="text-muted-foreground/40 mx-auto size-8"

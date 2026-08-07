@@ -28,39 +28,45 @@ export default function SettingsLayout({
       <div className="grid gap-6 md:grid-cols-[13rem_minmax(0,1fr)]">
         <nav
           aria-label="Settings navigation"
-          className="bg-card h-fit space-y-1 rounded-xl border p-2"
+          className="surface-card h-fit space-y-1 p-2"
         >
           <Link
             href="/settings/profile"
             aria-current={isActive("/settings/profile") ? "page" : undefined}
             className={cn(
-              "hover:bg-muted flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold",
-              isActive("/settings/profile") && "bg-secondary text-primary",
+              "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
+              isActive("/settings/profile") 
+                ? "bg-primary text-primary-foreground hover:opacity-90" 
+                : "hover:bg-muted",
             )}
           >
-            <UserRound aria-hidden="true" className="text-primary size-4" />
+            <UserRound aria-hidden="true" className="size-4" />
             Edit profile
           </Link>
           <Link
             href="/settings"
             aria-current={isActive("/settings") ? "page" : undefined}
             className={cn(
-              "hover:bg-muted flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold",
-              isActive("/settings") && "bg-secondary text-primary",
+              "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
+              isActive("/settings") 
+                ? "bg-primary text-primary-foreground hover:opacity-90" 
+                : "hover:bg-muted",
             )}
           >
-            <LockKeyhole aria-hidden="true" className="text-primary size-4" />
+            <LockKeyhole aria-hidden="true" className="size-4" />
             Privacy & account
           </Link>
           <Link
             href="/settings/billing"
             aria-current={isActive("/settings/billing") ? "page" : undefined}
             className={cn(
-              "hover:bg-muted flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold",
-              isActive("/settings/billing") && "bg-secondary text-primary",
+              "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
+              isActive("/settings/billing") 
+                ? "bg-primary text-primary-foreground hover:opacity-90" 
+                : "hover:bg-muted",
             )}
           >
-            <CreditCard aria-hidden="true" className="text-primary size-4" />
+            <CreditCard aria-hidden="true" className="size-4" />
             Plan & billing
           </Link>
         </nav>

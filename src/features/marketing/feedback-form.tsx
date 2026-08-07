@@ -80,7 +80,7 @@ export function FeedbackForm({
           id="feedback-category"
           name="category"
           defaultValue="feedback"
-          className="border-input bg-input/60 focus-visible:border-ring h-11 w-full rounded-md border px-3 text-sm shadow-sm outline-none"
+          className="border-accent bg-input/60 focus-visible:border-ring h-11 w-full rounded-md border px-3 text-sm shadow-sm outline-none"
         >
           <option value="feedback">Product feedback</option>
           <option value="account">Account access</option>
@@ -98,7 +98,7 @@ export function FeedbackForm({
           minLength={20}
           maxLength={2_000}
           required
-          className="border-input bg-input/60 focus-visible:border-ring w-full resize-y rounded-md border px-3 py-2.5 text-sm leading-6 shadow-sm outline-none"
+          className="border-accent bg-input/60 focus-visible:border-ring w-full resize-y rounded-md border px-3 py-2.5 text-sm leading-6 shadow-sm outline-none"
         />
         <p className="text-muted-foreground text-xs">
           Please do not include passwords, payment details, or sensitive student

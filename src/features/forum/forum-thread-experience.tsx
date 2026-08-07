@@ -25,6 +25,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import type { ForumReply, ForumThreadDetail } from "@/lib/forum/server";
 import type { UserRole } from "@/types/models";
 
@@ -164,7 +165,7 @@ export function ForumThreadExperience({
     const response = await fetch(`/api/forum/${thread.id}`, {
       method: "DELETE",
     });
-    if (!response.ok) return toast.error("We couldn't delete this discussion.");
+    if (!response.ok) throw new Error("We couldn't delete this discussion.");
     toast.success("Discussion deleted.");
     router.push("/forum");
     router.refresh();
@@ -174,7 +175,7 @@ export function ForumThreadExperience({
     const response = await fetch(`/api/forum/${thread.id}/replies/${replyId}`, {
       method: "DELETE",
     });
-    if (!response.ok) return toast.error("We couldn't delete that reply.");
+    if (!response.ok) throw new Error("We couldn't delete that reply.");
     toast.success("Reply deleted.");
     router.refresh();
   }
@@ -189,7 +190,7 @@ export function ForumThreadExperience({
         Back to Forum
       </Link>
 
-      <article className="bg-card mb-4 rounded-xl border p-5 sm:p-6">
+      <article className="surface-card mb-4 p-5 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
           {thread.pinned && (
             <span className="bg-primary/10 text-primary flex items-center gap-1 rounded-full px-2.5 py-1 font-bold">
@@ -302,12 +303,19 @@ export function ForumThreadExperience({
                     }
                   />
                 )}
-                <IconButton
-                  label="Delete discussion"
-                  icon={Trash2}
-                  destructive
-                  onClick={() => void deleteThread()}
-                />
+                <DeleteConfirmDialog
+                  itemName="discussion"
+                  onConfirm={deleteThread}
+                >
+                  <button
+                    type="button"
+                    aria-label="Delete discussion"
+                    title="Delete discussion"
+                    className="text-destructive hover:bg-muted grid size-8 place-items-center rounded-lg"
+                  >
+                    <Trash2 aria-hidden="true" className="size-4" />
+                  </button>
+                </DeleteConfirmDialog>
               </>
             )}
           </div>
@@ -323,7 +331,7 @@ export function ForumThreadExperience({
             canAccept={thread.ownedByViewer || viewer.role === "platform_admin"}
             onLike={(liked) => void toggleLike(item.id, liked)}
             onAccept={() => void accept(item.id)}
-            onDelete={() => void deleteReply(item.id)}
+            onDelete={() => deleteReply(item.id)}
             onEdit={() => void saveReplyEdit(item.id, item.content)}
             threadId={thread.id}
           />
@@ -331,11 +339,11 @@ export function ForumThreadExperience({
       </section>
 
       {thread.locked ? (
-        <div className="bg-card text-muted-foreground rounded-xl border p-5 text-center text-sm">
+        <div className="surface-card text-muted-foreground p-5 text-center text-sm">
           This discussion is locked.
         </div>
       ) : (
-        <section className="bg-card rounded-xl border p-5">
+        <section className="surface-card p-5">
           <h2 className="font-serif text-xl">Add Your Reply</h2>
           <div className="mt-4 flex items-start gap-3">
             <UserAvatar
@@ -384,13 +392,13 @@ function ReplyCard({
   canAccept: boolean;
   onLike: (liked: boolean) => void;
   onAccept: () => void;
-  onDelete: () => void;
+  onDelete: () => Promise<void>;
   onEdit: () => void;
   threadId: string;
 }) {
   return (
     <article
-      className={`bg-card rounded-xl border p-5 ${reply.accepted ? "border-success/40 shadow-sm" : ""}`}
+      className={`surface-card p-5 ${reply.accepted ? "border-success/40 shadow-sm" : ""}`}
     >
       {reply.accepted && (
         <div className="text-success mb-3 flex items-center gap-1.5 text-xs font-bold">
@@ -438,12 +446,19 @@ function ReplyCard({
                 />
               )}
               {reply.canModerate && (
-                <IconButton
-                  label="Delete reply"
-                  icon={Trash2}
-                  destructive
-                  onClick={onDelete}
-                />
+                <DeleteConfirmDialog
+                  itemName="reply"
+                  onConfirm={onDelete}
+                >
+                  <button
+                    type="button"
+                    aria-label="Delete reply"
+                    title="Delete reply"
+                    className="text-destructive hover:bg-muted grid size-8 place-items-center rounded-lg"
+                  >
+                    <Trash2 aria-hidden="true" className="size-4" />
+                  </button>
+                </DeleteConfirmDialog>
               )}
             </div>
           </div>

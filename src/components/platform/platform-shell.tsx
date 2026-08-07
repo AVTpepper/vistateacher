@@ -3,7 +3,6 @@
 import {
   BookOpen,
   Compass,
-  GraduationCap,
   Home,
   LayoutDashboard,
   Mail,
@@ -114,7 +113,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
 
   const mobileMenu = (
     <div className="p-3">
-      <div className="border-sidebar-border mb-3 border-b pb-3">
+      <div className="border-accent mb-3 border-b pb-3">
         <GlobalSearch enableShortcut={false} onOpen={closeMobileMenu} />
       </div>
       <nav
@@ -134,7 +133,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
               className={cn(
                 "relative flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
                 active
-                  ? "bg-white/12 text-white"
+                  ? "border-r-[3px] border-accent bg-accent/15 text-white"
                   : "text-white/75 hover:bg-white/8 hover:text-white",
               )}
             >
@@ -142,17 +141,14 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                 aria-hidden="true"
                 className={cn(
                   "size-4.5 shrink-0",
-                  active && "text-sidebar-primary",
+                  active && "text-accent",
                 )}
               />
               <span className="min-w-0 flex-1 truncate">{label}</span>
               {"plus" in item && item.plus && (
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[9px] font-bold text-[#ffc4bc]">
                   Plus
                 </span>
-              )}
-              {active && (
-                <span className="bg-sidebar-primary absolute top-2 right-0 h-6 w-0.5 rounded-l" />
               )}
             </Link>
           );
@@ -196,7 +192,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
         inert={!mobileOpen}
         role="dialog"
         className={cn(
-          "bg-sidebar fixed top-18 left-3 z-50 max-h-[calc(100dvh-5.25rem)] w-[calc(100%-1.5rem)] max-w-80 overflow-hidden rounded-xl shadow-2xl transition-[transform,opacity] duration-200 lg:hidden",
+          "bg-sidebar fixed top-16 left-0 z-50 max-h-[calc(100dvh-4rem)] w-[calc(100vw-3rem)] max-w-80 overflow-hidden rounded-br-lg shadow-2xl transition-[transform,opacity] duration-200 lg:hidden",
           mobileOpen
             ? "translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-3 opacity-0",
@@ -230,8 +226,11 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
               aria-label="VistaTeacher home"
               className="flex shrink-0 items-center gap-2 lg:hidden"
             >
-              <span className="bg-sidebar-primary text-primary-foreground grid size-7 place-items-center rounded-lg">
-                <GraduationCap aria-hidden="true" className="size-4" />
+              <span
+                aria-hidden="true"
+                className="bg-accent text-accent-foreground grid size-7 place-items-center rounded-md font-sans text-[11px] font-bold"
+              >
+                VT
               </span>
               <span className="truncate font-serif text-sm text-white">
                 VistaTeacher
@@ -242,8 +241,11 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             href="/app"
             className="hidden min-h-11 shrink-0 items-center gap-2.5 rounded-lg lg:flex"
           >
-            <span className="bg-sidebar-primary text-primary-foreground grid size-9 place-items-center rounded-lg">
-              <GraduationCap aria-hidden="true" className="size-5" />
+            <span
+              aria-hidden="true"
+              className="bg-accent text-accent-foreground grid size-9 place-items-center rounded-md font-sans text-sm font-bold"
+            >
+              VT
             </span>
             <span className="font-serif text-lg text-white">VistaTeacher</span>
           </Link>
@@ -397,42 +399,85 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
 
 function PlatformFooter() {
   return (
-    <footer className="bg-sidebar text-sidebar-foreground/75 border-sidebar-border mt-auto border-t px-5 py-8 lg:px-8">
-      <div className="mx-auto grid max-w-7xl gap-6 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-        <div>
-          <Link
-            href="/app"
-            className="text-sidebar-foreground font-serif text-lg"
-          >
-            VistaTeacher
-          </Link>
-          <p className="mt-1 max-w-md">
-            A professional community built around the work educators share.
+    <footer className="bg-sidebar text-sidebar-foreground/75 border-sidebar-border mt-auto border-t px-5 py-10 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(3,minmax(0,1fr))]">
+          <div>
+            <Link
+              href="/app"
+              className="text-sidebar-foreground inline-flex items-center gap-2 font-serif text-lg"
+            >
+              <span
+                aria-hidden="true"
+                className="bg-accent text-accent-foreground grid size-8 place-items-center rounded-md font-sans text-xs font-bold"
+              >
+                VT
+              </span>
+              VistaTeacher
+            </Link>
+            <p className="mt-3 max-w-sm text-sm leading-6">
+              A professional community built around the work educators share:
+              resources, conversations, and classroom-ready support.
+            </p>
+          </div>
+          <div>
+            <p className="text-sidebar-foreground border-accent mb-3 border-b pb-2 text-xs font-bold tracking-[0.12em] uppercase">
+              Product
+            </p>
+            <nav aria-label="Product links" className="grid gap-2.5 text-sm">
+              <Link className="hover:text-white" href="/resources">
+                Resources
+              </Link>
+              <Link className="hover:text-white" href="/ai-lessons">
+                AI Lesson Builder
+              </Link>
+              <Link className="hover:text-white" href="/settings/billing">
+                Compare plans
+              </Link>
+            </nav>
+          </div>
+          <div>
+            <p className="text-sidebar-foreground border-accent mb-3 border-b pb-2 text-xs font-bold tracking-[0.12em] uppercase">
+              Community
+            </p>
+            <nav aria-label="Community links" className="grid gap-2.5 text-sm">
+              <Link className="hover:text-white" href="/forum">
+                Forum
+              </Link>
+              <Link className="hover:text-white" href="/network">
+                Network
+              </Link>
+              <Link className="hover:text-white" href="/support">
+                Help &amp; feedback
+              </Link>
+            </nav>
+          </div>
+          <div>
+            <p className="text-sidebar-foreground border-accent mb-3 border-b pb-2 text-xs font-bold tracking-[0.12em] uppercase">
+              Company
+            </p>
+            <nav aria-label="Company links" className="grid gap-2.5 text-sm">
+              <Link className="hover:text-white" href="/about">
+                About
+              </Link>
+              <Link className="hover:text-white" href="/information">
+                Policies
+              </Link>
+              <Link className="hover:text-white" href="/privacy">
+                Privacy
+              </Link>
+              <Link className="hover:text-white" href="/terms">
+                Terms
+              </Link>
+            </nav>
+          </div>
+        </div>
+        <div className="border-sidebar-border mt-8 flex flex-col gap-2 border-t pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
+          <p>© 2026 VistaTeacher. All rights reserved.</p>
+          <p className="text-sidebar-foreground/55">
+            Built for educators who share what works.
           </p>
         </div>
-        <nav
-          aria-label="Platform footer navigation"
-          className="flex flex-wrap gap-x-5 gap-y-3"
-        >
-          <Link className="hover:text-white" href="/support">
-            Help &amp; feedback
-          </Link>
-          <Link className="hover:text-white" href="/settings/billing">
-            Compare plans
-          </Link>
-          <Link className="hover:text-white" href="/about">
-            About
-          </Link>
-          <Link className="hover:text-white" href="/information">
-            About &amp; policies
-          </Link>
-          <Link className="hover:text-white" href="/privacy">
-            Privacy
-          </Link>
-          <Link className="hover:text-white" href="/terms">
-            Terms
-          </Link>
-        </nav>
       </div>
     </footer>
   );

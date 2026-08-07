@@ -26,7 +26,7 @@ export interface ProfileView {
   plan: Plan;
   contactDetails: PrivateSettings["contactDetails"] | null;
   isOwner: boolean;
-  isFollowing: boolean | null;
+  connectionStatus: "none" | "pending" | "accepted" | null;
 }
 
 function joinedLabel(value: unknown): string {
@@ -66,6 +66,16 @@ export async function getProfileView(
     privateUser?.privacySettings.shareContactInfo === true,
   );
 
+  let connectionStatus: "none" | "pending" | "accepted" | null = null;
+  if (viewerUid && !isOwner) {
+    if (!relationshipSnapshot?.exists) {
+      connectionStatus = "none";
+    } else {
+      const data = relationshipSnapshot.data() as Record<string, unknown>;
+      connectionStatus = data.status === "pending" ? "pending" : "accepted";
+    }
+  }
+
   return {
     profile,
     joinedLabel: joinedLabel(profile.createdAt),
@@ -73,7 +83,7 @@ export async function getProfileView(
     contactDetails:
       canViewContact && privateUser ? privateUser.contactDetails : null,
     isOwner,
-    isFollowing: relationshipSnapshot?.exists ?? null,
+    connectionStatus,
   };
 }
 

@@ -41,7 +41,7 @@ export default async function ResourcePage({
     <div className="px-4 py-5 lg:px-6">
       <div className="mx-auto max-w-4xl">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <article className="bg-card overflow-hidden rounded-xl border">
+          <article className="surface-card overflow-hidden">
             <div className="bg-primary grid aspect-[16/7] place-items-center text-white">
               <Icon aria-hidden="true" className="size-16 opacity-80" />
             </div>
@@ -85,7 +85,7 @@ export default async function ResourcePage({
             </div>
           </article>
           <aside>
-            <section className="bg-card rounded-xl border p-5">
+            <section className="surface-card p-5">
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
                   <Star
@@ -129,7 +129,7 @@ export default async function ResourcePage({
               {reviews.map((review) => (
                 <article
                   key={review.id}
-                  className="bg-card rounded-xl border p-4"
+                  className="surface-card p-4"
                 >
                   <div className="flex items-center gap-3">
                     <UserAvatar
@@ -159,7 +159,7 @@ export default async function ResourcePage({
               ))}
             </div>
           ) : (
-            <div className="bg-card text-muted-foreground mt-3 rounded-xl border py-10 text-center text-sm">
+            <div className="surface-card text-muted-foreground mt-3 py-10 text-center text-sm">
               No reviews yet.
             </div>
           )}

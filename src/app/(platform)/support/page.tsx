@@ -56,7 +56,7 @@ export default async function SupportPage() {
           </aside>
           <section
             aria-label="Contact VistaTeacher support"
-            className="bg-card rounded-xl border p-5 sm:p-6"
+            className="surface-card p-5 sm:p-6"
           >
             <FeedbackForm
               defaultName={account.displayName ?? ""}

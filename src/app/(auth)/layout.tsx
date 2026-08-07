@@ -26,7 +26,7 @@ export default function AuthLayout({
         </section>
         <section className="bg-background flex items-center justify-center px-5 py-12">
           <div className="w-full max-w-md">
-            <div className="bg-card rounded-lg border p-6 shadow-sm sm:p-8">
+            <div className="surface-card p-6 sm:p-8">
               {children}
             </div>
           </div>

@@ -33,7 +33,7 @@ export default async function OnboardingPage({
           resource discovery more relevant.
         </p>
       </div>
-      <div className="bg-card rounded-lg border p-6 shadow-sm sm:p-8">
+      <div className="surface-card p-6 sm:p-8">
         <OnboardingForm
           displayName={account.displayName ?? ""}
           planIntent={planIntent}

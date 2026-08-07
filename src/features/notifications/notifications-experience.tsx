@@ -144,7 +144,7 @@ export function NotificationsExperience({
         </div>
 
         {visibleNotifications.length ? (
-          <div className="bg-card overflow-hidden rounded-xl border">
+          <div className="surface-card overflow-hidden">
             {visibleNotifications.map((notification) => (
               <NotificationRow
                 key={notification.id}
@@ -157,7 +157,7 @@ export function NotificationsExperience({
             ))}
           </div>
         ) : (
-          <div className="bg-card rounded-xl border py-16 text-center">
+          <div className="surface-card py-16 text-center">
             <Bell
               aria-hidden="true"
               className="text-muted-foreground/30 mx-auto size-9"

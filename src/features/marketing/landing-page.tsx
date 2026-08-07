@@ -6,6 +6,7 @@ import {
   MessageSquare,
   Sparkles,
   Users,
+  UsersRound,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -114,14 +115,14 @@ export async function LandingPage() {
         <section className="relative overflow-hidden">
           <div
             aria-hidden="true"
-            className="from-primary/5 to-accent/5 pointer-events-none absolute inset-0 bg-linear-to-br via-transparent"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--primary)_14%,transparent),transparent_42%),radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--accent)_10%,transparent),transparent_36%)]"
           />
           <div className="relative mx-auto max-w-6xl px-4 pt-14 pb-12 text-center sm:px-6 sm:pt-20 sm:pb-16">
-            <div className="bg-primary/14 text-primary mb-5 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold">
+            <div className="surface-glass text-primary mb-5 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-bold">
               <Sparkles aria-hidden="true" className="size-3" />
               Built for the work around the lesson
             </div>
-            <h1 className="text-foreground font-serif text-5xl leading-[1.08] sm:text-6xl md:text-7xl">
+            <h1 className="text-foreground font-serif text-5xl leading-[1.08] tracking-tight sm:text-6xl md:text-7xl">
               Find your people
               <br />
               <span className="text-accent italic">in education.</span>
@@ -141,29 +142,33 @@ export async function LandingPage() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="border-accent/45 hover:bg-accent/8"
+                className="bg-card/70 hover:bg-card border-border/80 shadow-xs"
               >
                 <Link href="/sign-in">Sign in</Link>
               </Button>
             </div>
-            <div className="mt-8 flex items-center justify-center gap-3 text-sm text-muted-foreground">
+            <div className="text-muted-foreground mt-8 flex items-center justify-center gap-3 text-sm">
               <div className="-space-x-2 flex">
                 {heroParticipants.map((participant) => (
                   <UserAvatar
                     key={participant.uid}
                     name={participant.displayName}
                     photoURL={participant.photoURL}
-                    className="border-background h-8 w-8 shrink-0 rounded-full border-2 text-[11px] object-cover"
+                    className="border-background h-8 w-8 shrink-0 rounded-full border-2 text-[11px] object-cover shadow-sm"
                   />
                 ))}
               </div>
               <span>
-                Joined by <strong className="text-foreground">{registeredUsersLabel}</strong> teachers
+                Joined by{" "}
+                <strong className="text-foreground">
+                  {registeredUsersLabel}
+                </strong>{" "}
+                teachers
               </span>
             </div>
           </div>
           <div className="relative mx-auto max-w-5xl px-4 pb-14 sm:px-6 sm:pb-20">
-            <div className="bg-card shadow-foreground/5 overflow-hidden rounded-2xl border shadow-2xl">
+            <div className="surface-card overflow-hidden rounded-2xl shadow-lg ring-1 ring-black/5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/ivan-aleksic-PDRFeeDniCk-unsplash.jpg"
@@ -174,29 +179,86 @@ export async function LandingPage() {
           </div>
         </section>
 
-        <section className="bg-primary py-10 text-primary-foreground sm:py-14">
-          <div className="mx-auto grid max-w-5xl grid-cols-2 gap-8 px-4 text-center md:grid-cols-4">
-            {[
-              "Find your peers",
-              "Share useful resources",
-              "Discuss real challenges",
-              "Grow together",
-            ].map((label, index) => (
-              <div key={label}>
-                <p className="font-serif text-3xl sm:text-4xl">0{index + 1}</p>
-                <p className="mt-1 text-sm text-white/70">{label}</p>
-              </div>
-            ))}
+        <section className="relative overflow-hidden bg-primary py-12 text-primary-foreground sm:py-16">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--accent)_28%,transparent),transparent_42%),radial-gradient(circle_at_bottom_left,color-mix(in_srgb,white_12%,transparent),transparent_36%)]"
+          />
+          <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
+            <div className="mb-8 text-center sm:mb-10">
+              <p className="text-xs font-bold tracking-[0.16em] text-white/70 uppercase">
+                Your educator journey
+              </p>
+              <h2 className="mt-2 font-serif text-3xl tracking-tight text-white sm:text-4xl">
+                From first connection to classroom impact
+              </h2>
+            </div>
+            <div className="journey-timeline relative">
+              <div
+                aria-hidden="true"
+                className="journey-timeline-track hidden lg:block"
+              />
+              <ol className="grid list-none grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-4 lg:gap-4">
+                {[
+                  {
+                    step: "01",
+                    label: "Find your peers",
+                    detail:
+                      "Discover educators by subject, grade, and school context.",
+                    icon: UsersRound,
+                  },
+                  {
+                    step: "02",
+                    label: "Share useful resources",
+                    detail:
+                      "Publish classroom-ready materials with the context others need.",
+                    icon: BookOpen,
+                  },
+                  {
+                    step: "03",
+                    label: "Discuss real challenges",
+                    detail:
+                      "Trade practical advice in focused forum conversations.",
+                    icon: MessageSquare,
+                  },
+                  {
+                    step: "04",
+                    label: "Grow together",
+                    detail:
+                      "Build lessons, refine practice, and keep momentum with your network.",
+                    icon: Sparkles,
+                  },
+                ].map(({ step, label, detail, icon: Icon }) => (
+                  <li
+                    key={step}
+                    className="journey-step relative flex flex-col items-center text-center"
+                  >
+                    <span className="journey-step-node bg-accent text-accent-foreground relative z-10 mb-4 grid size-14 place-items-center rounded-2xl">
+                      <Icon aria-hidden="true" className="size-6" />
+                    </span>
+                    <p className="mb-1 rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-bold tracking-[0.14em] text-white">
+                      {step}
+                    </p>
+                    <p className="font-serif text-xl text-white sm:text-2xl">
+                      {label}
+                    </p>
+                    <p className="mt-2 max-w-[16rem] text-sm leading-6 text-white/80">
+                      {detail}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
         </section>
 
         <section id="features" className="scroll-mt-20 py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="mb-10 text-center sm:mb-16">
-              <p className="text-accent text-xs font-bold tracking-wide uppercase">
+              <p className="text-accent text-xs font-bold tracking-[0.14em] uppercase">
                 Professional toolkit
               </p>
-              <h2 className="font-serif text-4xl sm:text-5xl">
+              <h2 className="mt-2 font-serif text-4xl tracking-tight sm:text-5xl">
                 Everything teachers need
               </h2>
               <p className="text-muted-foreground mx-auto mt-3 max-w-xl text-base sm:text-lg">
@@ -208,12 +270,12 @@ export async function LandingPage() {
               {features.map(({ icon: Icon, title, description }) => (
                 <article
                   key={title}
-                  className="bg-card border-accent/30 hover:border-accent/55 hover:shadow-foreground/10 hover:-translate-y-1 group rounded-2xl border p-6 transition-all duration-200 sm:p-7"
+                  className="surface-card surface-card-interactive group p-6 sm:p-7"
                 >
-                  <span className="bg-accent/12 text-accent group-hover:bg-accent group-hover:text-accent-foreground grid size-11 place-items-center rounded-xl transition-colors duration-200">
+                  <span className="icon-well-accent group-hover:bg-accent group-hover:text-accent-foreground grid size-12 place-items-center rounded-2xl transition-colors duration-200">
                     <Icon aria-hidden="true" className="size-5" />
                   </span>
-                  <h3 className="mt-4 font-serif text-xl group-hover:text-primary transition-colors duration-200">
+                  <h3 className="group-hover:text-primary mt-5 font-serif text-xl tracking-tight transition-colors duration-200">
                     {title}
                   </h3>
                   <p className="text-muted-foreground mt-2 text-sm leading-6 sm:text-base">
@@ -227,14 +289,14 @@ export async function LandingPage() {
 
         <section
           id="community"
-          className="bg-muted/40 scroll-mt-20 py-16 sm:py-24"
+          className="bg-muted/45 scroll-mt-20 py-16 sm:py-24"
         >
           <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
             <div>
-              <span className="bg-secondary text-primary grid size-12 place-items-center rounded-xl">
+              <span className="icon-well size-12 rounded-2xl">
                 <GraduationCap aria-hidden="true" />
               </span>
-              <h2 className="mt-5 font-serif text-4xl sm:text-5xl">
+              <h2 className="mt-5 font-serif text-4xl tracking-tight sm:text-5xl">
                 Teaching expertise belongs in conversation.
               </h2>
             </div>
@@ -245,8 +307,13 @@ export async function LandingPage() {
                 "Private contact information stays opt-in.",
                 "Community tools share one consistent workspace.",
               ].map((item) => (
-                <div className="bg-card rounded-xl border p-5" key={item}>
-                  <Check aria-hidden="true" className="text-success size-5" />
+                <div
+                  className="surface-card surface-card-interactive p-5"
+                  key={item}
+                >
+                  <span className="bg-success/12 text-success grid size-9 place-items-center rounded-xl">
+                    <Check aria-hidden="true" className="size-4" />
+                  </span>
                   <p className="mt-3 text-sm leading-6 font-semibold">{item}</p>
                 </div>
               ))}
@@ -293,13 +360,16 @@ export async function LandingPage() {
           </div>
         </section>
 
-        <section className="bg-linear-to-br from-primary via-primary to-accent py-16 text-white sm:py-24">
-          <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
-            <GraduationCap aria-hidden="true" className="mx-auto mb-6 size-12 opacity-80" />
-            <h2 className="mb-4 font-serif text-3xl sm:text-4xl md:text-5xl">
+        <section className="relative overflow-hidden bg-primary py-16 text-primary-foreground sm:py-24">
+          <div className="mx-auto max-w-5xl px-4 text-center sm:px-6">
+            <GraduationCap
+              aria-hidden="true"
+              className="mx-auto mb-6 size-12 opacity-80"
+            />
+            <h2 className="mb-4 font-serif text-3xl tracking-tight sm:text-4xl md:text-5xl">
               Ready to find your people?
             </h2>
-            <p className="mb-2 text-base leading-relaxed text-white/80 sm:text-lg">
+            <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg">
               Join {registeredUsersLabel} registered teachers already
               connecting, sharing resources, and building stronger classrooms
               together.
@@ -334,16 +404,16 @@ function Plan({
     <article
       className={
         featured
-          ? "bg-primary text-primary-foreground relative overflow-hidden rounded-2xl p-8"
-          : "bg-card rounded-2xl border p-8"
+          ? "surface-card-featured relative overflow-hidden p-8"
+          : "surface-card surface-card-interactive p-8"
       }
     >
       {featured && (
-        <span className="bg-accent absolute top-4 right-4 rounded-full px-2.5 py-1 text-xs font-bold text-white">
+        <span className="bg-accent absolute top-4 right-4 rounded-full px-2.5 py-1 text-xs font-bold text-white shadow-sm">
           Most popular
         </span>
       )}
-      <h3 className="font-serif text-2xl">{name}</h3>
+      <h3 className="font-serif text-2xl tracking-tight">{name}</h3>
       <p
         className={
           featured

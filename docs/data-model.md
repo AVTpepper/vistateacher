@@ -56,7 +56,7 @@ Administrator overview reads `platformStats/current` rather than scanning domain
 
 Public educator discovery uses bounded `searchKeywords` arrays derived by trusted profile mutations. Private contact fields never enter public profile documents or search indexes. A deletion request is stored under `userPrivate/{uid}.accountDeletion.requestedAt`; a later reviewed workflow performs soft and permanent deletion.
 
-Follow transactions create or remove the deterministic relationship document and update `users/{followerUid}.followingCount` plus `users/{followingUid}.followerCount` atomically. Relationship queries use the single-field `followerUid` and `followingUid` indexes; no client may write these records or counters directly.
+Follow transactions create or remove the deterministic relationship document and update `users/{followerUid}.connectionCount` plus `users/{followingUid}.connectionCount` atomically. Relationship queries use the single-field `followerUid` and `followingUid` indexes; no client may write these records or counters directly.
 
 Feed writes are server-only. Post creation initializes moderation and counters and increments the author's `postCount` in one transaction. Like and bookmark IDs are deterministic for idempotent retries; comments update `commentCount` transactionally. Report IDs combine target and reporter to prevent duplicate reports. Owner deletion decrements `postCount` and removes comments, reactions, bookmarks, and report records. Feed and bookmark pagination order by server timestamp plus document ID for stable opaque cursors.
 

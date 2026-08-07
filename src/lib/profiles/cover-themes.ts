@@ -2,29 +2,29 @@ import { z } from "zod";
 
 export const coverThemes = [
   {
-    id: "coastal-mist",
-    label: "Coastal Mist",
-    background: "linear-gradient(135deg, #b7cfdf 0%, #7fa3bd 100%)",
+    id: "burgundy-bloom",
+    label: "Burgundy Bloom",
+    background: "linear-gradient(135deg, #a9759b 0%, #550527 100%)",
   },
   {
-    id: "sunset-apricot",
-    label: "Sunset Apricot",
-    background: "linear-gradient(135deg, #f8d3b5 0%, #d9886c 100%)",
+    id: "olive-sage",
+    label: "Olive Sage",
+    background: "linear-gradient(135deg, #b8c875 0%, #688E26 100%)",
   },
   {
-    id: "forest-lumen",
-    label: "Forest Lumen",
-    background: "linear-gradient(135deg, #99c3b2 0%, #3f7664 100%)",
+    id: "warm-sunset",
+    label: "Warm Sunset",
+    background: "linear-gradient(135deg, #e8b5a0 0%, #d97d52 100%)",
   },
   {
-    id: "twilight-ink",
-    label: "Twilight Ink",
-    background: "linear-gradient(135deg, #a9afdc 0%, #4b597f 100%)",
+    id: "amethyst-dusk",
+    label: "Amethyst Dusk",
+    background: "linear-gradient(135deg, #9d95b5 0%, #7a6f9b 100%)",
   },
   {
-    id: "sandstone",
-    label: "Sandstone",
-    background: "linear-gradient(135deg, #e8dcc8 0%, #c3a982 100%)",
+    id: "woodland-earth",
+    label: "Woodland Earth",
+    background: "linear-gradient(135deg, #a9a395 0%, #725e4a 100%)",
   },
 ] as const;
 
@@ -37,7 +37,7 @@ export const coverThemeIds = coverThemes.map((theme) => theme.id) as [
 
 export const coverThemeSchema = z.enum(coverThemeIds);
 
-export const defaultCoverTheme: CoverThemeId = "coastal-mist";
+export const defaultCoverTheme: CoverThemeId = "burgundy-bloom";
 
 export function resolveCoverTheme(value: unknown): CoverThemeId {
   const parsed = coverThemeSchema.safeParse(value);

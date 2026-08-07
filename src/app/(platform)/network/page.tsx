@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Your network" };
 
-const views = ["followers", "following", "suggestions"] as const;
+const views = ["connections", "suggestions"] as const;
 
 export default async function NetworkPage({
   searchParams,
@@ -23,7 +23,7 @@ export default async function NetworkPage({
   const rawView = Array.isArray(params.view) ? params.view[0] : params.view;
   const view = views.includes(rawView as (typeof views)[number])
     ? (rawView as (typeof views)[number])
-    : "following";
+    : "connections";
   const profileUid =
     view === "suggestions"
       ? account.uid
@@ -42,7 +42,7 @@ export default async function NetworkPage({
       </div>
       <nav
         aria-label="Network views"
-        className="bg-card mt-6 flex gap-1 rounded-xl border p-1"
+        className="surface-card mt-6 flex gap-1 p-1"
       >
         {views.map((item) => (
           <Link
@@ -70,7 +70,7 @@ export default async function NetworkPage({
           ))}
         </div>
       ) : (
-        <section className="bg-card mt-5 rounded-2xl border p-12 text-center">
+        <section className="surface-card mt-5 rounded-2xl p-12 text-center">
           <UserRoundSearch
             aria-hidden="true"
             className="text-muted-foreground/40 mx-auto size-9"

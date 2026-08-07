@@ -43,8 +43,7 @@ export interface DashboardData {
     photoURL: string | null;
     subjects: string[];
     gradeLevel: string;
-    followerCount: number;
-    followingCount: number;
+    connectionCount: number;
     resourceCount: number;
     postCount: number;
   };
@@ -190,8 +189,7 @@ export async function getDashboardData(
       photoURL: profile.photoURL,
       subjects: profile.subjects,
       gradeLevel: profile.gradeLevel,
-      followerCount: profile.followerCount,
-      followingCount: profile.followingCount,
+      connectionCount: profile.connectionCount,
       resourceCount: profile.resourceCount,
       postCount: profile.postCount,
     },
@@ -206,7 +204,7 @@ export async function getDashboardData(
     quotas: [
       {
         label: "Connections",
-        used: profile.followingCount,
+        used: profile.connectionCount,
         limit: entitlements.maxConnections,
         period: "total",
         href: "/network",

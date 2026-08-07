@@ -136,7 +136,7 @@ export function BillingPanel({
           </div>
         </div>
       )}
-      <section className="bg-card rounded-xl border p-6">
+      <section className="surface-card p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-primary font-mono text-[10px] font-bold uppercase">
@@ -176,7 +176,7 @@ export function BillingPanel({
               <article
                 key={plan.id}
                 className={cn(
-                  "bg-card rounded-xl border p-5",
+                  "surface-card p-5",
                   isCurrent && "border-primary ring-primary/15 ring-2",
                 )}
               >
@@ -234,7 +234,7 @@ export function BillingPanel({
             "Payment details never enter VistaTeacher.",
           ],
         ].map(([Icon, title, description]) => (
-          <div key={String(title)} className="bg-card rounded-lg border p-4">
+          <div key={String(title)} className="surface-card p-4">
             <Icon className="text-primary size-4" />
             <h3 className="mt-3 text-sm font-bold">{String(title)}</h3>
             <p className="text-muted-foreground mt-1 text-xs leading-5">

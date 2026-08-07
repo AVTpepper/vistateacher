@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import type { ResourceDetail } from "@/lib/resources/server";
 
 export function ResourceDetailActions({
@@ -38,11 +39,14 @@ export function ResourceDetailActions({
     router.refresh();
   }
 
-  async function remove() {
+  async function remove(): Promise<void> {
     const response = await fetch(`/api/resources/${resource.id}`, {
       method: "DELETE",
     });
-    if (!response.ok) return toast.error("We couldn't delete this resource.");
+    if (!response.ok) {
+      toast.error("We couldn't delete this resource.");
+      return;
+    }
     toast.success("Resource deleted.");
     router.push("/resources");
     router.refresh();
@@ -80,11 +84,14 @@ export function ResourceDetailActions({
     router.refresh();
   }
 
-  async function deleteMyReview() {
+  async function deleteMyReview(): Promise<void> {
     const response = await fetch(`/api/resources/${resource.id}/reviews`, {
       method: "DELETE",
     });
-    if (!response.ok) return toast.error("We couldn't delete your review.");
+    if (!response.ok) {
+      toast.error("We couldn't delete your review.");
+      return;
+    }
     toast.success("Review deleted.");
     router.refresh();
   }
@@ -163,19 +170,23 @@ export function ResourceDetailActions({
           </button>
         )}
         {resource.ownedByViewer && (
-          <button
-            type="button"
-            onClick={() => void remove()}
-            className="text-destructive hover:bg-muted grid size-11 place-items-center rounded-lg border"
-            title="Delete resource"
-            aria-label="Delete resource"
+          <DeleteConfirmDialog
+            itemName="resource"
+            onConfirm={remove}
           >
-            <Trash2 aria-hidden="true" className="size-4" />
-          </button>
+            <button
+              type="button"
+              className="text-destructive hover:bg-muted grid size-11 place-items-center rounded-lg border"
+              title="Delete resource"
+              aria-label="Delete resource"
+            >
+              <Trash2 aria-hidden="true" className="size-4" />
+            </button>
+          </DeleteConfirmDialog>
         )}
       </div>
       {!resource.ownedByViewer && (
-        <section className="bg-card mt-5 rounded-xl border p-5">
+        <section className="surface-card mt-5 p-5">
           <h2 className="font-serif text-xl">Rate this resource</h2>
           <div className="mt-3 flex gap-1" aria-label="Rating">
             {[1, 2, 3, 4, 5].map((value) => (
@@ -209,13 +220,17 @@ export function ResourceDetailActions({
           >
             {submitting ? "Saving..." : "Save review"}
           </button>
-          <button
-            type="button"
-            onClick={() => void deleteMyReview()}
-            className="text-destructive mt-2 block text-xs font-semibold"
+          <DeleteConfirmDialog
+            itemName="review"
+            onConfirm={deleteMyReview}
           >
-            Delete my review
-          </button>
+            <button
+              type="button"
+              className="text-destructive mt-2 block text-xs font-semibold"
+            >
+              Delete my review
+            </button>
+          </DeleteConfirmDialog>
         </section>
       )}
     </>

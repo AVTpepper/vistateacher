@@ -16,7 +16,7 @@ import type {
 
 export interface EducatorDiscoveryResult {
   profile: ProfileDocument;
-  isFollowing: boolean;
+  connectionStatus: "none" | "pending" | "accepted";
 }
 
 export class NetworkActionError extends Error {
@@ -75,11 +75,14 @@ export async function discoverEducators(
       .limit(100)
       .get(),
   ]);
-  const following = new Set(
-    followsSnapshot.docs.map((document) =>
-      String(document.data().followingUid),
-    ),
-  );
+  const followStatuses = new Map<string, string>();
+  followsSnapshot.docs.forEach((document) => {
+    const data = document.data() as Record<string, unknown>;
+    followStatuses.set(
+      String(data.followingUid),
+      data.status === "pending" ? "pending" : "accepted",
+    );
+  });
 
   return profilesSnapshot.docs
     .map((document) => profileDocumentSchema.safeParse(document.data()))
@@ -91,13 +94,16 @@ export async function discoverEducators(
     )
     .sort((left, right) => left.displayName.localeCompare(right.displayName))
     .slice(0, 30)
-    .map((profile) => ({ profile, isFollowing: following.has(profile.uid) }));
+    .map((profile) => ({
+      profile,
+      connectionStatus: (followStatuses.get(profile.uid) ?? "none") as "none" | "pending" | "accepted",
+    }));
 }
 
 export async function getNetworkList(
   viewerUid: string,
   profileUid: string,
-  view: "followers" | "following" | "suggestions",
+  view: "connections" | "suggestions",
 ): Promise<EducatorDiscoveryResult[]> {
   if (view === "suggestions") {
     const currentSnapshot = await adminDb().doc(`users/${viewerUid}`).get();
@@ -110,7 +116,7 @@ export async function getNetworkList(
       verified: false,
     });
     return candidates
-      .filter((candidate) => !candidate.isFollowing)
+      .filter((candidate) => candidate.connectionStatus === "none")
       .sort((left, right) => {
         const score = (profile: ProfileDocument) =>
           Number(profile.gradeLevel === current.gradeLevel) +
@@ -130,19 +136,20 @@ export async function getNetworkList(
       .slice(0, 20);
   }
 
-  const field = view === "followers" ? "followingUid" : "followerUid";
-  const relatedField = view === "followers" ? "followerUid" : "followingUid";
+  // connections view - get accepted connections with the profile
   const relationships = await adminDb()
     .collection("follows")
-    .where(field, "==", profileUid)
+    .where("followerUid", "==", profileUid)
+    .where("status", "==", "accepted")
     .limit(100)
     .get();
   const uids = relationships.docs.map((document) =>
-    String(document.data()[relatedField]),
+    String(document.data().followingUid),
   );
   const viewerFollows = await adminDb()
     .collection("follows")
     .where("followerUid", "==", viewerUid)
+    .where("status", "==", "accepted")
     .limit(100)
     .get();
   const following = new Set(
@@ -158,7 +165,7 @@ export async function getNetworkList(
     return [
       {
         profile: result.data,
-        isFollowing: following.has(result.data.uid),
+        connectionStatus: following.has(result.data.uid) ? "accepted" : "none",
       },
     ];
   });
@@ -201,7 +208,7 @@ export async function followEducator(
       followerStatus: follower.status,
       followingStatus: following.status,
       alreadyFollowing: followSnapshot.exists,
-      followingCount: follower.followingCount,
+      followingCount: follower.connectionCount,
       plan,
     });
     if (!decision.allowed) throw new NetworkActionError(decision.reason);
@@ -210,15 +217,8 @@ export async function followEducator(
     transaction.create(followRef, {
       followerUid,
       followingUid,
+      status: "pending",
       createdAt: now,
-    });
-    transaction.update(followerRef, {
-      followingCount: follower.followingCount + 1,
-      updatedAt: now,
-    });
-    transaction.update(followingRef, {
-      followerCount: following.followerCount + 1,
-      updatedAt: now,
     });
     transaction.set(
       db.doc(
@@ -229,7 +229,7 @@ export async function followEducator(
         actorId: followerUid,
         actorName: follower.displayName,
         entityId: followerUid,
-        message: `${follower.displayName} followed you.`,
+        message: `${follower.displayName} sent you a connection request.`,
         href: `/profile/${followerUid}`,
         read: false,
         archived: false,
@@ -262,20 +262,85 @@ export async function unfollowEducator(
 
     const follower = profileDocumentSchema.parse(followerSnapshot.data());
     const following = profileDocumentSchema.parse(followingSnapshot.data());
+    const followData = followSnapshot.data() as FirebaseFirestore.DocumentData;
     const now = FieldValue.serverTimestamp();
     transaction.delete(followRef);
-    transaction.update(followerRef, {
-      followingCount: Math.max(0, follower.followingCount - 1),
-      updatedAt: now,
-    });
-    transaction.update(followingRef, {
-      followerCount: Math.max(0, following.followerCount - 1),
-      updatedAt: now,
-    });
+    
+    // Only decrement counts if the relationship was accepted
+    if (followData.status === "accepted") {
+      transaction.update(followerRef, {
+        connectionCount: Math.max(0, follower.connectionCount - 1),
+        updatedAt: now,
+      });
+      transaction.update(followingRef, {
+        connectionCount: Math.max(0, following.connectionCount - 1),
+        updatedAt: now,
+      });
+    }
+    
     transaction.delete(
       db.doc(
         `users/${followingUid}/notifications/follow_${followerUid}`,
       ),
+    );
+  });
+}
+
+export async function acceptConnectionRequest(
+  followerUid: string,
+  followingUid: string,
+): Promise<void> {
+  const db = adminDb();
+  await db.runTransaction(async (transaction) => {
+    const followerRef = db.doc(`users/${followerUid}`);
+    const followingRef = db.doc(`users/${followingUid}`);
+    const followRef = db.doc(
+      `follows/${getFollowId(followerUid, followingUid)}`,
+    );
+    const [followerSnapshot, followingSnapshot, followSnapshot] =
+      await Promise.all([
+        transaction.get(followerRef),
+        transaction.get(followingRef),
+        transaction.get(followRef),
+      ]);
+    if (!followSnapshot.exists) return;
+    if (!followerSnapshot.exists || !followingSnapshot.exists)
+      throw new NetworkActionError("not-found");
+
+    const followData = followSnapshot.data() as Record<string, unknown>;
+    if (followData.status !== "pending") return;
+
+    const follower = profileDocumentSchema.parse(followerSnapshot.data());
+    const following = profileDocumentSchema.parse(followingSnapshot.data());
+    const now = FieldValue.serverTimestamp();
+
+    transaction.update(followRef, {
+      status: "accepted",
+      updatedAt: now,
+    });
+    transaction.update(followerRef, {
+      connectionCount: follower.connectionCount + 1,
+      updatedAt: now,
+    });
+    transaction.update(followingRef, {
+      connectionCount: following.connectionCount + 1,
+      updatedAt: now,
+    });
+    transaction.set(
+      db.doc(
+        `users/${followerUid}/notifications/accept_${followingUid}`,
+      ),
+      {
+        type: "accept",
+        actorId: followingUid,
+        actorName: following.displayName,
+        entityId: followingUid,
+        message: `${following.displayName} accepted your connection request.`,
+        href: `/profile/${followingUid}`,
+        read: false,
+        archived: false,
+        createdAt: now,
+      },
     );
   });
 }

@@ -27,7 +27,7 @@ export function ProfileTabs({
 
   return (
     <>
-      <div className="bg-card mt-4 flex gap-1 rounded-xl border p-1">
+      <div className="surface-card mt-4 flex gap-1 p-1">
         {tabs.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -61,7 +61,7 @@ export function ProfileTabs({
                 <a
                   href={`/resources/${resource.id}`}
                   key={resource.id}
-                  className="bg-card hover:border-primary/25 flex items-center gap-4 rounded-xl border p-4 transition-colors"
+                  className="surface-card surface-card-interactive flex items-center gap-4 p-4"
                 >
                   <span className="bg-secondary text-primary grid size-12 shrink-0 place-items-center rounded-xl">
                     <BookOpen aria-hidden="true" className="size-5" />
@@ -85,7 +85,7 @@ export function ProfileTabs({
             />
           ))}
         {active === "about" && (
-          <section className="bg-card rounded-xl border p-6">
+          <section className="surface-card p-6">
             <h2 className="font-serif text-xl">
               About {displayName.split(" ")[0]}
             </h2>
@@ -119,7 +119,7 @@ function EmptyState({
   detail: string;
 }) {
   return (
-    <section className="bg-card rounded-xl border p-9 text-center">
+    <section className="surface-card p-9 text-center">
       <Icon
         aria-hidden="true"
         className="text-muted-foreground/40 mx-auto size-8"

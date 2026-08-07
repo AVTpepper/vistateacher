@@ -89,8 +89,8 @@ export function ResourceLibrary({
         </div>
         <ResourceUploadDialog />
       </header>
-      <div className="mb-4 flex gap-2 sm:gap-3">
-        <label className="bg-card relative min-w-0 flex-1 rounded-xl border">
+      <div className="mb-4 flex gap-3 items-center">
+        <label className="surface-card relative flex-1 max-w-md">
           <Search
             aria-hidden="true"
             className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2"
@@ -109,14 +109,14 @@ export function ResourceLibrary({
           aria-label={filters ? "Hide filters" : "Show filters"}
           aria-expanded={filters}
           className={cn(
-            "bg-card text-muted-foreground flex h-11 items-center gap-2 rounded-xl border px-3 text-sm font-semibold",
+            "surface-card text-muted-foreground flex h-11 items-center gap-2 px-3 text-sm font-semibold shrink-0",
             filters && "border-primary text-primary",
           )}
         >
           <Filter aria-hidden="true" className="size-4" />
           <span className="hidden sm:inline">Filters</span>
         </button>
-        <div className="bg-card flex rounded-xl border p-1">
+        <div className="surface-card flex p-1 shrink-0">
           <ViewButton
             label="Grid view"
             active={view === "grid"}
@@ -132,7 +132,7 @@ export function ResourceLibrary({
         </div>
       </div>
       {filters && (
-        <div className="bg-card mb-4 grid gap-3 rounded-xl border p-4 sm:grid-cols-3">
+        <div className="surface-card mb-4 grid gap-3 p-4 sm:grid-cols-3">
           <Select
             label="Type"
             value={type}
@@ -168,7 +168,7 @@ export function ResourceLibrary({
           />
         </div>
       )}
-      <div className="mb-5 flex gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1">
+      <div className="mb-5 flex gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1">
         {[
           { value: "", label: "All Types" },
           { value: "lesson-plan", label: "Lesson plans" },
@@ -182,7 +182,7 @@ export function ResourceLibrary({
             key={item.value}
             onClick={() => setType(item.value)}
             className={cn(
-              "bg-card text-muted-foreground shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold",
+              "surface-card text-muted-foreground shrink-0 rounded-full px-4 py-2 text-xs font-semibold",
               type === item.value &&
                 "bg-primary text-primary-foreground border-primary",
             )}
@@ -212,7 +212,7 @@ export function ResourceLibrary({
           ))}
         </div>
       ) : (
-        <div className="bg-card rounded-xl border py-16 text-center">
+        <div className="surface-card py-16 text-center">
           <BookOpen
             aria-hidden="true"
             className="text-muted-foreground/40 mx-auto size-8"
@@ -240,7 +240,7 @@ function ResourceCard({
   const locked = resource.accessTier === "plus" && plan === "free";
   if (view === "list")
     return (
-      <article className="bg-card border-accent/20 group hover:border-accent/45 flex items-center gap-4 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5">
+      <article className="surface-card surface-card-interactive group flex items-center gap-4 p-4">
         <Link
           href={`/resources/${resource.id}`}
           className={cn(
@@ -266,7 +266,7 @@ function ResourceCard({
       </article>
     );
   return (
-    <article className="bg-card border-accent/20 hover:border-accent/45 group overflow-hidden rounded-xl border transition-all duration-200 hover:-translate-y-1">
+    <article className="surface-card surface-card-interactive group overflow-hidden">
       <Link
         href={`/resources/${resource.id}`}
         className={cn(

@@ -41,7 +41,7 @@ export function MarketingHeader({ signedIn = false }: { signedIn?: boolean }) {
   }, [menuOpen]);
 
   return (
-    <header className="bg-sidebar/95 border-sidebar-border text-sidebar-foreground supports-backdrop-filter:bg-sidebar/90 sticky top-0 z-50 border-b backdrop-blur">
+    <header className="bg-sidebar/95 text-sidebar-foreground supports-backdrop-filter:bg-sidebar/90 sticky top-0 z-50 backdrop-blur">
       <nav
         aria-label="Main navigation"
         className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-5 lg:px-8"
@@ -135,7 +135,7 @@ export function MarketingHeader({ signedIn = false }: { signedIn?: boolean }) {
           id="mobile-navigation"
           aria-hidden={!menuOpen}
           className={
-            "bg-sidebar text-sidebar-foreground border-sidebar-border fixed top-16 right-0 z-50 grid max-h-[calc(100dvh-4rem)] w-[calc(100vw-3rem)] max-w-80 content-start gap-1 overflow-y-auto rounded-bl-lg border-b border-l p-4 shadow-xl transition-[opacity,visibility] duration-200 ease-out md:hidden " +
+            "bg-sidebar text-sidebar-foreground fixed top-16 right-0 z-50 grid max-h-[calc(100dvh-4rem)] w-[calc(100vw-3rem)] max-w-80 content-start gap-1 overflow-y-auto rounded-bl-lg p-4 shadow-xl transition-[opacity,visibility] duration-200 ease-out md:hidden " +
             (menuOpen
               ? "visible opacity-100"
               : "pointer-events-none invisible opacity-0")
@@ -219,7 +219,7 @@ export function MarketingHeader({ signedIn = false }: { signedIn?: boolean }) {
 
 export function MarketingFooter() {
   return (
-    <footer className="bg-sidebar text-sidebar-foreground/75 border-t px-5 py-10 lg:px-8">
+    <footer className="bg-sidebar text-sidebar-foreground/75 px-5 py-10 lg:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-6 text-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sidebar-foreground font-serif text-lg">

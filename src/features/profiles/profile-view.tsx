@@ -34,15 +34,9 @@ export function ProfileView({
   const stats = [
     {
       icon: Users,
-      value: profile.followerCount,
-      label: "Followers",
-      href: `/network?view=followers&uid=${profile.uid}`,
-    },
-    {
-      icon: UserPlus,
-      value: profile.followingCount,
-      label: "Following",
-      href: `/network?view=following&uid=${profile.uid}`,
+      value: profile.connectionCount,
+      label: "Connections",
+      href: null,
     },
     {
       icon: BookOpen,
@@ -61,7 +55,7 @@ export function ProfileView({
       >
         <div className="absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
       </div>
-      <section className="bg-card relative -mt-12 rounded-2xl border p-5 sm:p-6">
+      <section className="surface-card relative -mt-12 rounded-2xl p-5 sm:p-6">
         <div className="flex flex-col items-start gap-4 sm:flex-row">
           <div className="relative z-10 shrink-0">
             <UserAvatar
@@ -91,8 +85,8 @@ export function ProfileView({
               </div>
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                 {data.plan === "plus" && (
-                  <span className="bg-accent/10 text-accent rounded-full px-2.5 py-1 text-xs font-bold">
-                    ✦ Plus
+                  <span className="bg-accent/10 text-accent inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold tracking-wide">
+                    Plus
                   </span>
                 )}
                 {data.isOwner ? (
@@ -102,7 +96,7 @@ export function ProfileView({
                       Edit profile
                     </Link>
                   </Button>
-                ) : data.isFollowing === null ? (
+                ) : data.connectionStatus === null ? (
                   <>
                     <Button asChild size="sm">
                       <Link href="/sign-in">
@@ -121,7 +115,7 @@ export function ProfileView({
                   <>
                     <FollowButton
                       targetUid={profile.uid}
-                      initialFollowing={data.isFollowing}
+                      connectionStatus={data.connectionStatus}
                       mode="connect"
                     />
                     <Button asChild size="sm" variant="outline">

@@ -102,14 +102,14 @@ export function NewConversationDialog({
           type="button"
           aria-label="New conversation"
           title="New conversation"
-          className="text-primary hover:bg-muted grid size-11 place-items-center rounded-lg"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 grid size-11 place-items-center rounded-xl shadow-sm transition-transform hover:-translate-y-0.5"
         >
           <MessageSquarePlus aria-hidden="true" className="size-4" />
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
-        <Dialog.Content className="bg-card fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border p-5 shadow-xl">
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px]" />
+        <Dialog.Content className="surface-card fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto p-5 shadow-lg">
           <Dialog.Title className="font-serif text-xl">
             New conversation
           </Dialog.Title>
@@ -123,7 +123,7 @@ export function NewConversationDialog({
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search educators..."
-                className="bg-background mt-4 w-full rounded-lg border px-3 py-2 text-sm"
+                className="border-accent bg-background mt-4 w-full rounded-lg border px-3 py-2 text-sm"
               />
               <div className="mt-2 max-h-52 overflow-y-auto">
                 {visibleEducators.map((educator) => (

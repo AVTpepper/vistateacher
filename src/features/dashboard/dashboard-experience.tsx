@@ -128,12 +128,8 @@ export function DashboardExperience({
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <section className="bg-primary relative overflow-hidden rounded-xl px-5 py-6 text-white sm:px-6">
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.35)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.35)_1px,transparent_1px)] bg-size-[28px_28px] opacity-10"
-        />
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center">
+      <section className="bg-sidebar relative overflow-hidden rounded-xl px-5 py-6 text-white sm:px-6">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <UserAvatar
             name={dashboard.viewer.displayName}
             photoURL={dashboard.viewer.photoURL}
@@ -205,7 +201,7 @@ export function DashboardExperience({
             <Link
               key={action.href}
               href={action.href}
-              className="bg-card border-accent/20 hover:border-accent/50 group rounded-xl border p-4 transition-all duration-200 hover:-translate-y-1"
+              className="surface-card surface-card-interactive group p-4"
             >
               <span
                 className={`grid size-9 place-items-center rounded-lg transition-transform duration-200 group-hover:scale-110 ${action.tone}`}
@@ -245,7 +241,7 @@ export function DashboardExperience({
             return (
               <div
                 key={metric.label}
-                className="bg-card border-primary/15 min-w-0 rounded-xl border p-4"
+                className="surface-card min-w-0 p-4"
               >
                 <span
                   className={`grid size-8 place-items-center rounded-lg ${metric.tone}`}
@@ -264,41 +260,9 @@ export function DashboardExperience({
         </div>
       </section>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(260px,0.7fr)]">
-        <section
-          className="bg-card rounded-xl border p-5"
-          aria-label="Analytics trends"
-        >
-          <div className="mb-5 flex items-center gap-2">
-            <BarChart3 className="text-primary size-4" />
-            <h2 className="font-serif text-lg">Performance trends</h2>
-          </div>
-          {dashboard.analytics.fullAnalytics && dashboard.analytics.series ? (
-            <LazyDashboardCharts series={dashboard.analytics.series} />
-          ) : (
-            <div className="bg-muted/35 grid h-72 place-items-center rounded-lg border border-dashed p-6 text-center">
-              <div>
-                <span className="bg-accent/10 mx-auto grid size-11 place-items-center rounded-lg">
-                  <Lock className="text-accent size-5" />
-                </span>
-                <h3 className="mt-3 text-sm font-bold">Plus analytics</h3>
-                <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-xs leading-5">
-                  Unlock audience, download, and engagement trends from your
-                  aggregate activity.
-                </p>
-                <Link
-                  href="/settings/billing"
-                  className="text-primary mt-3 inline-block text-xs font-bold hover:underline"
-                >
-                  View Plus plans
-                </Link>
-              </div>
-            </div>
-          )}
-        </section>
-
+      <div className="grid gap-5 lg:grid-cols-2">
         <aside className="space-y-5">
-          <section className="bg-card rounded-xl border p-5">
+          <section className="surface-card p-5">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="font-serif text-lg">Plan and usage</h2>
@@ -340,7 +304,7 @@ export function DashboardExperience({
             )}
           </section>
 
-          <section className="bg-card rounded-xl border p-5">
+          <section className="surface-card p-5">
             <SectionHeading
               title="Teachers you might know"
               href="/network?view=suggestions"
@@ -349,7 +313,7 @@ export function DashboardExperience({
             <div className="divide-y">
               {dashboard.recommendations.educators.length ? (
                 dashboard.recommendations.educators.map(
-                  ({ profile, isFollowing }) => (
+                  ({ profile, connectionStatus }) => (
                     <div
                       key={profile.uid}
                       className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
@@ -374,7 +338,7 @@ export function DashboardExperience({
                       </div>
                       <FollowButton
                         targetUid={profile.uid}
-                        initialFollowing={isFollowing}
+                        connectionStatus={connectionStatus}
                       />
                     </div>
                   ),
@@ -390,7 +354,7 @@ export function DashboardExperience({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <section className="bg-card rounded-xl border p-5">
+        <section className="surface-card p-5">
           <SectionHeading
             title="Recommended resources"
             href="/resources"
@@ -427,7 +391,7 @@ export function DashboardExperience({
           </div>
         </section>
 
-        <section className="bg-card rounded-xl border p-5">
+        <section className="surface-card p-5">
           <SectionHeading
             title="Hot in the forum"
             href="/forum"
@@ -466,7 +430,7 @@ export function DashboardExperience({
         </section>
       </div>
 
-      <section className="bg-card rounded-xl border p-5">
+      <section className="surface-card p-5">
         <SectionHeading
           title="Posts you might like"
           href="/app"
@@ -512,7 +476,7 @@ export function DashboardExperience({
       </section>
 
       {dashboard.topResources.length > 0 && (
-        <section className="bg-card rounded-xl border p-5">
+        <section className="surface-card p-5">
           <SectionHeading
             title="Your top resources"
             href="/resources"
@@ -544,6 +508,38 @@ export function DashboardExperience({
           </div>
         </section>
       )}
+
+      <section
+        className="surface-card p-5"
+        aria-label="Analytics trends"
+      >
+        <div className="mb-5 flex items-center gap-2">
+          <BarChart3 className="text-primary size-4" />
+          <h2 className="font-serif text-lg">Performance trends</h2>
+        </div>
+        {dashboard.analytics.fullAnalytics && dashboard.analytics.series ? (
+          <LazyDashboardCharts series={dashboard.analytics.series} />
+        ) : (
+          <div className="bg-muted/35 grid h-72 place-items-center rounded-lg border border-dashed p-6 text-center">
+            <div>
+              <span className="bg-accent/10 mx-auto grid size-11 place-items-center rounded-lg">
+                <Lock className="text-accent size-5" />
+              </span>
+              <h3 className="mt-3 text-sm font-bold">Plus analytics</h3>
+              <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-xs leading-5">
+                Unlock audience, download, and engagement trends from your
+                aggregate activity.
+              </p>
+              <Link
+                href="/settings/billing"
+                className="text-primary mt-3 inline-block text-xs font-bold hover:underline"
+              >
+                View Plus plans
+              </Link>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

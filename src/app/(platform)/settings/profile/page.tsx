@@ -13,7 +13,7 @@ export default async function EditProfilePage() {
   if (!data) return null;
   const { profile } = data;
   return (
-    <section className="bg-card rounded-xl border p-6">
+    <section className="surface-card p-6">
       <h2 className="font-serif text-xl">Professional profile</h2>
       <p className="text-muted-foreground mt-1 mb-6 text-sm">
         Keep the context other educators use to find and understand your work.

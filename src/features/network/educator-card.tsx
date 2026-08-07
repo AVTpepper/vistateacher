@@ -12,10 +12,10 @@ export function EducatorCard({
   result: EducatorDiscoveryResult;
   viewerUid: string;
 }) {
-  const { profile, isFollowing } = result;
+  const { profile, connectionStatus } = result;
   return (
-    <article className="bg-card group hover:border-primary/20 overflow-hidden rounded-2xl border transition-[border-color,box-shadow] hover:shadow-md">
-      <div className="from-primary/20 to-sidebar-primary/20 relative h-24 bg-gradient-to-br">
+    <article className="surface-card surface-card-interactive group overflow-hidden">
+      <div className="from-primary/25 via-sidebar-primary/15 to-accent/10 relative h-24 bg-linear-to-br">
         <div className="absolute bottom-0 left-4 translate-y-1/2">
           <div className="relative">
             <UserAvatar
@@ -63,7 +63,7 @@ export function EducatorCard({
         </p>
         <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
           {[
-            [profile.followerCount, "Followers"],
+            [profile.connectionCount, "Connections"],
             [profile.resourceCount, "Resources"],
             [profile.postCount, "Posts"],
           ].map(([value, label]) => (
@@ -83,7 +83,7 @@ export function EducatorCard({
           ) : (
             <FollowButton
               targetUid={profile.uid}
-              initialFollowing={isFollowing}
+              connectionStatus={connectionStatus}
             />
           )}
           <Link

@@ -25,7 +25,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -110,12 +110,13 @@ export function ForumExperience({
         </div>
         <NewThreadDialog
           categories={categories}
+          selectedCategory={selectedCategory}
           open={creating}
           onOpenChange={setCreating}
         />
       </header>
 
-      <div className="bg-card mb-5 flex w-fit rounded-xl border p-1">
+      <div className="surface-card mb-5 flex w-fit p-1">
         <ViewButton
           label="Categories"
           icon={LayoutGrid}
@@ -169,7 +170,7 @@ export function ForumExperience({
               ))}
             </div>
           ) : (
-            <div className="bg-card rounded-xl border py-16 text-center">
+            <div className="surface-card py-16 text-center">
               <MessageSquare
                 aria-hidden="true"
                 className="text-muted-foreground/30 mx-auto size-8"
@@ -212,7 +213,7 @@ function CategoryCard({
     <button
       type="button"
       onClick={onClick}
-      className="bg-card border-accent/25 hover:border-accent/55 group w-full rounded-xl border p-5 text-left transition-all duration-200 hover:-translate-y-1"
+      className="surface-card surface-card-interactive group w-full p-5 text-left"
     >
       <div className="flex items-start gap-4">
         <span
@@ -258,7 +259,7 @@ function ThreadRow({ thread }: { thread: ForumThreadSummary }) {
   return (
     <Link
       href={`/forum/${thread.id}`}
-      className="bg-card border-primary/15 group hover:border-primary/35 block rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5"
+      className="surface-card surface-card-interactive group block p-4"
     >
       <div className="flex items-start gap-3">
         <UserAvatar
@@ -353,20 +354,38 @@ function ViewButton({
 
 function NewThreadDialog({
   categories,
+  selectedCategory,
   open,
   onOpenChange,
 }: {
   categories: ForumCategory[];
+  selectedCategory: ForumCategory | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
-    categoryId: categories[0]?.id ?? "",
+    categoryId: selectedCategory?.id ?? categories[0]?.id ?? "",
     title: "",
     content: "",
     tags: "",
   });
+
+  useEffect(() => {
+    if (open) {
+      setForm((current) => ({
+        ...current,
+        categoryId: selectedCategory?.id ?? categories[0]?.id ?? "",
+      }));
+    } else {
+      setForm({
+        categoryId: selectedCategory?.id ?? categories[0]?.id ?? "",
+        title: "",
+        content: "",
+        tags: "",
+      });
+    }
+  }, [open, selectedCategory, categories]);
 
   async function submit() {
     setSubmitting(true);

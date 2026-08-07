@@ -36,7 +36,7 @@ export function DiscoverFilters({
             name="q"
             defaultValue={values.query}
             placeholder="Search by name, subject, school..."
-            className="bg-card focus:ring-primary/20 h-11 w-full rounded-xl border pr-4 pl-10 text-sm outline-none focus:ring-2"
+            className="surface-card focus:ring-primary/20 h-11 w-full pr-4 pl-10 text-sm outline-none focus:ring-2"
           />
         </label>
         <button
@@ -44,7 +44,7 @@ export function DiscoverFilters({
           onClick={() => setShowFilters((value) => !value)}
           aria-label={showFilters ? "Hide filters" : "Show filters"}
           aria-expanded={showFilters}
-          className="bg-card text-muted-foreground hover:text-foreground flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-semibold"
+          className="surface-card text-muted-foreground hover:text-foreground flex h-11 items-center gap-2 px-4 text-sm font-semibold"
         >
           <Filter aria-hidden="true" className="size-4" />
           <span className="hidden sm:inline">Filters</span>
@@ -54,7 +54,7 @@ export function DiscoverFilters({
         </button>
       </div>
       {showFilters && (
-        <div className="bg-card mt-3 grid gap-3 rounded-xl border p-3 sm:grid-cols-4">
+        <div className="surface-card mt-3 grid gap-3 p-3 sm:grid-cols-4">
           <FilterSelect
             name="subject"
             label="Subject"

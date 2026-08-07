@@ -6,6 +6,7 @@ import {
   Download,
   FileText,
   Loader2,
+  MessageCircle,
   Paperclip,
   Search,
   Send,
@@ -25,6 +26,7 @@ import { ref, uploadBytes } from "firebase/storage";
 import { toast } from "sonner";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { NewConversationDialog } from "@/features/messages/new-conversation-dialog";
 import { ReportMessageDialog } from "@/features/messages/report-message-dialog";
 import { getFirebaseClient } from "@/lib/firebase/client";
@@ -33,6 +35,7 @@ import type {
   DirectMessage,
   MessagePage,
 } from "@/lib/messages/server";
+import { cn } from "@/lib/utils";
 
 export function MessagesExperience({
   viewer,
@@ -61,6 +64,7 @@ export function MessagesExperience({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const messageEnd = useRef<HTMLDivElement>(null);
+  const textarea = useRef<HTMLTextAreaElement>(null);
   const active = conversations.find((item) => item.id === activeId) ?? null;
 
   useEffect(() => {
@@ -127,7 +131,7 @@ export function MessagesExperience({
   }, [activeId]);
 
   useEffect(() => {
-    messageEnd.current?.scrollIntoView({ behavior: "smooth" });
+    messageEnd.current?.scrollIntoView({ behavior: "auto", block: "end" });
   }, [messagePage.messages.length]);
 
   async function selectConversation(conversation: ConversationSummary) {
@@ -222,6 +226,7 @@ export function MessagesExperience({
       if (!response.ok) throw new Error(result?.error ?? "Message failed.");
       setContent("");
       setAttachment(null);
+      textarea.current?.blur();
       reservedAttachmentId = null;
     } catch (error) {
       if (reservedAttachmentId)
@@ -260,24 +265,24 @@ export function MessagesExperience({
     if (!activeId) return;
     const nextContent = window.prompt("Edit message", message.content);
     if (!nextContent) return;
-    const response = await fetch(
-      `/api/messages/${activeId}/${message.id}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: nextContent }),
-      },
-    );
+    const response = await fetch(`/api/messages/${activeId}/${message.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: nextContent }),
+    });
     if (!response.ok) return toast.error("We couldn't edit that message.");
     toast.success("Message updated.");
   }
 
-  async function removeMessage(message: DirectMessage) {
+  async function removeMessage(message: DirectMessage): Promise<void> {
     if (!activeId) return;
     const response = await fetch(`/api/messages/${activeId}/${message.id}`, {
       method: "DELETE",
     });
-    if (!response.ok) return toast.error("We couldn't delete that message.");
+    if (!response.ok) {
+      toast.error("We couldn't delete that message.");
+      return;
+    }
     toast.success("Message deleted.");
   }
 
@@ -290,247 +295,336 @@ export function MessagesExperience({
   );
 
   return (
-    <div className="bg-background flex h-full min-h-0 overflow-hidden border-t">
-      <section
-        className={`${mobileChat ? "hidden" : "flex"} bg-card w-full shrink-0 flex-col border-r lg:flex lg:w-80`}
-      >
-        <div className="border-b p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h1 className="font-serif text-xl">Messages</h1>
-            <div className="flex items-center gap-2">
-              {unread > 0 && (
-                <span className="bg-accent text-accent-foreground rounded-full px-2 py-0.5 text-xs font-bold">
-                  {unread}
-                </span>
-              )}
-              <NewConversationDialog
-                viewerUid={viewer.uid}
-                initialRecipientUid={initialComposeUid}
-              />
-            </div>
-          </div>
-          <label className="bg-muted flex items-center gap-2 rounded-lg px-3 py-2">
-            <Search
-              aria-hidden="true"
-              className="text-muted-foreground size-4"
-            />
-            <span className="sr-only">Search messages</span>
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search messages..."
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-            />
-          </label>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {filtered.length ? (
-            filtered.map((conversation) => (
-              <button
-                key={conversation.id}
-                type="button"
-                onClick={() => void selectConversation(conversation)}
-                className={`hover:bg-muted/60 flex w-full items-center gap-3 border-b p-4 text-left ${activeId === conversation.id ? "bg-secondary/30" : ""}`}
-              >
-                <UserAvatar
-                  name={conversation.participant.displayName}
-                  photoURL={conversation.participant.photoURL}
-                  className="size-11 shrink-0 rounded-full text-xs"
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="truncate text-sm font-bold">
-                      {conversation.participant.displayName}
-                    </span>
-                    <span className="text-muted-foreground shrink-0 text-[10px]">
-                      {formatDistanceToNow(
-                        new Date(conversation.lastMessageAt),
-                        { addSuffix: true },
-                      )}
-                    </span>
-                  </span>
-                  <span className="text-muted-foreground mt-0.5 block truncate text-xs">
-                    {conversation.lastMessagePreview}
-                  </span>
-                </span>
-                {conversation.unreadCount > 0 && (
-                  <span className="bg-primary text-primary-foreground grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-bold">
-                    {conversation.unreadCount}
+    <div className="messages-shell px-3 py-3 sm:px-4 sm:py-4 lg:px-6">
+      <div className="surface-card flex h-full min-h-[min(44rem,calc(100dvh-7.5rem))] overflow-hidden lg:min-h-[calc(100dvh-9.5rem)]">
+        <section
+          aria-label="Conversations"
+          className={cn(
+            "w-full shrink-0 flex-col border-r border-border/70 bg-card/40 lg:flex lg:w-[22rem] xl:w-96",
+            mobileChat ? "hidden" : "flex",
+          )}
+        >
+          <div className="border-b border-border/70 p-4 sm:p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-primary text-[11px] font-bold tracking-[0.14em] uppercase">
+                  Inbox
+                </p>
+                <h1 className="font-serif text-2xl tracking-tight">Messages</h1>
+              </div>
+              <div className="flex items-center gap-2">
+                {unread > 0 && (
+                  <span className="bg-accent text-accent-foreground rounded-full px-2.5 py-1 text-xs font-bold shadow-sm">
+                    {unread} new
                   </span>
                 )}
-              </button>
-            ))
-          ) : (
-            <p className="text-muted-foreground px-6 py-12 text-center text-sm">
-              {search
-                ? "No matching conversations."
-                : "Start a conversation with an educator."}
-            </p>
-          )}
-        </div>
-      </section>
-
-      <section
-        className={`${mobileChat ? "flex" : "hidden"} min-w-0 flex-1 flex-col lg:flex`}
-      >
-        {active ? (
-          <>
-            <header className="bg-card flex h-16 shrink-0 items-center gap-3 border-b px-4">
-              <button
-                type="button"
-                aria-label="Back to conversations"
-                onClick={() => setMobileChat(false)}
-                className="text-muted-foreground hover:bg-muted grid size-11 place-items-center rounded-lg lg:hidden"
-              >
-                <ArrowLeft aria-hidden="true" className="size-5" />
-              </button>
-              <UserAvatar
-                name={active.participant.displayName}
-                photoURL={active.participant.photoURL}
-                className="size-9 rounded-full text-xs"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold">
-                  {active.participant.displayName}
-                </p>
-                <p className="text-muted-foreground truncate text-xs">
-                  {active.participant.gradeLevel}
-                  {active.participant.school
-                    ? ` · ${active.participant.school}`
-                    : ""}
-                </p>
+                <NewConversationDialog
+                  viewerUid={viewer.uid}
+                  initialRecipientUid={initialComposeUid}
+                />
               </div>
-              <button
-                type="button"
-                aria-label={
-                  active.blockedByViewer ? "Unblock educator" : "Block educator"
-                }
-                title={
-                  active.blockedByViewer ? "Unblock educator" : "Block educator"
-                }
-                onClick={() => void toggleBlock()}
-                className={`hover:bg-muted grid size-11 place-items-center rounded-lg ${active.blockedByViewer ? "text-destructive" : "text-muted-foreground"}`}
-              >
-                <Ban aria-hidden="true" className="size-4" />
-              </button>
-            </header>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-              {messagePage.nextCursor && (
+            </div>
+            <label className="surface-inset flex min-h-11 items-center gap-2 px-3">
+              <Search
+                aria-hidden="true"
+                className="text-muted-foreground size-4 shrink-0"
+              />
+              <span className="sr-only">Search messages</span>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search educators..."
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/80"
+              />
+            </label>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-2 sm:p-3">
+            {filtered.length ? (
+              <div className="space-y-1.5">
+                {filtered.map((conversation) => {
+                  const selected = activeId === conversation.id;
+                  return (
+                    <button
+                      key={conversation.id}
+                      type="button"
+                      onClick={() => void selectConversation(conversation)}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-all duration-200",
+                        selected
+                          ? "bg-primary text-primary-foreground shadow-md"
+                          : "hover:bg-muted/80 text-foreground",
+                      )}
+                    >
+                      <div className="relative shrink-0">
+                        <UserAvatar
+                          name={conversation.participant.displayName}
+                          photoURL={conversation.participant.photoURL}
+                          className={cn(
+                            "size-12 rounded-2xl text-xs",
+                            selected && "ring-2 ring-white/30",
+                          )}
+                        />
+                        {conversation.unreadCount > 0 && !selected && (
+                          <span className="bg-accent ring-card absolute -top-1 -right-1 grid min-w-5 place-items-center rounded-full px-1 text-[10px] font-bold text-white ring-2">
+                            {conversation.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-start justify-between gap-2">
+                          <span
+                            className={cn(
+                              "truncate text-sm font-bold",
+                              selected ? "text-white" : "text-foreground",
+                            )}
+                          >
+                            {conversation.participant.displayName}
+                          </span>
+                          <span
+                            className={cn(
+                              "shrink-0 text-[10px] font-medium",
+                              selected
+                                ? "text-white/70"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            {formatDistanceToNow(
+                              new Date(conversation.lastMessageAt),
+                              { addSuffix: true },
+                            )}
+                          </span>
+                        </span>
+                        <span
+                          className={cn(
+                            "mt-0.5 block truncate text-xs leading-5",
+                            selected
+                              ? "text-white/75"
+                              : "text-muted-foreground",
+                            conversation.unreadCount > 0 &&
+                              !selected &&
+                              "text-foreground font-semibold",
+                          )}
+                        >
+                          {conversation.lastMessagePreview || "No messages yet"}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="grid h-full min-h-56 place-items-center px-4 py-10 text-center">
+                <div>
+                  <span className="icon-well mx-auto size-12">
+                    <MessageCircle aria-hidden="true" className="size-5" />
+                  </span>
+                  <p className="mt-3 text-sm font-semibold">
+                    {search
+                      ? "No matching conversations"
+                      : "No conversations yet"}
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-xs leading-5">
+                    {search
+                      ? "Try another name or clear your search."
+                      : "Start a conversation with an educator in your network."}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section
+          aria-label="Active conversation"
+          className={cn(
+            "relative min-w-0 flex-1 flex-col",
+            mobileChat ? "flex" : "hidden lg:flex",
+          )}
+        >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--primary)_8%,transparent),transparent_40%),radial-gradient(circle_at_bottom_left,color-mix(in_srgb,var(--accent)_6%,transparent),transparent_35%)]"
+          />
+          {active ? (
+            <>
+              <header className="relative z-10 flex h-16 shrink-0 items-center gap-3 border-b border-border/70 bg-card/70 px-3 backdrop-blur-md sm:px-5">
                 <button
                   type="button"
-                  disabled={loadingHistory}
-                  onClick={() => void loadOlder()}
-                  className="text-muted-foreground hover:text-foreground mx-auto mb-5 block text-xs font-bold"
+                  aria-label="Back to conversations"
+                  onClick={() => setMobileChat(false)}
+                  className="text-muted-foreground hover:bg-muted grid size-11 place-items-center rounded-xl lg:hidden"
                 >
-                  {loadingHistory ? "Loading..." : "Load older messages"}
+                  <ArrowLeft aria-hidden="true" className="size-5" />
                 </button>
-              )}
-              <div className="mx-auto max-w-3xl space-y-3">
-                {messagePage.messages.map((message) => (
-                  <MessageBubble
-                    key={message.id}
-                    message={message}
-                    mine={message.senderId === viewer.uid}
-                    participant={active.participant}
-                    onEdit={() => void editMessage(message)}
-                    onDelete={() => void removeMessage(message)}
-                  />
-                ))}
-                <div ref={messageEnd} />
+                <UserAvatar
+                  name={active.participant.displayName}
+                  photoURL={active.participant.photoURL}
+                  className="size-10 rounded-2xl text-xs"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold">
+                    {active.participant.displayName}
+                  </p>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {active.participant.gradeLevel}
+                    {active.participant.school
+                      ? ` · ${active.participant.school}`
+                      : ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label={
+                    active.blockedByViewer
+                      ? "Unblock educator"
+                      : "Block educator"
+                  }
+                  title={
+                    active.blockedByViewer
+                      ? "Unblock educator"
+                      : "Block educator"
+                  }
+                  onClick={() => void toggleBlock()}
+                  className={cn(
+                    "hover:bg-muted grid size-11 place-items-center rounded-xl transition-colors",
+                    active.blockedByViewer
+                      ? "text-destructive bg-destructive/8"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  <Ban aria-hidden="true" className="size-4" />
+                </button>
+              </header>
+
+              <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-6">
+                {messagePage.nextCursor && (
+                  <button
+                    type="button"
+                    disabled={loadingHistory}
+                    onClick={() => void loadOlder()}
+                    className="surface-inset text-muted-foreground hover:text-foreground mx-auto mb-5 block min-h-11 px-4 text-xs font-bold transition-colors disabled:opacity-50"
+                  >
+                    {loadingHistory ? "Loading..." : "Load older messages"}
+                  </button>
+                )}
+                <div className="mx-auto flex max-w-3xl flex-col gap-4">
+                  {messagePage.messages.map((message) => (
+                    <MessageBubble
+                      key={message.id}
+                      message={message}
+                      mine={message.senderId === viewer.uid}
+                      participant={active.participant}
+                      onEdit={() => void editMessage(message)}
+                      onDelete={() => removeMessage(message)}
+                    />
+                  ))}
+                  <div ref={messageEnd} />
+                </div>
               </div>
-            </div>
-            <footer className="bg-card shrink-0 border-t p-3 sm:p-4">
-              {active.blockedByViewer || active.blockedViewer ? (
-                <p className="text-muted-foreground text-center text-sm">
-                  Messaging is unavailable for this conversation.
-                </p>
-              ) : (
-                <div className="mx-auto max-w-3xl">
-                  {attachment && (
-                    <div className="bg-muted mb-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs">
-                      <FileText aria-hidden="true" className="size-4" />
-                      <span className="min-w-0 flex-1 truncate">
-                        {attachment.name}
-                      </span>
+
+              <footer className="relative z-10 shrink-0 border-t border-border/70 bg-card/80 p-3 backdrop-blur-md sm:p-4">
+                {active.blockedByViewer || active.blockedViewer ? (
+                  <div className="surface-inset mx-auto max-w-3xl px-4 py-3 text-center">
+                    <p className="text-muted-foreground text-sm">
+                      Messaging is unavailable for this conversation.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mx-auto max-w-3xl">
+                    {attachment && (
+                      <div className="surface-inset mb-2 flex items-center gap-2 px-3 py-2 text-xs">
+                        <FileText
+                          aria-hidden="true"
+                          className="text-primary size-4 shrink-0"
+                        />
+                        <span className="min-w-0 flex-1 truncate font-medium">
+                          {attachment.name}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Remove attachment"
+                          onClick={() => setAttachment(null)}
+                          className="hover:bg-card grid size-11 shrink-0 place-items-center rounded-xl"
+                        >
+                          <X aria-hidden="true" className="size-4" />
+                        </button>
+                      </div>
+                    )}
+                    <div className="surface-inset flex items-end gap-1.5 p-1.5 sm:gap-2 sm:p-2">
+                      <input
+                        ref={fileInput}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        className="hidden"
+                        onChange={(event) =>
+                          setAttachment(event.target.files?.[0] ?? null)
+                        }
+                      />
                       <button
                         type="button"
-                        aria-label="Remove attachment"
-                        onClick={() => setAttachment(null)}
-                        className="grid size-11 shrink-0 place-items-center rounded-lg"
+                        aria-label="Attach file"
+                        title="Attach file"
+                        onClick={() => fileInput.current?.click()}
+                        className="text-muted-foreground hover:bg-card hover:text-foreground grid size-11 shrink-0 place-items-center rounded-xl transition-colors"
                       >
-                        <X aria-hidden="true" className="size-4" />
+                        <Paperclip aria-hidden="true" className="size-4" />
+                      </button>
+                      <textarea
+                        ref={textarea}
+                        aria-label="Message"
+                        value={content}
+                        onChange={(event) => setContent(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            void sendMessage();
+                          }
+                        }}
+                        rows={1}
+                        maxLength={5_000}
+                        placeholder="Write a message..."
+                        className="max-h-28 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm outline-none placeholder:text-muted-foreground/80"
+                      />
+                      <button
+                        type="button"
+                        aria-label="Send message"
+                        disabled={pending || (!content.trim() && !attachment)}
+                        onClick={() => void sendMessage()}
+                        className="bg-primary text-primary-foreground grid size-11 shrink-0 place-items-center rounded-xl shadow-sm transition-transform hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-40"
+                      >
+                        {pending ? (
+                          <Loader2
+                            aria-hidden="true"
+                            className="size-4 animate-spin"
+                          />
+                        ) : (
+                          <Send aria-hidden="true" className="size-4" />
+                        )}
                       </button>
                     </div>
-                  )}
-                  <div className="bg-muted flex items-end gap-2 rounded-xl p-2">
-                    <input
-                      ref={fileInput}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,application/pdf"
-                      className="hidden"
-                      onChange={(event) =>
-                        setAttachment(event.target.files?.[0] ?? null)
-                      }
-                    />
-                    <button
-                      type="button"
-                      aria-label="Attach file"
-                      title="Attach file"
-                      onClick={() => fileInput.current?.click()}
-                      className="text-muted-foreground hover:bg-card grid size-11 shrink-0 place-items-center rounded-lg"
-                    >
-                      <Paperclip aria-hidden="true" className="size-4" />
-                    </button>
-                    <textarea
-                      aria-label="Message"
-                      value={content}
-                      onChange={(event) => setContent(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && !event.shiftKey) {
-                          event.preventDefault();
-                          void sendMessage();
-                        }
-                      }}
-                      rows={1}
-                      maxLength={5_000}
-                      placeholder="Write a message..."
-                      className="max-h-28 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-sm outline-none"
-                    />
-                    <button
-                      type="button"
-                      aria-label="Send message"
-                      disabled={pending || (!content.trim() && !attachment)}
-                      onClick={() => void sendMessage()}
-                      className="bg-primary text-primary-foreground grid size-11 shrink-0 place-items-center rounded-lg disabled:opacity-40"
-                    >
-                      {pending ? (
-                        <Loader2
-                          aria-hidden="true"
-                          className="size-4 animate-spin"
-                        />
-                      ) : (
-                        <Send aria-hidden="true" className="size-4" />
-                      )}
-                    </button>
                   </div>
-                </div>
-              )}
-            </footer>
-          </>
-        ) : (
-          <div className="flex flex-1 items-center justify-center p-8 text-center">
-            <div>
-              <span className="bg-muted text-muted-foreground mx-auto grid size-16 place-items-center rounded-xl">
-                <Send aria-hidden="true" className="size-7" />
-              </span>
-              <h2 className="mt-4 font-serif text-xl">Your messages</h2>
-              <p className="text-muted-foreground mt-1 max-w-xs text-sm">
-                Select a conversation or start one with another educator.
-              </p>
+                )}
+              </footer>
+            </>
+          ) : (
+            <div className="relative z-10 flex flex-1 items-center justify-center p-8 text-center">
+              <div className="max-w-sm">
+                <span className="icon-well mx-auto size-16 rounded-2xl">
+                  <Send aria-hidden="true" className="size-7" />
+                </span>
+                <h2 className="mt-5 font-serif text-2xl tracking-tight">
+                  Your messages
+                </h2>
+                <p className="text-muted-foreground mt-2 text-sm leading-6">
+                  Select a conversation or start one with another educator in
+                  your professional network.
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
@@ -546,26 +640,31 @@ function MessageBubble({
   mine: boolean;
   participant: ConversationSummary["participant"];
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete: () => Promise<void>;
 }) {
   return (
-    <div className={`flex items-end gap-2 ${mine ? "flex-row-reverse" : ""}`}>
+    <div className={cn("flex items-end gap-2", mine && "flex-row-reverse")}>
       {!mine && (
         <UserAvatar
           name={participant.displayName}
           photoURL={participant.photoURL}
-          className="size-7 shrink-0 rounded-full text-[9px]"
+          className="mb-5 size-8 shrink-0 rounded-xl text-[9px]"
         />
       )}
       <div
-        className={`flex max-w-[82%] flex-col gap-1 sm:max-w-md ${mine ? "items-end" : "items-start"}`}
+        className={cn(
+          "flex max-w-[min(100%,28rem)] flex-col gap-1",
+          mine ? "items-end" : "items-start",
+        )}
       >
         <div
-          className={`rounded-xl px-3.5 py-2.5 text-sm leading-6 ${
+          className={cn(
+            "rounded-2xl px-4 py-2.5 text-sm leading-6 shadow-xs",
             mine
-              ? "bg-primary text-primary-foreground rounded-br-sm"
-              : "bg-card rounded-bl-sm border"
-          }`}
+              ? "bg-primary text-primary-foreground rounded-br-md"
+              : "surface-card rounded-bl-md",
+            message.deletedAt && "opacity-70",
+          )}
         >
           {message.content && (
             <p className="wrap-anywhere whitespace-pre-wrap">{message.content}</p>
@@ -573,39 +672,55 @@ function MessageBubble({
           {message.attachment && (
             <a
               href={`/api/messages/${message.conversationId}/attachments/${message.attachment.id}`}
-              className={`mt-1 flex items-center gap-2 font-bold underline-offset-2 hover:underline ${mine ? "text-primary-foreground" : "text-primary"}`}
+              className={cn(
+                "mt-2 flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold underline-offset-2 hover:underline",
+                mine
+                  ? "bg-white/12 text-primary-foreground"
+                  : "bg-primary/8 text-primary",
+              )}
             >
-              <Download aria-hidden="true" className="size-4" />
+              <Download aria-hidden="true" className="size-3.5 shrink-0" />
               <span className="truncate">{message.attachment.fileName}</span>
             </a>
           )}
         </div>
-        <span className="text-muted-foreground flex items-center gap-2 px-1 text-[10px]">
-          {formatDistanceToNow(new Date(message.createdAt), {
-            addSuffix: true,
-          })}
-          {message.deletedAt
-            ? ` · deleted ${formatDistanceToNow(new Date(message.deletedAt), { addSuffix: true })}`
-            : message.editedAt
-              ? ` · edited ${formatDistanceToNow(new Date(message.editedAt), { addSuffix: true })}`
-              : ""}
+        <span
+          className={cn(
+            "text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[10px]",
+            mine && "flex-row-reverse",
+          )}
+        >
+          <span>
+            {formatDistanceToNow(new Date(message.createdAt), {
+              addSuffix: true,
+            })}
+            {message.deletedAt
+              ? ` · deleted ${formatDistanceToNow(new Date(message.deletedAt), { addSuffix: true })}`
+              : message.editedAt
+                ? ` · edited ${formatDistanceToNow(new Date(message.editedAt), { addSuffix: true })}`
+                : ""}
+          </span>
           {mine && !message.deletedAt && (
-            <>
+            <span className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={onEdit}
-                className="min-h-11 px-1 hover:text-foreground"
+                className="hover:text-foreground min-h-11 px-1 font-semibold"
               >
                 Edit
               </button>
-              <button
-                type="button"
-                onClick={onDelete}
-                className="text-destructive min-h-11 px-1 hover:text-destructive/80"
+              <DeleteConfirmDialog
+                itemName="message"
+                onConfirm={onDelete}
               >
-                Delete
-              </button>
-            </>
+                <button
+                  type="button"
+                  className="text-destructive min-h-11 px-1 font-semibold hover:text-destructive/80"
+                >
+                  Delete
+                </button>
+              </DeleteConfirmDialog>
+            </span>
           )}
           {!mine && <ReportMessageDialog message={message} />}
         </span>

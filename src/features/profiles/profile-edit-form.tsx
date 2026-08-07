@@ -8,10 +8,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ChoiceFieldset, Choice } from "@/components/ui/choice-field";
 import { ProfileCoverEditor } from "@/features/profiles/profile-cover-editor";
 import { ProfilePhotoEditor } from "@/features/profiles/profile-photo-editor";
 import type { CoverThemeId } from "@/lib/profiles/cover-themes";
-import { educationStages } from "@/lib/profiles/options";
+import { educationStages, subjectAreas, taughtLanguages } from "@/lib/profiles/options";
 import { profileUpdateSchema, type ProfileUpdate } from "@/schemas/profile";
 import type { Plan } from "@/types/models";
 
@@ -29,6 +30,25 @@ export function ProfileEditForm({
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(initial.subjects);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(initial.languages);
+
+  function toggleSubject(subject: string) {
+    const next = selectedSubjects.includes(subject)
+      ? selectedSubjects.filter((value) => value !== subject)
+      : [...selectedSubjects, subject];
+    if (subject === "Languages" && selectedSubjects.includes(subject)) {
+      setSelectedLanguages([]);
+    }
+    setSelectedSubjects(next);
+  }
+
+  function toggleLanguage(language: string) {
+    const next = selectedLanguages.includes(language)
+      ? selectedLanguages.filter((value) => value !== language)
+      : [...selectedLanguages, language];
+    setSelectedLanguages(next);
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,14 +61,8 @@ export function ProfileEditForm({
         .map((value) => value.trim())
         .filter(Boolean),
       gradeLevel: form.get("gradeLevel"),
-      subjects: String(form.get("subjects") ?? "")
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean),
-      languages: String(form.get("languages") ?? "")
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean),
+      subjects: selectedSubjects,
+      languages: selectedLanguages,
       country: form.get("country"),
       city: form.get("city"),
       school: form.get("school"),
@@ -120,7 +134,7 @@ export function ProfileEditForm({
             id="gradeLevel"
             name="gradeLevel"
             defaultValue={initial.gradeLevel}
-            className="border-input bg-input/60 h-11 w-full rounded-md border px-3 text-sm shadow-sm"
+            className="border-accent bg-input/60 h-11 w-full rounded-md border px-3 text-sm shadow-sm"
             required
           >
             {!educationStages.some(
@@ -135,29 +149,44 @@ export function ProfileEditForm({
             ))}
           </select>
         </Field>
-        <Field
-          label="Subjects and expertise"
-          id="subjects"
-          hint="Separate multiple subjects with commas."
-        >
-          <Input
-            id="subjects"
-            name="subjects"
-            defaultValue={initial.subjects.join(", ")}
-            required
-          />
-        </Field>
-        <Field
-          label="Languages taught"
-          id="languages"
-          hint="Optional. Separate multiple languages with commas."
-        >
-          <Input
-            id="languages"
-            name="languages"
-            defaultValue={initial.languages.join(", ")}
-          />
-        </Field>
+        <div className="space-y-6 sm:col-span-2">
+          <ChoiceFieldset
+            legend="Subjects and areas of expertise"
+            hint="Choose up to six. Leadership and whole-school expertise belong here too."
+          >
+            {subjectAreas.map((subject) => {
+              const checked = selectedSubjects.includes(subject);
+              return (
+                <Choice
+                  key={subject}
+                  label={subject}
+                  checked={checked}
+                  disabled={!checked && selectedSubjects.length >= 6}
+                  onChange={() => toggleSubject(subject)}
+                />
+              );
+            })}
+          </ChoiceFieldset>
+          {selectedSubjects.includes("Languages") && (
+            <ChoiceFieldset
+              legend="Languages you teach"
+              hint="Choose every language that applies."
+            >
+              {taughtLanguages.map((language) => {
+                const checked = selectedLanguages.includes(language);
+                return (
+                  <Choice
+                    key={language}
+                    label={language}
+                    checked={checked}
+                    disabled={!checked && selectedLanguages.length >= 8}
+                    onChange={() => toggleLanguage(language)}
+                  />
+                );
+              })}
+            </ChoiceFieldset>
+          )}
+        </div>
         <Field label="Years of experience" id="yearsOfExperience">
           <Input
             id="yearsOfExperience"
@@ -201,7 +230,7 @@ export function ProfileEditForm({
           maxLength={500}
           rows={5}
           defaultValue={initial.bio}
-          className="border-input bg-input/60 w-full resize-y rounded-md border px-3 py-3 text-sm"
+          className="border-accent bg-input/60 w-full resize-y rounded-md border px-3 py-3 text-sm"
         />
       </Field>
       <Field

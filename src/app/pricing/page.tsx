@@ -39,21 +39,46 @@ export default async function PricingPage() {
     >
       <div className="grid gap-6 md:grid-cols-2">
         {billingPlans.map((plan) => (
-          <section key={plan.id} className="bg-card rounded-lg border p-7">
-            <h2 className="font-serif text-3xl">{plan.name}</h2>
+          <section
+            key={plan.id}
+            className={
+              plan.id === "plus"
+                ? "surface-card-featured p-7"
+                : "surface-card surface-card-interactive p-7"
+            }
+          >
+            <h2 className="font-serif text-3xl tracking-tight">{plan.name}</h2>
             <p className="mt-5 font-serif text-5xl">
               {plan.price}
-              <span className="text-muted-foreground font-sans text-sm">
+              <span
+                className={
+                  plan.id === "plus"
+                    ? "font-sans text-sm text-white/70"
+                    : "text-muted-foreground font-sans text-sm"
+                }
+              >
                 {plan.priceSuffix}
               </span>
             </p>
-            <p className="text-muted-foreground mt-2 text-sm">{plan.note}</p>
+            <p
+              className={
+                plan.id === "plus"
+                  ? "mt-2 text-sm text-white/75"
+                  : "text-muted-foreground mt-2 text-sm"
+              }
+            >
+              {plan.note}
+            </p>
             <ul className="mt-7 space-y-3 text-sm">
               {plan.features.map((feature) => (
                 <li className="flex gap-3" key={feature}>
                   <Check
                     aria-hidden="true"
-                    className="text-success mt-0.5 size-4 shrink-0"
+                    className={
+                      plan.id === "plus"
+                        ? "mt-0.5 size-4 shrink-0 text-white"
+                        : "text-success mt-0.5 size-4 shrink-0"
+                    }
                   />
                   {feature}
                 </li>

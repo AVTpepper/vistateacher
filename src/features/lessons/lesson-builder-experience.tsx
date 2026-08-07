@@ -29,6 +29,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import type {
   LessonDetail,
   LessonSummary,
@@ -64,6 +65,31 @@ const EMPTY_SOURCE: LessonSourceInput = {
   studentNeeds: "",
   teachingStyle: "balanced",
 };
+
+const REQUIRED_GENERATE_FIELDS = [
+  "Subject",
+  "Grade level",
+  "Topic / unit",
+  "Duration",
+] as const;
+
+function missingGenerateFields(source: LessonSourceInput): string[] {
+  const missing: string[] = [];
+  if (!source.subject.trim()) missing.push("Subject");
+  if (!source.gradeLevel.trim()) missing.push("Grade level");
+  if (source.topic.trim().length < 3) missing.push("Topic / unit");
+  if (!source.durationMinutes || source.durationMinutes < 1) {
+    missing.push("Duration");
+  }
+  return missing;
+}
+
+function formatMissingFields(fields: string[]): string {
+  if (fields.length === 0) return "";
+  if (fields.length === 1) return fields[0];
+  if (fields.length === 2) return `${fields[0]} and ${fields[1]}`;
+  return `${fields.slice(0, -1).join(", ")}, and ${fields[fields.length - 1]}`;
+}
 
 interface CreateLessonsResponse {
   lessons: LessonDetail[];
@@ -158,7 +184,7 @@ function LessonEditor({
     </label>
   );
   return (
-    <div className="bg-card rounded-xl border p-5">
+    <div className="surface-card p-5">
       <div className="mb-5 flex items-center justify-between">
         <div>
           <h2 className="font-serif text-xl">Edit lesson</h2>
@@ -362,7 +388,7 @@ function LessonDisplay({
   onEdit: () => void;
   onRegenerate: () => void;
   onRegenerateWithFeedback: (feedback: string) => void;
-  onDelete: () => void;
+  onDelete: () => Promise<void>;
   onDuplicate: () => void;
   onPreviewPdf: () => void;
   onExport: (format: "pdf" | "docx") => void;
@@ -477,7 +503,7 @@ function LessonDisplay({
     );
   };
   return (
-    <div className="bg-card overflow-hidden rounded-xl border">
+    <div className="surface-card overflow-hidden">
       <div className="bg-primary p-5 text-white sm:p-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
@@ -508,15 +534,19 @@ function LessonDisplay({
               <Pencil className="size-3" />
               Edit
             </button>
-            <button
-              type="button"
-              onClick={onDelete}
-              disabled={working}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25 disabled:opacity-50"
+            <DeleteConfirmDialog
+              itemName="lesson"
+              onConfirm={onDelete}
             >
-              <Trash2 className="size-3" />
-              Delete
-            </button>
+              <button
+                type="button"
+                disabled={working}
+                className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25 disabled:opacity-50"
+              >
+                <Trash2 className="size-3" />
+                Delete
+              </button>
+            </DeleteConfirmDialog>
             <button
               type="button"
               onClick={onDuplicate}
@@ -667,6 +697,7 @@ export function LessonBuilderExperience({
   const [lessonCount, setLessonCount] = useState(1);
   const [working, setWorking] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [attemptedGenerate, setAttemptedGenerate] = useState(false);
 
   function consumeUsage(
     usage: LessonWorkspace["usage"],
@@ -724,6 +755,7 @@ export function LessonBuilderExperience({
       setLesson(selected);
       setSource(selected.source);
       setEditing(false);
+      setAttemptedGenerate(false);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Lesson unavailable.",
@@ -752,8 +784,12 @@ export function LessonBuilderExperience({
   }
 
   async function generate() {
-    if (source.topic.trim().length < 3)
-      return toast.error("Add a topic or unit.");
+    setAttemptedGenerate(true);
+    const missing = missingGenerateFields(source);
+    if (missing.length > 0) {
+      toast.error(`Fill out ${formatMissingFields(missing)} before generating.`);
+      return;
+    }
     setWorking(true);
     try {
       const generated = await resultJson<LessonDetail | CreateLessonsResponse>(
@@ -765,6 +801,7 @@ export function LessonBuilderExperience({
       );
       const lessons = "lessons" in generated ? generated.lessons : [generated];
       lessons.forEach((item) => storeLesson(item, "creation"));
+      setAttemptedGenerate(false);
       toast.success(
         lessons.length > 1
           ? `${lessons.length} lessons generated.`
@@ -837,7 +874,7 @@ export function LessonBuilderExperience({
     }
   }
 
-  async function deleteCurrentLesson() {
+  async function deleteCurrentLesson(): Promise<void> {
     if (!lesson) return;
     setWorking(true);
     try {
@@ -926,6 +963,9 @@ export function LessonBuilderExperience({
 
   const fieldClass =
     "bg-muted h-10 w-full rounded-lg border-0 px-3 text-sm outline-none";
+  const missingFields = missingGenerateFields(source);
+  const showGenerateErrors = attemptedGenerate && missingFields.length > 0;
+  const requiredHelper = `Fill out ${formatMissingFields([...REQUIRED_GENERATE_FIELDS])} before generating.`;
   return (
     <div className="mx-auto max-w-6xl">
       <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -973,6 +1013,7 @@ export function LessonBuilderExperience({
             setSource(EMPTY_SOURCE);
             setLessonCount(1);
             setEditing(false);
+            setAttemptedGenerate(false);
           }}
           className="bg-primary text-primary-foreground flex h-10 shrink-0 items-center gap-2 rounded-lg px-4 text-xs font-bold"
         >
@@ -992,24 +1033,40 @@ export function LessonBuilderExperience({
       </div>
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.6fr)]">
-        <section className="bg-card rounded-xl border p-5 lg:sticky lg:top-5">
+        <section className="surface-card p-5 lg:sticky lg:top-5">
           <h2 className="mb-4 flex items-center gap-2 text-sm font-bold">
             <WandSparkles className="text-accent size-4" />
             Lesson parameters
           </h2>
-          <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-            <AlertTriangle className="mr-1 inline size-3.5" /> Required before
-            generation: Subject, Grade level, Topic / unit, and Duration.
+          <p className="text-muted-foreground mb-3 text-xs leading-5">
+            {requiredHelper}
           </p>
+          {showGenerateErrors && (
+            <p
+              role="alert"
+              className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
+            >
+              <AlertTriangle className="mr-1 inline size-3.5" aria-hidden="true" />
+              Fill out {formatMissingFields(missingFields)} to generate a lesson.
+            </p>
+          )}
           <div className="space-y-4">
             <label className="grid gap-1.5 text-xs font-bold">
-              Subject <span className="text-red-600">*</span>
+              <span>
+                Subject
+                {showGenerateErrors && missingFields.includes("Subject") ? (
+                  <span className="text-red-600"> *</span>
+                ) : null}
+              </span>
               <select
                 value={source.subject}
                 onChange={(event) =>
                   setSource({ ...source, subject: event.target.value })
                 }
                 className={fieldClass}
+                aria-invalid={
+                  showGenerateErrors && missingFields.includes("Subject")
+                }
               >
                 {SUBJECTS.map((item) => (
                   <option key={item}>{item}</option>
@@ -1017,13 +1074,22 @@ export function LessonBuilderExperience({
               </select>
             </label>
             <label className="grid gap-1.5 text-xs font-bold">
-              Grade level <span className="text-red-600">*</span>
+              <span>
+                Grade level
+                {showGenerateErrors &&
+                missingFields.includes("Grade level") ? (
+                  <span className="text-red-600"> *</span>
+                ) : null}
+              </span>
               <select
                 value={source.gradeLevel}
                 onChange={(event) =>
                   setSource({ ...source, gradeLevel: event.target.value })
                 }
                 className={fieldClass}
+                aria-invalid={
+                  showGenerateErrors && missingFields.includes("Grade level")
+                }
               >
                 {GRADES.map((item) => (
                   <option key={item}>{item}</option>
@@ -1031,7 +1097,13 @@ export function LessonBuilderExperience({
               </select>
             </label>
             <label className="grid gap-1.5 text-xs font-bold">
-              Topic / unit <span className="text-red-600">*</span>
+              <span>
+                Topic / unit
+                {showGenerateErrors &&
+                missingFields.includes("Topic / unit") ? (
+                  <span className="text-red-600"> *</span>
+                ) : null}
+              </span>
               <input
                 value={source.topic}
                 maxLength={240}
@@ -1040,10 +1112,18 @@ export function LessonBuilderExperience({
                 }
                 placeholder="Dividing fractions with visual models"
                 className={fieldClass}
+                aria-invalid={
+                  showGenerateErrors && missingFields.includes("Topic / unit")
+                }
               />
             </label>
             <label className="grid gap-1.5 text-xs font-bold">
-              Duration <span className="text-red-600">*</span>
+              <span>
+                Duration
+                {showGenerateErrors && missingFields.includes("Duration") ? (
+                  <span className="text-red-600"> *</span>
+                ) : null}
+              </span>
               <select
                 value={source.durationMinutes}
                 onChange={(event) =>
@@ -1053,6 +1133,9 @@ export function LessonBuilderExperience({
                   })
                 }
                 className={fieldClass}
+                aria-invalid={
+                  showGenerateErrors && missingFields.includes("Duration")
+                }
               >
                 {[30, 45, 60, 75, 90].map((minutes) => (
                   <option key={minutes} value={minutes}>
@@ -1155,7 +1238,7 @@ export function LessonBuilderExperience({
 
         <section className="min-w-0">
           {working && !lesson && (
-            <div className="bg-card grid min-h-80 place-items-center rounded-xl border p-10 text-center">
+            <div className="surface-card grid min-h-80 place-items-center p-10 text-center">
               <div>
                 <LoaderCircle className="text-primary mx-auto size-10 animate-spin" />
                 <p className="mt-4 font-bold">Building your lesson...</p>
@@ -1163,7 +1246,7 @@ export function LessonBuilderExperience({
             </div>
           )}
           {!working && !lesson && (
-            <div className="bg-card grid min-h-80 place-items-center rounded-xl border border-dashed p-10 text-center">
+            <div className="surface-card grid min-h-80 place-items-center border-dashed p-10 text-center">
               <div>
                 <Sparkles className="text-muted-foreground/30 mx-auto size-10" />
                 <p className="mt-4 font-bold">Ready to generate</p>
@@ -1197,7 +1280,7 @@ export function LessonBuilderExperience({
               onRegenerateWithFeedback={(feedback) =>
                 void action("regenerate", { feedback })
               }
-              onDelete={() => void deleteCurrentLesson()}
+              onDelete={deleteCurrentLesson}
               onDuplicate={() => void action("duplicate")}
               onPreviewPdf={() => void previewPdf()}
               onExport={(format) => void exportLesson(format)}

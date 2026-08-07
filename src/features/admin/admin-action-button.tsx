@@ -80,7 +80,7 @@ export function AdminActionButton({
             onChange={(event) => setReason(event.target.value)}
             maxLength={500}
             rows={4}
-            className="border-input bg-background focus:ring-ring mt-2 w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
+            className="border-accent bg-background focus:ring-ring mt-2 w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
           />
           <div className="mt-6 flex justify-end gap-2">
             <AlertDialog.Cancel asChild>

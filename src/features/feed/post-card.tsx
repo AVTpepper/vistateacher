@@ -16,6 +16,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import type { FeedComment, FeedPost } from "@/lib/feed/server";
 import { cn } from "@/lib/utils";
 
@@ -162,7 +163,7 @@ export function PostCard({
     setCommenting(false);
   }
 
-  async function removePost() {
+  async function removePost(): Promise<void> {
     setMenuOpen(false);
     onDelete(post.id);
     const response = await mutation(`/api/feed/${post.id}`, "DELETE");
@@ -228,7 +229,7 @@ export function PostCard({
     toast.success("Comment updated.");
   }
 
-  async function removeComment(commentId: string) {
+  async function removeComment(commentId: string): Promise<void> {
     const response = await mutation(
       `/api/feed/${post.id}/comments/${commentId}`,
       "DELETE",
@@ -267,7 +268,7 @@ export function PostCard({
   }
 
   return (
-    <article className="bg-card border-primary/15 hover:border-primary/30 overflow-hidden rounded-xl border transition-[border-color,box-shadow] hover:shadow-lg">
+    <article className="surface-card surface-card-interactive overflow-hidden">
       <header className="flex items-start gap-3 p-4 pb-3">
         <UserAvatar
           name={post.author.displayName}
@@ -339,13 +340,17 @@ export function PostCard({
                 </button>
               )}
               {post.ownedByViewer && (
-                <button
-                  type="button"
-                  onClick={() => void removePost()}
-                  className="text-destructive hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+                <DeleteConfirmDialog
+                  itemName="post"
+                  onConfirm={removePost}
                 >
-                  <Trash2 aria-hidden="true" className="size-3.5" /> Delete
-                </button>
+                  <button
+                    type="button"
+                    className="text-destructive hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+                  >
+                    <Trash2 aria-hidden="true" className="size-3.5" /> Delete
+                  </button>
+                </DeleteConfirmDialog>
               )}
             </div>
           )}
@@ -535,13 +540,17 @@ export function PostCard({
                       >
                         Edit
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => void removeComment(item.id)}
-                        className="text-destructive text-[11px]"
+                      <DeleteConfirmDialog
+                        itemName="comment"
+                        onConfirm={() => removeComment(item.id)}
                       >
-                        Delete
-                      </button>
+                        <button
+                          type="button"
+                          className="text-destructive text-[11px]"
+                        >
+                          Delete
+                        </button>
+                      </DeleteConfirmDialog>
                     </div>
                   )}
                 </div>

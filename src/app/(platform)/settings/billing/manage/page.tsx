@@ -24,7 +24,7 @@ export default async function ManageBillingPage() {
 
   return (
     <section className="space-y-5">
-      <div className="bg-card rounded-xl border p-6">
+      <div className="surface-card p-6">
         <p className="text-primary font-mono text-[10px] font-bold uppercase">
           Subscription controls
         </p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, UserCheck, UserPlus } from "lucide-react";
+import { LoaderCircle, UserCheck, UserPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -9,67 +9,101 @@ import { cn } from "@/lib/utils";
 
 export function FollowButton({
   targetUid,
-  initialFollowing,
+  connectionStatus,
   mode = "follow",
   className,
 }: {
   targetUid: string;
-  initialFollowing: boolean;
+  connectionStatus: "none" | "pending" | "accepted" | null;
   mode?: "follow" | "connect";
   className?: string;
 }) {
   const router = useRouter();
-  const [following, setFollowing] = useState(initialFollowing);
+  const [status, setStatus] = useState(connectionStatus ?? "none");
   const [pending, setPending] = useState(false);
 
-  async function toggle() {
-    const next = !following;
-    setFollowing(next);
-    setPending(true);
-    const response = await fetch("/api/network/follow", {
-      method: next ? "POST" : "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ targetUid }),
-    });
-    setPending(false);
-    if (!response.ok) {
-      setFollowing(!next);
-      const result = (await response.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-      toast.error(result?.error ?? "We couldn't update this connection.");
-      return;
+  async function handleConnect() {
+    if (status === "accepted" || status === "pending") {
+      // Unfollow/disconnect
+      const next = "none";
+      setStatus(next);
+      setPending(true);
+      const response = await fetch("/api/network/follow", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUid }),
+      });
+      setPending(false);
+      if (!response.ok) {
+        setStatus(status);
+        const result = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        toast.error(result?.error ?? "We couldn't update this connection.");
+        return;
+      }
+      router.refresh();
+    } else {
+      // Send connection request
+      const next = "pending";
+      setStatus(next);
+      setPending(true);
+      const response = await fetch("/api/network/follow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUid }),
+      });
+      setPending(false);
+      if (!response.ok) {
+        setStatus("none");
+        const result = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        toast.error(result?.error ?? "We couldn't update this connection.");
+        return;
+      }
+      router.refresh();
     }
-    router.refresh();
   }
+
+  const isConnected = status === "accepted";
+  const isRequestSent = status === "pending";
 
   return (
     <button
       type="button"
-      onClick={toggle}
+      onClick={handleConnect}
       disabled={pending}
       className={cn(
         "flex h-9 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition-colors disabled:opacity-60",
-        following
+        isConnected
           ? "bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-          : "bg-primary text-primary-foreground hover:opacity-90",
+          : isRequestSent
+            ? "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-900 dark:text-amber-100 dark:hover:bg-amber-800"
+            : "bg-primary text-primary-foreground hover:opacity-90",
         className,
       )}
     >
       {pending ? (
         <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
-      ) : following ? (
+      ) : isConnected ? (
         <UserCheck aria-hidden="true" className="size-3.5" />
+      ) : isRequestSent ? (
+        <X aria-hidden="true" className="size-3.5" />
       ) : (
         <UserPlus aria-hidden="true" className="size-3.5" />
       )}
       {mode === "connect"
-        ? following
+        ? isConnected
           ? "Connected"
-          : "Connect"
-        : following
+          : isRequestSent
+            ? "Request sent"
+            : "Connect"
+        : isConnected
           ? "Following"
-          : "Follow"}
+          : isRequestSent
+            ? "Request sent"
+            : "Follow"}
     </button>
   );
 }

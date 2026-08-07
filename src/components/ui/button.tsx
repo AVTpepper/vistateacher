@@ -5,19 +5,19 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-lg text-sm font-bold transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl text-sm font-bold transition-[color,background-color,box-shadow,transform] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80",
+          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:-translate-y-0.5 active:bg-primary/80",
         accent:
-          "bg-accent text-accent-foreground hover:bg-accent/90 active:bg-accent/80",
+          "bg-accent text-accent-foreground shadow-sm hover:bg-accent/90 hover:-translate-y-0.5 active:bg-accent/80",
         outline:
-          "border bg-transparent text-foreground hover:bg-secondary hover:text-secondary-foreground",
+          "border bg-card/70 text-foreground shadow-xs hover:bg-secondary hover:text-secondary-foreground",
         ghost: "text-foreground hover:bg-muted",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/80",
+          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 hover:-translate-y-0.5 active:bg-destructive/80",
       },
       size: {
         sm: "h-11 px-3",

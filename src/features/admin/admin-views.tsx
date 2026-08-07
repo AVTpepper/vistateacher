@@ -55,7 +55,7 @@ export function AdminOverviewView({ overview }: { overview: AdminOverview }) {
     <div className="space-y-6">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {metrics.map(([label, value, Icon]) => (
-          <div key={label} className="bg-card rounded-lg border p-4">
+          <div key={label} className="surface-card p-4">
             <div className="flex items-center justify-between">
               <p className="text-muted-foreground text-xs font-bold uppercase">
                 {label}
@@ -66,7 +66,7 @@ export function AdminOverviewView({ overview }: { overview: AdminOverview }) {
           </div>
         ))}
       </div>
-      <section className="bg-card overflow-hidden rounded-lg border">
+      <section className="surface-card overflow-hidden">
         <div className="border-b px-5 py-4">
           <h2 className="font-serif text-xl">Recent audit activity</h2>
           <p className="text-muted-foreground mt-1 text-xs">
@@ -309,7 +309,7 @@ function AdminTable({
       role="region"
       aria-label="Administration data table"
       tabIndex={0}
-      className="bg-card overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-lg border"
+      className="surface-card overflow-x-auto overflow-y-hidden overscroll-x-contain"
     >
       <table className="w-full min-w-190 border-collapse text-left">
         <thead className="bg-muted/60">

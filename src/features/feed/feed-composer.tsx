@@ -95,7 +95,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
   }
 
   return (
-    <section className="bg-card border-accent/25 before:from-primary before:to-accent relative overflow-hidden rounded-xl border p-4 pt-5 before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-linear-to-r">
+    <section className="surface-card before:from-primary before:to-accent relative overflow-hidden p-4 pt-5 before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-linear-to-r">
       <div className="flex items-center gap-3">
         <UserAvatar
           name={account.displayName}

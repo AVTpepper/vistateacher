@@ -41,7 +41,7 @@ export function PrivacySettingsForm({
 
   return (
     <div className="space-y-5">
-      <form className="bg-card rounded-xl border p-6" onSubmit={save}>
+      <form className="surface-card p-6" onSubmit={save}>
         <h2 className="font-serif text-xl">Contact and privacy</h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Contact details remain private unless you explicitly share them.
@@ -251,7 +251,7 @@ function DeletionPanel({
   }
 
   return (
-    <section className="bg-card border-destructive/25 rounded-xl border p-6">
+    <section className="surface-card border-destructive/25 p-6">
       <h2 className="text-destructive flex items-center gap-2 font-serif text-xl">
         <Trash2 aria-hidden="true" className="size-5" />
         Delete account
@@ -292,9 +292,9 @@ function DeletionPanel({
                 </div>
               )}
               <ul className="text-muted-foreground mt-4 space-y-2 text-sm leading-6">
-                <li>• Your account will be marked for deletion.</li>
-                <li>• Your profile, settings, and private access will be removed from normal use.</li>
-                <li>• If you are on Plus, billing will end at the current billing boundary.</li>
+                <li>â€¢ Your account will be marked for deletion.</li>
+                <li>â€¢ Your profile, settings, and private access will be removed from normal use.</li>
+                <li>â€¢ If you are on Plus, billing will end at the current billing boundary.</li>
               </ul>
               <Input
                 className="mt-5"

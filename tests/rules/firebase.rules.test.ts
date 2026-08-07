@@ -137,8 +137,7 @@ async function seedNetworkUser(
       coverImageURL: null,
       role: "educator",
       isVerified: false,
-      followerCount: 0,
-      followingCount: 0,
+      connectionCount: 0,
       resourceCount: 0,
       postCount: 0,
       status: "active",
@@ -658,8 +657,8 @@ describe("Firestore rules", () => {
         getDoc(doc(context.firestore(), "users", "educator")),
         getDoc(doc(context.firestore(), "follows", "follower_educator")),
       ]);
-      expect(follower.data()?.followingCount).toBe(1);
-      expect(educator.data()?.followerCount).toBe(1);
+      expect(follower.data()?.connectionCount).toBe(1);
+      expect(educator.data()?.connectionCount).toBe(1);
       expect(relationship.exists()).toBe(true);
     });
 
@@ -670,14 +669,14 @@ describe("Firestore rules", () => {
         getDoc(doc(context.firestore(), "users", "educator")),
         getDoc(doc(context.firestore(), "follows", "follower_educator")),
       ]);
-      expect(follower.data()?.followingCount).toBe(0);
-      expect(educator.data()?.followerCount).toBe(0);
+      expect(follower.data()?.connectionCount).toBe(0);
+      expect(educator.data()?.connectionCount).toBe(0);
       expect(relationship.exists()).toBe(false);
     });
   });
 
   it("enforces the Community connection limit inside the transaction", async () => {
-    await seedNetworkUser("follower", { followingCount: 5 });
+    await seedNetworkUser("follower", { connectionCount: 5 });
     await seedNetworkUser("educator");
 
     await expect(followEducator("follower", "educator")).rejects.toMatchObject({
