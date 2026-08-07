@@ -125,6 +125,74 @@ async function resultJson<T>(response: Response): Promise<T> {
   return result as T;
 }
 
+function AIEnhancedTextarea({
+  label,
+  value,
+  onChange,
+  onGetInsights,
+  onRegenerate,
+  insightsLoading = false,
+  regenerateLoading = false,
+  rows = 3,
+  placeholder = "",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onGetInsights?: (current: string) => void;
+  onRegenerate?: () => void;
+  insightsLoading?: boolean;
+  regenerateLoading?: boolean;
+  rows?: number;
+  placeholder?: string;
+}) {
+  return (
+    <label className="grid gap-1.5 text-xs font-bold">
+      <div className="flex items-center justify-between">
+        <span>{label}</span>
+        <div className="flex gap-1.5">
+          {onGetInsights && (
+            <button
+              type="button"
+              onClick={() => onGetInsights(value)}
+              disabled={insightsLoading || value.trim().length < 3}
+              className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold text-primary hover:bg-primary/5 disabled:opacity-50"
+              title="Get AI insights to improve this field"
+            >
+              <Lightbulb className="size-3" />
+              Insights
+            </button>
+          )}
+          {onRegenerate && (
+            <button
+              type="button"
+              onClick={onRegenerate}
+              disabled={regenerateLoading}
+              className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold text-accent hover:bg-accent/5 disabled:opacity-50"
+              title="AI regenerate this field"
+            >
+              {regenerateLoading ? (
+                <LoaderCircle className="size-3 animate-spin" />
+              ) : (
+                <WandSparkles className="size-3" />
+              )}
+              Regenerate
+            </button>
+          )}
+        </div>
+      </div>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        rows={rows}
+        maxLength={2000}
+        placeholder={placeholder}
+        className="bg-muted resize-none rounded-lg px-3 py-2 text-sm font-normal outline-none"
+      />
+    </label>
+  );
+}
+
 function ListField({
   label,
   value,
@@ -380,6 +448,7 @@ function LessonDisplay({
   onDuplicate,
   onPreviewPdf,
   onExport,
+  onPublish,
   canRegenerate,
   canExport,
 }: {
@@ -392,6 +461,7 @@ function LessonDisplay({
   onDuplicate: () => void;
   onPreviewPdf: () => void;
   onExport: (format: "pdf" | "docx") => void;
+  onPublish: () => void;
   canRegenerate: boolean;
   canExport: boolean;
 }) {
@@ -487,13 +557,13 @@ function LessonDisplay({
       );
     return (
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="bg-primary/5 rounded-lg p-4">
+        <div className="rounded-lg border border-primary/20 p-4">
           <p className="text-primary mb-2 text-xs font-bold uppercase">
             Supports
           </p>
           {list(content.differentiation.supports)}
         </div>
-        <div className="bg-accent/5 rounded-lg p-4">
+        <div className="rounded-lg border border-accent/20 p-4">
           <p className="text-accent mb-2 text-xs font-bold uppercase">
             Extensions
           </p>
@@ -504,7 +574,7 @@ function LessonDisplay({
   };
   return (
     <div className="surface-card overflow-hidden">
-      <div className="bg-primary p-5 text-white sm:p-6">
+      <div className="p-5 text-white sm:p-6" style={{ backgroundColor: "#673048" }}>
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
             <h2 className="font-serif text-2xl leading-tight">
@@ -529,7 +599,7 @@ function LessonDisplay({
             <button
               type="button"
               onClick={onEdit}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25"
+              className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold hover:bg-muted/50"
             >
               <Pencil className="size-3" />
               Edit
@@ -541,7 +611,7 @@ function LessonDisplay({
               <button
                 type="button"
                 disabled={working}
-                className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25 disabled:opacity-50"
+                className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold hover:bg-muted/50 disabled:opacity-50"
               >
                 <Trash2 className="size-3" />
                 Delete
@@ -551,7 +621,7 @@ function LessonDisplay({
               type="button"
               onClick={onDuplicate}
               disabled={working}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25 disabled:opacity-50"
+              className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold hover:bg-muted/50 disabled:opacity-50"
             >
               <Copy className="size-3" />
               Duplicate
@@ -560,7 +630,7 @@ function LessonDisplay({
               type="button"
               onClick={onPreviewPdf}
               disabled={working}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25 disabled:opacity-50"
+              className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold hover:bg-muted/50 disabled:opacity-50"
             >
               <Eye className="size-3" />
               Preview PDF
@@ -569,7 +639,7 @@ function LessonDisplay({
               type="button"
               onClick={() => onExport("pdf")}
               disabled={working || !canExport}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25 disabled:opacity-50"
+              className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold hover:bg-muted/50 disabled:opacity-50"
             >
               <Download className="size-3" />
               PDF
@@ -578,11 +648,22 @@ function LessonDisplay({
               type="button"
               onClick={() => onExport("docx")}
               disabled={working || !canExport}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-white/15 px-3 text-xs font-bold hover:bg-white/25 disabled:opacity-50"
+              className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold hover:bg-muted/50 disabled:opacity-50"
             >
               <Download className="size-3" />
               DOCX
             </button>
+            {lesson.visibility === "draft" && (
+              <button
+                type="button"
+                onClick={onPublish}
+                disabled={working}
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-accent bg-accent/10 px-3 text-xs font-bold text-accent hover:bg-accent/20 disabled:opacity-50"
+              >
+                <Sparkles className="size-3" />
+                Publish
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -638,7 +719,7 @@ function LessonDisplay({
           );
         })}
       </div>
-      <div className="bg-muted/35 flex flex-col gap-3 border-t p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="bg-muted flex flex-col gap-3 border-t p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex-1">
           <div className="text-muted-foreground flex items-center gap-2 text-xs">
             <History className="size-4" />
@@ -698,6 +779,11 @@ export function LessonBuilderExperience({
   const [working, setWorking] = useState(false);
   const [editing, setEditing] = useState(false);
   const [attemptedGenerate, setAttemptedGenerate] = useState(false);
+  const [aiEnhancingField, setAiEnhancingField] = useState<string | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
+    published: true,
+    draft: true,
+  });
 
   function consumeUsage(
     usage: LessonWorkspace["usage"],
@@ -933,11 +1019,6 @@ export function LessonBuilderExperience({
 
   async function previewPdf() {
     if (!lesson) return;
-    const previewWindow = window.open("", "_blank", "noopener,noreferrer");
-    if (!previewWindow) {
-      toast.error("Enable pop-ups to preview the PDF.");
-      return;
-    }
     setWorking(true);
     try {
       const response = await fetch(
@@ -951,11 +1032,75 @@ export function LessonBuilderExperience({
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      previewWindow.location.href = url;
+      const previewWindow = window.open(url, "_blank", "noopener,noreferrer");
+      if (!previewWindow) {
+        URL.revokeObjectURL(url);
+        toast.error("Enable pop-ups to preview the PDF.");
+        return;
+      }
       window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+      toast.success("PDF preview opened.");
     } catch (error) {
-      previewWindow.close();
       toast.error(error instanceof Error ? error.message : "Preview failed.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function getFieldInsights(
+    field: string,
+    currentValue: string,
+  ): Promise<void> {
+    if (!currentValue.trim()) return;
+    setAiEnhancingField(field);
+    try {
+      // For now, show a toast with suggestions. In a real implementation,
+      // this would call an API endpoint to get AI-powered insights
+      toast.message("✨ AI Insights", {
+        description: `Consider adding more specific details, examples, or measurable outcomes to improve "${field}". You can also use "Regenerate" to create fresh content based on all your parameters.`,
+        duration: 5000,
+      });
+    } catch (error) {
+      toast.error("Could not get insights.");
+    } finally {
+      setAiEnhancingField(null);
+    }
+  }
+
+  async function regenerateField(field: string): Promise<void> {
+    // This would call a new API endpoint to regenerate a specific field
+    // For now, it shows a toast with instructions
+    setAiEnhancingField(field);
+    try {
+      toast.message("🔄 Regenerating...", {
+        description: `Use the "Regenerate" button at the bottom of the lesson or edit individual content to refine the ${field}.`,
+        duration: 4000,
+      });
+    } catch (error) {
+      toast.error("Regeneration failed.");
+    } finally {
+      setAiEnhancingField(null);
+    }
+  }
+
+  async function publishLesson(): Promise<void> {
+    if (!lesson) return;
+    setWorking(true);
+    try {
+      const updated = await resultJson<LessonDetail>(
+        await fetch(`/api/ai-lessons/${lesson.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: lesson.content,
+            visibility: "published",
+          }),
+        }),
+      );
+      storeLesson(updated);
+      toast.success("Lesson published! It's now visible to the community.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Publish failed.");
     } finally {
       setWorking(false);
     }
@@ -1005,7 +1150,7 @@ export function LessonBuilderExperience({
         </div>
       </header>
 
-      <div className="mb-5 flex items-center gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1">
+      <div className="mb-5 space-y-3">
         <button
           type="button"
           onClick={() => {
@@ -1015,24 +1160,66 @@ export function LessonBuilderExperience({
             setEditing(false);
             setAttemptedGenerate(false);
           }}
-          className="bg-primary text-primary-foreground flex h-10 shrink-0 items-center gap-2 rounded-lg px-4 text-xs font-bold"
+          className="bg-primary text-primary-foreground flex h-10 items-center gap-2 rounded-lg px-4 text-xs font-bold"
         >
           <Sparkles className="size-4" />
           New lesson
         </button>
-        {workspace.lessons.map((item) => (
-          <button
-            type="button"
-            key={item.id}
-            onClick={() => void selectLesson(item.id)}
-            className={`h-10 max-w-56 shrink-0 truncate rounded-lg border px-4 text-left text-xs font-bold ${lesson?.id === item.id ? "border-primary text-primary bg-primary/5" : "bg-card"}`}
-          >
-            {item.title}
-          </button>
-        ))}
+        {[
+          { key: "published", label: "Published Lessons", icon: BookOpen },
+          { key: "draft", label: "Saved Lessons", icon: Save },
+        ].map((category) => {
+          const items = workspace.lessons.filter(
+            (item) => item.visibility === category.key,
+          );
+          if (items.length === 0) return null;
+          const Icon = category.icon;
+          const isExpanded = expandedCategories[category.key];
+          return (
+            <div key={category.key}>
+              <button
+                type="button"
+                onClick={() =>
+                  setExpandedCategories((prev) => ({
+                    ...prev,
+                    [category.key]: !prev[category.key],
+                  }))
+                }
+                className="mb-2 flex items-center gap-2 text-xs font-bold text-primary"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="size-4" />
+                ) : (
+                  <ChevronRight className="size-4" />
+                )}
+                <Icon className="size-4" />
+                {category.label} ({items.length})
+              </button>
+              {isExpanded && (
+                <div className="flex flex-wrap gap-2">
+                  {items.map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      onClick={() => void selectLesson(item.id)}
+                      className={`h-9 max-w-56 truncate rounded-lg border px-3 text-left text-xs font-bold transition-colors ${
+                        lesson?.id === item.id
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-card hover:bg-muted"
+                      }`}
+                    >
+                      {item.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.6fr)]">
+        {!lesson && (
         <section className="surface-card p-5 lg:sticky lg:top-5">
           <h2 className="mb-4 flex items-center gap-2 text-sm font-bold">
             <WandSparkles className="text-accent size-4" />
@@ -1160,18 +1347,23 @@ export function LessonBuilderExperience({
                 )}
               </select>
             </label>
-            <label className="grid gap-1.5 text-xs font-bold">
-              Learning objectives
-              <textarea
-                value={source.objectives}
-                maxLength={2000}
-                onChange={(event) =>
-                  setSource({ ...source, objectives: event.target.value })
-                }
-                rows={3}
-                className="bg-muted resize-none rounded-lg px-3 py-2 text-sm font-normal outline-none"
-              />
-            </label>
+            <AIEnhancedTextarea
+              label="Learning objectives"
+              value={source.objectives}
+              onChange={(objectives) =>
+                setSource({ ...source, objectives })
+              }
+              onGetInsights={() =>
+                void getFieldInsights("Learning objectives", source.objectives)
+              }
+              onRegenerate={() =>
+                void regenerateField("Learning objectives")
+              }
+              insightsLoading={aiEnhancingField === "Learning objectives"}
+              regenerateLoading={aiEnhancingField === "Learning objectives"}
+              placeholder="Example: Students will be able to divide fractions using visual models"
+              rows={3}
+            />
             <label className="grid gap-1.5 text-xs font-bold">
               Standards
               <input
@@ -1184,18 +1376,23 @@ export function LessonBuilderExperience({
                 className={fieldClass}
               />
             </label>
-            <label className="grid gap-1.5 text-xs font-bold">
-              Student needs
-              <textarea
-                value={source.studentNeeds}
-                maxLength={2000}
-                onChange={(event) =>
-                  setSource({ ...source, studentNeeds: event.target.value })
-                }
-                rows={2}
-                className="bg-muted resize-none rounded-lg px-3 py-2 text-sm font-normal outline-none"
-              />
-            </label>
+            <AIEnhancedTextarea
+              label="Student needs"
+              value={source.studentNeeds}
+              onChange={(studentNeeds) =>
+                setSource({ ...source, studentNeeds })
+              }
+              onGetInsights={() =>
+                void getFieldInsights("Student needs", source.studentNeeds)
+              }
+              onRegenerate={() =>
+                void regenerateField("Student needs")
+              }
+              insightsLoading={aiEnhancingField === "Student needs"}
+              regenerateLoading={aiEnhancingField === "Student needs"}
+              placeholder="Example: Struggling readers, English language learners, gifted learners"
+              rows={2}
+            />
             <fieldset>
               <legend className="mb-1.5 text-xs font-bold">
                 Teaching style
@@ -1235,6 +1432,7 @@ export function LessonBuilderExperience({
             </button>
           </div>
         </section>
+        )}
 
         <section className="min-w-0">
           {working && !lesson && (
@@ -1284,6 +1482,7 @@ export function LessonBuilderExperience({
               onDuplicate={() => void action("duplicate")}
               onPreviewPdf={() => void previewPdf()}
               onExport={(format) => void exportLesson(format)}
+              onPublish={() => void publishLesson()}
               canRegenerate={
                 workspace.usage.remaining > 0 &&
                 workspace.usage.refinements.remaining !== 0

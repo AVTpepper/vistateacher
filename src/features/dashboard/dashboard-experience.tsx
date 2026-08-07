@@ -127,7 +127,7 @@ export function DashboardExperience({
   ];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
+    <div className="mx-auto max-w-6xl space-y-5 px-4 py-6 lg:px-6">
       <section className="bg-sidebar relative overflow-hidden rounded-xl px-5 py-6 text-white sm:px-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <UserAvatar
@@ -260,98 +260,53 @@ export function DashboardExperience({
         </div>
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <aside className="space-y-5">
-          <section className="surface-card p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="font-serif text-lg">Plan and usage</h2>
-                <p className="text-muted-foreground text-xs">
-                  {dashboard.plan === "plus"
-                    ? "Plus membership"
-                    : "Community membership"}
-                </p>
-              </div>
-              <LayoutDashboard className="text-primary size-5" />
-            </div>
-            <div className="divide-y">
-              {dashboard.quotas.map((quota) => (
-                <QuotaRow key={quota.label} quota={quota} />
-              ))}
-            </div>
-            {dashboard.plan === "free" && (
-              <Link
-                href="/settings/billing"
-                className="bg-accent text-accent-foreground mt-5 flex h-10 items-center justify-center gap-2 rounded-lg text-xs font-bold"
-              >
-                <Sparkles className="size-4" />
-                Upgrade to Plus
-              </Link>
-            )}
-            {dashboard.plan === "plus" && (
-              <Link
-                href="/settings/billing"
-                className="text-primary mt-5 flex h-10 items-center justify-center rounded-lg border text-xs font-bold"
-              >
-                Manage plan
-              </Link>
-            )}
-            {dashboard.subscription.cancelAtPeriodEnd && (
-              <p className="text-accent mt-4 flex items-start gap-2 text-xs">
-                <Clock3 className="mt-0.5 size-3.5 shrink-0" />
-                Your plan remains active until the current period ends.
-              </p>
-            )}
-          </section>
-
-          <section className="surface-card p-5">
-            <SectionHeading
-              title="Teachers you might know"
-              href="/network?view=suggestions"
-              action="See all"
-            />
-            <div className="divide-y">
-              {dashboard.recommendations.educators.length ? (
-                dashboard.recommendations.educators.map(
-                  ({ profile, connectionStatus }) => (
-                    <div
-                      key={profile.uid}
-                      className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+      <section className="surface-card p-5">
+        <SectionHeading
+          title="Teachers you might know"
+          href="/network?view=suggestions"
+          action="See all"
+        />
+        <div className="divide-y">
+          {dashboard.recommendations.educators.length ? (
+            dashboard.recommendations.educators.map(
+              ({ profile, connectionStatus }) => (
+                <div
+                  key={profile.uid}
+                  className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                >
+                  <Link href={`/profile/${profile.uid}`}>
+                    <UserAvatar
+                      name={profile.displayName}
+                      photoURL={profile.photoURL}
+                      className="size-10 rounded-full text-xs"
+                    />
+                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/profile/${profile.uid}`}
+                      className="hover:text-primary block truncate text-sm font-bold"
                     >
-                      <Link href={`/profile/${profile.uid}`}>
-                        <UserAvatar
-                          name={profile.displayName}
-                          photoURL={profile.photoURL}
-                          className="size-10 rounded-full text-xs"
-                        />
-                      </Link>
-                      <div className="min-w-0 flex-1">
-                        <Link
-                          href={`/profile/${profile.uid}`}
-                          className="hover:text-primary block truncate text-sm font-bold"
-                        >
-                          {profile.displayName}
-                        </Link>
-                        <p className="text-muted-foreground truncate text-xs">
-                          {profile.gradeLevel} · {profile.subjects[0]}
-                        </p>
-                      </div>
-                      <FollowButton
-                        targetUid={profile.uid}
-                        connectionStatus={connectionStatus}
-                      />
-                    </div>
-                  ),
-                )
-              ) : (
-                <EmptyLine>
-                  More suggestions will appear as the community grows.
-                </EmptyLine>
-              )}
-            </div>
-          </section>
-        </aside>
-      </div>
+                      {profile.displayName}
+                    </Link>
+                    <p className="text-muted-foreground truncate text-xs">
+                      {profile.gradeLevel} · {profile.subjects[0]}
+                    </p>
+                  </div>
+                  <FollowButton
+                    targetUid={profile.uid}
+                    connectionStatus={connectionStatus}
+                    mode="connect"
+                  />
+                </div>
+              ),
+            )
+          ) : (
+            <EmptyLine>
+              More suggestions will appear as the community grows.
+            </EmptyLine>
+          )}
+        </div>
+      </section>
 
       <div className="grid gap-5 lg:grid-cols-2">
         <section className="surface-card p-5">
@@ -538,6 +493,48 @@ export function DashboardExperience({
               </Link>
             </div>
           </div>
+        )}
+      </section>
+
+      <section className="surface-card mx-auto max-w-lg p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="font-serif text-lg">Plan and usage</h2>
+            <p className="text-muted-foreground text-xs">
+              {dashboard.plan === "plus"
+                ? "Plus membership"
+                : "Community membership"}
+            </p>
+          </div>
+          <LayoutDashboard className="text-primary size-5" />
+        </div>
+        <div className="grid gap-3">
+          {dashboard.quotas.map((quota) => (
+            <QuotaRow key={quota.label} quota={quota} />
+          ))}
+        </div>
+        {dashboard.plan === "free" && (
+          <Link
+            href="/settings/billing"
+            className="bg-accent text-accent-foreground mt-5 flex h-10 items-center justify-center gap-2 rounded-lg text-xs font-bold"
+          >
+            <Sparkles className="size-4" />
+            Upgrade to Plus
+          </Link>
+        )}
+        {dashboard.plan === "plus" && (
+          <Link
+            href="/settings/billing"
+            className="text-primary mt-5 flex h-10 items-center justify-center rounded-lg border text-xs font-bold"
+          >
+            Manage plan
+          </Link>
+        )}
+        {dashboard.subscription.cancelAtPeriodEnd && (
+          <p className="text-accent mt-4 flex items-start gap-2 text-xs">
+            <Clock3 className="mt-0.5 size-3.5 shrink-0" />
+            Your plan remains active until the current period ends.
+          </p>
         )}
       </section>
     </div>

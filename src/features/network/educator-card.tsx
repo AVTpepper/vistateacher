@@ -84,6 +84,7 @@ export function EducatorCard({
             <FollowButton
               targetUid={profile.uid}
               connectionStatus={connectionStatus}
+              mode="connect"
             />
           )}
           <Link

@@ -29,11 +29,11 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: "VistaTeacher | The network built for teachers",
+    default: "VistaTeacher | Find your people in education",
     template: "%s | VistaTeacher",
   },
   description:
-    "Connect, collaborate, share resources, and grow professionally with educators who understand your work.",
+    "A professional community where educators connect with peers, share resources, discuss practice, and build thoughtful lessons. Discover people by subject, grade, and teaching context.",
   alternates: { canonical: "/" },
   icons: {
     icon: [
@@ -46,23 +46,24 @@ export const metadata: Metadata = {
     type: "website",
     url: "/",
     siteName: "VistaTeacher",
-    title: "The network built for teachers",
+    title: "Find your people in education",
     description:
-      "Build your professional network, exchange practical ideas, and strengthen classroom practice together.",
+      "Connect with educators who share your subjects, curriculum, interests, and ambitions. Build your professional network and grow together.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "VistaTeacher",
+        alt: "VistaTeacher - professional network for educators",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "VistaTeacher",
+    site: "@vistateacher",
+    title: "VistaTeacher | Find your people in education",
     description:
-      "Connect, collaborate, and grow with an educator-first professional network.",
+      "Professional community for educators to connect, collaborate, and build stronger teaching practice together.",
     images: ["/twitter-image"],
   },
 };

@@ -2,11 +2,19 @@ import {
   ArrowRight,
   BookOpen,
   Check,
+  Compass,
   GraduationCap,
+  Handshake,
+  Lightbulb,
   MessageSquare,
+  NotebookPen,
   Sparkles,
+  UserCheck,
   Users,
   UsersRound,
+  UserRoundSearch,
+  Globe,
+  Save,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -268,6 +276,167 @@ export async function LandingPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2 sm:gap-6">
               {features.map(({ icon: Icon, title, description }) => (
+                <article
+                  key={title}
+                  className="surface-card surface-card-interactive group p-6 sm:p-7"
+                >
+                  <span className="icon-well-accent group-hover:bg-accent group-hover:text-accent-foreground grid size-12 place-items-center rounded-2xl transition-colors duration-200">
+                    <Icon aria-hidden="true" className="size-5" />
+                  </span>
+                  <h3 className="group-hover:text-primary mt-5 font-serif text-xl tracking-tight transition-colors duration-200">
+                    {title}
+                  </h3>
+                  <p className="text-muted-foreground mt-2 text-sm leading-6 sm:text-base">
+                    {description}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="how-it-works"
+          className="scroll-mt-20 py-16 sm:py-24"
+        >
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mb-10 text-center sm:mb-16">
+              <h2 className="font-serif text-4xl tracking-tight sm:text-5xl">
+                How VistaTeacher works
+              </h2>
+              <p className="text-muted-foreground mx-auto mt-3 max-w-xl text-base sm:text-lg">
+                Discover people, build trusted relationships, and collaborate with purpose.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3 sm:gap-6">
+              <article className="surface-card surface-card-interactive group p-6 sm:p-7">
+                <span className="icon-well-accent group-hover:bg-accent group-hover:text-accent-foreground grid size-12 place-items-center rounded-2xl transition-colors duration-200">
+                  <Compass aria-hidden="true" className="size-5" />
+                </span>
+                <h3 className="group-hover:text-primary mt-5 font-serif text-xl tracking-tight transition-colors duration-200">
+                  Discover
+                </h3>
+                <p className="text-muted-foreground mt-2 text-sm leading-6 sm:text-base">
+                  Filter by subject, grade, and role to find educators who match your teaching context.
+                </p>
+              </article>
+              <article className="surface-card surface-card-interactive group p-6 sm:p-7">
+                <span className="icon-well-accent group-hover:bg-accent group-hover:text-accent-foreground grid size-12 place-items-center rounded-2xl transition-colors duration-200">
+                  <Users aria-hidden="true" className="size-5" />
+                </span>
+                <h3 className="group-hover:text-primary mt-5 font-serif text-xl tracking-tight transition-colors duration-200">
+                  Connect
+                </h3>
+                <p className="text-muted-foreground mt-2 text-sm leading-6 sm:text-base">
+                  Follow peers, explore their work, and build a network that supports your goals.
+                </p>
+              </article>
+              <article className="surface-card surface-card-interactive group p-6 sm:p-7">
+                <span className="icon-well-accent group-hover:bg-accent group-hover:text-accent-foreground grid size-12 place-items-center rounded-2xl transition-colors duration-200">
+                  <Handshake aria-hidden="true" className="size-5" />
+                </span>
+                <h3 className="group-hover:text-primary mt-5 font-serif text-xl tracking-tight transition-colors duration-200">
+                  Collaborate
+                </h3>
+                <p className="text-muted-foreground mt-2 text-sm leading-6 sm:text-base">
+                  Turn connections into practical outcomes through forum posts, resources, and shared ideas.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="connect-with"
+          className="bg-muted/45 scroll-mt-20 py-16 sm:py-24"
+        >
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mb-10 text-center sm:mb-16">
+              <h2 className="font-serif text-4xl tracking-tight sm:text-5xl">
+                Who are you looking to connect with?
+              </h2>
+              <p className="text-muted-foreground mx-auto mt-3 max-w-xl text-base sm:text-lg">
+                Start with your intent. Then create your profile to unlock full educator discovery.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                {
+                  title: "Teachers in your subject",
+                  description: "Swap ideas with people teaching the same content and classroom realities.",
+                  icon: UserRoundSearch,
+                },
+                {
+                  title: "International educators",
+                  description: "Compare approaches from different school systems and teaching cultures.",
+                  icon: Globe,
+                },
+                {
+                  title: "Collaborators",
+                  description: "Find partners for planning, projects, and long-term professional growth.",
+                  icon: Handshake,
+                },
+                {
+                  title: "Mentors",
+                  description: "Learn from experienced educators who can support your next career step.",
+                  icon: UserCheck,
+                },
+                {
+                  title: "Education professionals",
+                  description: "Connect beyond classroom roles across curriculum, leadership, and support teams.",
+                  icon: Users,
+                },
+              ].map(({ title, description, icon: Icon }) => (
+                <article
+                  key={title}
+                  className="surface-card surface-card-interactive group p-6 sm:p-7"
+                >
+                  <span className="icon-well-accent group-hover:bg-accent group-hover:text-accent-foreground grid size-12 place-items-center rounded-2xl transition-colors duration-200">
+                    <Icon aria-hidden="true" className="size-5" />
+                  </span>
+                  <h3 className="group-hover:text-primary mt-5 font-serif text-lg tracking-tight transition-colors duration-200">
+                    {title}
+                  </h3>
+                  <p className="text-muted-foreground mt-2 text-sm leading-6">
+                    {description}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="tools"
+          className="scroll-mt-20 py-16 sm:py-24"
+        >
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mb-10 text-center sm:mb-16">
+              <h2 className="font-serif text-4xl tracking-tight sm:text-5xl">
+                Tools that strengthen your educator network
+              </h2>
+              <p className="text-muted-foreground mx-auto mt-3 max-w-xl text-base sm:text-lg">
+                Keep your people connections active with resources, planning support, and community engagement.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                {
+                  title: "Forum",
+                  description: "Join forum posts about shared challenges and practical ideas with educators.",
+                  icon: Users,
+                },
+                {
+                  title: "Resources",
+                  description: "Discover and share teaching materials that save planning time.",
+                  icon: BookOpen,
+                },
+                {
+                  title: "Lesson Builder",
+                  description: "Create and refine lesson plans with structured workflows.",
+                  icon: NotebookPen,
+                },
+              ].map(({ title, description, icon: Icon }) => (
                 <article
                   key={title}
                   className="surface-card surface-card-interactive group p-6 sm:p-7"
