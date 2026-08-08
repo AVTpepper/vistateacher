@@ -98,11 +98,17 @@ export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
         )}
       </button>
       {open && (
-        <div
-          id="notification-menu"
-          aria-label="Recent notifications"
-          className="bg-card text-card-foreground border-border fixed inset-x-3 top-16 z-50 overflow-hidden rounded-b-xl border shadow-xl sm:absolute sm:inset-x-auto sm:top-12 sm:right-0 sm:w-96 sm:rounded-xl"
-        >
+        <>
+          <div
+            aria-hidden="true"
+            className="fixed inset-0 z-40 sm:hidden"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            id="notification-menu"
+            aria-label="Recent notifications"
+            className="bg-card text-card-foreground border-border fixed inset-x-3 top-16 z-50 overflow-hidden rounded-b-xl border-2 shadow-xl sm:absolute sm:inset-x-auto sm:top-12 sm:right-0 sm:w-96 sm:rounded-xl"
+          >
           <div className="border-border flex min-h-12 items-center justify-between border-b px-4">
             <p className="font-serif text-lg">Notifications</p>
             {unread > 0 && (
@@ -178,7 +184,8 @@ export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
           >
             View all notifications
           </Link>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

@@ -116,6 +116,7 @@ export function ProfileView({
                     <FollowButton
                       targetUid={profile.uid}
                       connectionStatus={data.connectionStatus}
+                      incomingRequest={data.incomingRequestFrom}
                       mode="connect"
                     />
                     <Button asChild size="sm" variant="outline">
