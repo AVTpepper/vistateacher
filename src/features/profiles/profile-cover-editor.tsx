@@ -55,7 +55,7 @@ export function ProfileCoverEditor({
             Choose a color or gradient style for your banner.
           </p>
         </div>
-        <span className="bg-accent/10 text-accent flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold uppercase">
+        <span className="bg-accent/10 text-accent-readable flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold uppercase">
           <Crown aria-hidden="true" className="size-3" />
           Plus
         </span>

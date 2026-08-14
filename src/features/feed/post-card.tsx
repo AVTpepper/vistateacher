@@ -34,7 +34,7 @@ interface PostCardProps {
 const typeStyle = {
   post: "bg-primary/10 text-primary",
   resource: "bg-success/10 text-success",
-  question: "bg-accent/10 text-accent",
+  question: "bg-accent/10 text-accent-readable",
 };
 
 const typeLabel = {

@@ -139,7 +139,10 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             >
               <Icon
                 aria-hidden="true"
-                className={cn("size-4.5 shrink-0", active && "text-accent")}
+                className={cn(
+                  "size-4.5 shrink-0",
+                  active && "text-accent-readable",
+                )}
               />
               <span className="min-w-0 flex-1 truncate">{label}</span>
               {"plus" in item && item.plus && (
@@ -291,7 +294,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                       className={cn(
                         "mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold",
                         plan === "plus"
-                          ? "bg-accent/15 text-accent"
+                          ? "bg-accent/15 text-accent-readable"
                           : "bg-muted text-muted-foreground",
                       )}
                     >

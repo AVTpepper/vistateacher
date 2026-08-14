@@ -238,7 +238,7 @@ function CategoryCard({ category }: { category: ForumCategory }) {
         </span>
         <ChevronRight
           aria-hidden="true"
-          className="text-muted-foreground group-hover:text-accent size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-1"
+          className="text-muted-foreground group-hover:text-accent-readable size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-1"
         />
       </div>
     </Link>

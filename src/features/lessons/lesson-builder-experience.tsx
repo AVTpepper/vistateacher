@@ -168,7 +168,7 @@ function AIEnhancedTextarea({
               type="button"
               onClick={onRegenerate}
               disabled={regenerateLoading}
-              className="text-accent hover:bg-accent/5 flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold disabled:opacity-50"
+              className="text-accent-readable hover:bg-accent/5 flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold disabled:opacity-50"
               title="AI regenerate this field"
             >
               {regenerateLoading ? (
@@ -564,7 +564,7 @@ function LessonDisplay({
           {list(content.differentiation.supports)}
         </div>
         <div className="border-accent/20 rounded-lg border p-4">
-          <p className="text-accent mb-2 text-xs font-bold uppercase">
+          <p className="text-accent-readable mb-2 text-xs font-bold uppercase">
             Extensions
           </p>
           {list(content.differentiation.extensions)}
@@ -658,7 +658,7 @@ function LessonDisplay({
                 type="button"
                 onClick={onPublish}
                 disabled={working}
-                className="border-accent bg-accent/10 text-accent hover:bg-accent/20 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
+                className="border-accent bg-accent/10 text-accent-readable hover:bg-accent/20 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
               >
                 <Sparkles className="size-3" />
                 Publish
@@ -1226,7 +1226,7 @@ export function LessonBuilderExperience({
         {!lesson && (
           <section className="surface-card p-5 lg:sticky lg:top-5">
             <h2 className="mb-4 flex items-center gap-2 text-sm font-bold">
-              <WandSparkles className="text-accent size-4" />
+              <WandSparkles className="text-accent-readable size-4" />
               Lesson parameters
             </h2>
             <p className="text-muted-foreground mb-3 text-xs leading-5">

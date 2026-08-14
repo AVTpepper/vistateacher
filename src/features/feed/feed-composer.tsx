@@ -233,7 +233,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
             >
               <Icon
                 aria-hidden="true"
-                className="text-primary group-hover:text-accent size-4 transition-colors"
+                className="text-primary group-hover:text-accent-readable size-4 transition-colors"
               />
               {action}
             </button>

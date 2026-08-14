@@ -104,7 +104,7 @@ export function ProfileView({
               </div>
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                 {data.plan === "plus" && (
-                  <span className="bg-accent/10 text-accent inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold tracking-wide">
+                  <span className="bg-accent/10 text-accent-readable inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold tracking-wide">
                     Plus
                   </span>
                 )}

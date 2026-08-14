@@ -131,7 +131,7 @@ export async function LandingPage() {
             <h1 className="text-foreground font-serif text-5xl leading-[1.08] tracking-tight sm:text-6xl md:text-7xl">
               Find your people
               <br />
-              <span className="text-accent italic">in education.</span>
+              <span className="text-accent-readable italic">in education.</span>
             </h1>
             <p className="text-muted-foreground mx-auto mt-5 max-w-2xl px-2 text-base leading-8 sm:text-lg md:text-xl">
               Build your professional network, exchange practical ideas,
@@ -260,7 +260,7 @@ export async function LandingPage() {
         <section id="features" className="scroll-mt-20 py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="mb-10 text-center sm:mb-16">
-              <p className="text-accent text-xs font-bold tracking-[0.14em] uppercase">
+              <p className="text-accent-readable text-xs font-bold tracking-[0.14em] uppercase">
                 Professional toolkit
               </p>
               <h2 className="mt-2 font-serif text-4xl tracking-tight sm:text-5xl">
@@ -583,7 +583,7 @@ function Plan({
       }
     >
       {featured && (
-        <span className="bg-accent absolute top-4 right-4 rounded-full px-2.5 py-1 text-xs font-bold text-white shadow-sm">
+        <span className="bg-accent text-accent-foreground absolute top-4 right-4 rounded-full px-2.5 py-1 text-xs font-bold shadow-sm">
           Most popular
         </span>
       )}
@@ -616,7 +616,9 @@ function Plan({
             <Check
               aria-hidden="true"
               className={
-                featured ? "text-sidebar-primary size-4" : "text-accent size-4"
+                featured
+                  ? "text-sidebar-primary size-4"
+                  : "text-accent-readable size-4"
               }
             />
             {feature}

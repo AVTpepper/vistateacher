@@ -110,7 +110,7 @@ export function DashboardExperience({
       label: "Resource downloads",
       value: summary.resourceDownloadsTotal,
       icon: Download,
-      tone: "text-accent bg-accent/10",
+      tone: "text-accent-readable bg-accent/10",
     },
     {
       label: "Forum contributions",
@@ -148,7 +148,7 @@ export function DashboardExperience({
               href="/ai-lessons"
               className="flex h-9 items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 text-xs font-bold hover:bg-white/20"
             >
-              <Sparkles className="text-accent size-3.5" />
+              <Sparkles className="text-accent-readable size-3.5" />
               Build a lesson
             </Link>
             <Link
@@ -172,7 +172,7 @@ export function DashboardExperience({
             label: "Build a lesson",
             detail: "Structured AI planning",
             icon: Sparkles,
-            tone: "text-accent bg-accent/10",
+            tone: "text-accent-readable bg-accent/10",
           },
           {
             href: "/resources",
@@ -443,7 +443,7 @@ export function DashboardExperience({
                 className="bg-muted/35 flex items-center gap-3 rounded-lg p-3"
               >
                 <span
-                  className={`font-serif text-2xl font-bold ${index === 0 ? "text-accent" : "text-muted-foreground"}`}
+                  className={`font-serif text-2xl font-bold ${index === 0 ? "text-accent-readable" : "text-muted-foreground"}`}
                 >
                   {index + 1}
                 </span>
@@ -473,7 +473,7 @@ export function DashboardExperience({
           <div className="bg-muted/35 grid h-72 place-items-center rounded-lg border border-dashed p-6 text-center">
             <div>
               <span className="bg-accent/10 mx-auto grid size-11 place-items-center rounded-lg">
-                <Lock className="text-accent size-5" />
+                <Lock className="text-accent-readable size-5" />
               </span>
               <h3 className="mt-3 text-sm font-bold">Plus analytics</h3>
               <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-xs leading-5">
@@ -526,7 +526,7 @@ export function DashboardExperience({
           </Link>
         )}
         {dashboard.subscription.cancelAtPeriodEnd && (
-          <p className="text-accent mt-4 flex items-start gap-2 text-xs">
+          <p className="text-accent-readable mt-4 flex items-start gap-2 text-xs">
             <Clock3 className="mt-0.5 size-3.5 shrink-0" />
             Your plan remains active until the current period ends.
           </p>

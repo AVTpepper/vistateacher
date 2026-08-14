@@ -34,7 +34,7 @@ function Status({ value }: { value: string }) {
           ? "bg-success/10 text-success"
           : value === "suspended" || value === "rejected"
             ? "bg-destructive/10 text-destructive"
-            : "bg-accent/10 text-accent",
+            : "bg-accent/10 text-accent-readable",
       )}
     >
       {value}

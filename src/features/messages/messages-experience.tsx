@@ -367,7 +367,7 @@ export function MessagesExperience({
                           )}
                         />
                         {conversation.unreadCount > 0 && !selected && (
-                          <span className="bg-accent ring-card absolute -top-1 -right-1 grid min-w-5 place-items-center rounded-full px-1 text-[10px] font-bold text-white ring-2">
+                          <span className="bg-accent text-accent-foreground ring-card absolute -top-1 -right-1 grid min-w-5 place-items-center rounded-full px-1 text-[10px] font-bold ring-2">
                             {conversation.unreadCount}
                           </span>
                         )}

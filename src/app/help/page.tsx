@@ -57,7 +57,7 @@ export default function HelpPage() {
       </p>
       <section className="mt-14 grid gap-8 border-t pt-12 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] lg:gap-14">
         <div>
-          <p className="text-accent font-mono text-xs font-bold uppercase">
+          <p className="text-accent-readable font-mono text-xs font-bold uppercase">
             Contact and feedback
           </p>
           <h2 className="mt-3 font-serif text-3xl">Tell us what you need.</h2>

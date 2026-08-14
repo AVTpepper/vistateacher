@@ -238,7 +238,7 @@ export function OnboardingForm({
         className="space-y-5 border-t pt-8"
       >
         <div>
-          <p className="text-accent font-mono text-xs font-bold uppercase">
+          <p className="text-accent-readable font-mono text-xs font-bold uppercase">
             Step 2 of 2
           </p>
           <h2 id="teaching-interests" className="mt-2 font-serif text-2xl">
