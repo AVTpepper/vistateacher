@@ -36,7 +36,7 @@ const typeStyle = {
   post: "bg-primary/10 text-primary",
   resource: "bg-success/10 text-success",
   question: "bg-accent/10 text-accent-readable",
-  activity: "bg-violet/10 text-violet",
+  activity: "bg-accent text-accent-foreground",
 };
 
 const typeLabel = {
