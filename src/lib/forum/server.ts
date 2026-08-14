@@ -305,10 +305,27 @@ export async function getForumThread(
 ): Promise<ForumThreadDetail | null> {
   const db = adminDb();
   const threadRef = db.doc(`forumThreads/${threadId}`);
-  const thread = await threadRef.get();
-  if (!thread.exists || thread.data()?.moderationStatus !== "approved")
-    return null;
-  await threadRef.update({ viewCount: FieldValue.increment(1) });
+  const uniqueView = await db.runTransaction(async (transaction) => {
+    const viewRef = db.doc(`forumViews/${threadId}_${viewerUid}`);
+    const [thread, view] = await Promise.all([
+      transaction.get(threadRef),
+      transaction.get(viewRef),
+    ]);
+    if (!thread.exists || thread.data()?.moderationStatus !== "approved")
+      return null;
+    const counted = !view.exists;
+    if (counted) {
+      transaction.create(viewRef, {
+        threadId,
+        viewerUid,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      transaction.update(threadRef, { viewCount: FieldValue.increment(1) });
+    }
+    return { thread, counted };
+  });
+  if (!uniqueView) return null;
+  const { thread, counted } = uniqueView;
   const replies = await threadRef
     .collection("replies")
     .where("moderationStatus", "==", "approved")
@@ -340,7 +357,7 @@ export async function getForumThread(
   return {
     thread: {
       ...threadSummary[0]!,
-      viewCount: count(thread.data()?.viewCount) + 1,
+      viewCount: count(thread.data()?.viewCount) + Number(counted),
     },
     replies: replies.docs.map((reply, index) => {
       const data = reply.data();
@@ -666,8 +683,9 @@ export async function moderateForumThread(
     });
   });
   if (input.action !== "delete") return;
-  const [likes, replyReports, threadReports] = await Promise.all([
+  const [likes, views, replyReports, threadReports] = await Promise.all([
     db.collection("forumLikes").where("threadId", "==", input.threadId).get(),
+    db.collection("forumViews").where("threadId", "==", input.threadId).get(),
     db.collection("reports").where("parentId", "==", input.threadId).get(),
     db.collection("reports").where("targetId", "==", input.threadId).get(),
     db.recursiveDelete(threadRef),
@@ -675,6 +693,7 @@ export async function moderateForumThread(
   const writer = db.bulkWriter();
   for (const document of [
     ...likes.docs,
+    ...views.docs,
     ...replyReports.docs,
     ...threadReports.docs,
   ])

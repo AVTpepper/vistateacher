@@ -48,6 +48,7 @@ import {
   addForumReply,
   createForumThread,
   ForumActionError,
+  getForumThread,
   moderateForumThread,
   reportForumContent,
   setForumLiked,
@@ -1193,6 +1194,15 @@ describe("Firestore rules", () => {
       threadId,
       content: "Silent writing before partner talk has worked well for us.",
     });
+    await expect(
+      getForumThread(threadId, "reviewer", "educator"),
+    ).resolves.toMatchObject({ thread: { viewCount: 1 } });
+    await expect(
+      getForumThread(threadId, "reviewer", "educator"),
+    ).resolves.toMatchObject({ thread: { viewCount: 1 } });
+    await expect(
+      getForumThread(threadId, "author", "educator"),
+    ).resolves.toMatchObject({ thread: { viewCount: 2 } });
     await setForumLiked("reviewer", threadId, null, true);
     await setForumLiked("reviewer", threadId, replyId, true);
     await acceptForumReply("author", "educator", threadId, replyId);
@@ -1223,6 +1233,7 @@ describe("Firestore rules", () => {
         solved: true,
         acceptedReplyId: replyId,
         locked: true,
+        viewCount: 2,
       });
       expect(reply.data()).toMatchObject({ likeCount: 1, accepted: true });
     });
