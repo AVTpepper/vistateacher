@@ -50,6 +50,8 @@ function data(
     isOwner: false,
     connectionStatus,
     connectionDirection: connectionStatus === "pending" ? "outgoing" : null,
+    canViewOnlineStatus: false,
+    isOnline: false,
   };
 }
 
