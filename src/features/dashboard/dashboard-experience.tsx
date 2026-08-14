@@ -449,15 +449,15 @@ export function DashboardExperience({
               <Link
                 key={resource.id}
                 href={`/resources/${resource.id}`}
-                className="bg-muted/35 flex items-center gap-3 rounded-lg p-3"
+                className="bg-muted/35 flex min-w-0 items-center gap-3 overflow-hidden rounded-lg p-3"
               >
                 <span
                   className={`font-serif text-2xl font-bold ${index === 0 ? "text-accent-readable" : "text-muted-foreground"}`}
                 >
                   {index + 1}
                 </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-bold">
+                <span className="min-w-0 flex-1 overflow-hidden">
+                  <span className="line-clamp-2 break-words text-sm leading-5 font-bold">
                     {resource.title}
                   </span>
                   <span className="text-muted-foreground mt-0.5 flex items-center gap-1 text-xs">
