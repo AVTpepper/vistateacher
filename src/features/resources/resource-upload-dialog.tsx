@@ -18,7 +18,7 @@ import {
   formatFileSize,
   resourceFileError,
 } from "@/lib/resources/file-validation";
-import type { ResourceAccess, ResourceType } from "@/schemas/resource";
+import type { ResourceType } from "@/schemas/resource";
 
 const emptyForm = {
   title: "",
@@ -27,7 +27,7 @@ const emptyForm = {
   subject: "",
   gradeLevel: "",
   tags: "",
-  accessTier: "free" as ResourceAccess,
+  accessTier: "free" as const,
 };
 
 export function ResourceUploadDialog() {
@@ -301,22 +301,6 @@ export function ResourceUploadDialog() {
                   <option value="unit-plan">Unit plan</option>
                   <option value="video">Video</option>
                   <option value="activity">Activity</option>
-                </Select>
-              </FormField>
-              <FormField id="resource-access" label="Access" required>
-                <Select
-                  id="resource-access"
-                  value={form.accessTier}
-                  onChange={(event) => {
-                    const value = event.currentTarget.value as ResourceAccess;
-                    setForm((current) => ({
-                      ...current,
-                      accessTier: value,
-                    }));
-                  }}
-                >
-                  <option value="free">Available to everyone</option>
-                  <option value="plus">Plus members</option>
                 </Select>
               </FormField>
             </div>

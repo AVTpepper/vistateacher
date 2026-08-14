@@ -6,79 +6,40 @@ import {
 } from "@/lib/resources/policy";
 
 describe("resource entitlements", () => {
-  it("allows four Free uploads and stops the sixth reservation", () => {
+  it("keeps resource uploads unlimited for Community accounts", () => {
     expect(
       canReserveResource({
         status: "active",
-        plan: "free",
-        uploadsThisMonth: 4,
       }),
     ).toEqual({ allowed: true });
-    expect(
-      canReserveResource({
-        status: "active",
-        plan: "free",
-        uploadsThisMonth: 5,
-      }),
-    ).toMatchObject({ reason: "limit-reached" });
   });
 
   it("keeps Plus uploads unlimited and blocks suspended accounts", () => {
     expect(
       canReserveResource({
         status: "active",
-        plan: "plus",
-        uploadsThisMonth: 10_000,
       }),
     ).toEqual({ allowed: true });
     expect(
       canReserveResource({
         status: "suspended",
-        plan: "plus",
-        uploadsThisMonth: 0,
       }),
     ).toMatchObject({ reason: "inactive" });
   });
 
-  it("requires Plus for restricted downloads but always permits the owner", () => {
+  it("allows all active educators to download every resource", () => {
     expect(
       canDownloadResource({
         status: "active",
-        plan: "free",
-        accessTier: "plus",
-        ownsResource: false,
-        downloadsThisMonth: 0,
-      }),
-    ).toMatchObject({ reason: "plus-required" });
-    expect(
-      canDownloadResource({
-        status: "active",
-        plan: "free",
-        accessTier: "plus",
-        ownsResource: true,
-        downloadsThisMonth: 5,
       }),
     ).toEqual({ allowed: true });
   });
 
-  it("limits Community downloads while keeping Plus unlimited", () => {
+  it("blocks resource actions for suspended accounts", () => {
     expect(
       canDownloadResource({
-        status: "active",
-        plan: "free",
-        accessTier: "free",
-        ownsResource: false,
-        downloadsThisMonth: 5,
+        status: "suspended",
       }),
-    ).toMatchObject({ reason: "download-limit-reached" });
-    expect(
-      canDownloadResource({
-        status: "active",
-        plan: "plus",
-        accessTier: "free",
-        ownsResource: false,
-        downloadsThisMonth: 10_000,
-      }),
-    ).toEqual({ allowed: true });
+    ).toMatchObject({ reason: "inactive" });
   });
 });

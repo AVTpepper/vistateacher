@@ -4,8 +4,8 @@ export const PLAN_ENTITLEMENTS = {
   free: {
     maxConnections: 5,
     messagesPerDay: 10,
-    resourceUploadsPerMonth: 5,
-    resourceDownloadsPerMonth: 5,
+    resourceUploadsPerMonth: null,
+    resourceDownloadsPerMonth: null,
     aiLessonsPerMonth: 3,
     aiLessonCreationsPerMonth: 1,
     aiRefinementsPerMonth: 2,

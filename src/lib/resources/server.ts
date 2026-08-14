@@ -2,10 +2,6 @@ import "server-only";
 
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
-import {
-  resolveEffectivePlan,
-  PLAN_ENTITLEMENTS,
-} from "@/lib/entitlements/plan-entitlements";
 import { adminDb, adminStorage } from "@/lib/firebase/admin";
 import {
   canDownloadResource,
@@ -19,7 +15,6 @@ import type {
   ResourceType,
   UpdateResourceInput,
 } from "@/schemas/resource";
-import type { SubscriptionRecord, SubscriptionStatus } from "@/types/models";
 
 const RESOURCE_LIMIT = 100;
 
@@ -75,36 +70,6 @@ export class ResourceActionError extends Error {
   ) {
     super(code);
   }
-}
-
-function subscriptionRecord(
-  data: FirebaseFirestore.DocumentData | undefined,
-): SubscriptionRecord | null {
-  if (!data) return null;
-  const date = (value: unknown) =>
-    value instanceof Timestamp ? value.toDate() : null;
-  return {
-    plan: data.plan === "plus" ? "plus" : "free",
-    status: String(data.status ?? "free") as SubscriptionStatus,
-    stripeCustomerId:
-      typeof data.stripeCustomerId === "string" ? data.stripeCustomerId : null,
-    stripeSubscriptionId:
-      typeof data.stripeSubscriptionId === "string"
-        ? data.stripeSubscriptionId
-        : null,
-    stripePriceId:
-      typeof data.stripePriceId === "string" ? data.stripePriceId : null,
-    billingInterval:
-      data.billingInterval === "month" || data.billingInterval === "year"
-        ? data.billingInterval
-        : null,
-    currentPeriodEnd: date(data.currentPeriodEnd),
-    cancelAtPeriodEnd: data.cancelAtPeriodEnd === true,
-    trialStartedAt: date(data.trialStartedAt),
-    trialEndsAt: date(data.trialEndsAt),
-    trialConsumed: data.trialConsumed === true,
-    updatedAt: date(data.updatedAt) ?? new Date(0),
-  };
 }
 
 function periodKey(now = new Date()): string {
@@ -182,21 +147,16 @@ export async function reserveResourceUpload(
   let uploadsRemaining: number | null = null;
 
   await db.runTransaction(async (transaction) => {
-    const [user, subscription, usage] = await Promise.all([
+    const [user, usage] = await Promise.all([
       transaction.get(db.doc(`users/${uid}`)),
-      transaction.get(db.doc(`subscriptions/${uid}`)),
       transaction.get(usageRef),
     ]);
-    const plan = resolveEffectivePlan(subscriptionRecord(subscription.data()));
     const uploads = number(usage.data()?.resourceUploads);
     const decision = canReserveResource({
       status: user.data()?.status ?? "deleted",
-      plan,
-      uploadsThisMonth: uploads,
     });
     if (!decision.allowed) throw new ResourceActionError(decision.reason);
-    const limit = PLAN_ENTITLEMENTS[plan].resourceUploadsPerMonth;
-    uploadsRemaining = limit === null ? null : Math.max(0, limit - uploads - 1);
+    uploadsRemaining = null;
     transaction.set(
       usageRef,
       {
@@ -219,7 +179,7 @@ export async function reserveResourceUpload(
       tags: [
         ...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US"))),
       ],
-      accessTier: input.accessTier,
+      accessTier: "free",
       filePath: uploadPath,
       fileName: input.fileName,
       fileType: input.fileType,
@@ -390,14 +350,10 @@ export async function getResourceDetail(
   const [
     resourceSnapshot,
     viewerSnapshot,
-    subscriptionSnapshot,
-    usageSnapshot,
     reviewSnapshots,
   ] = await Promise.all([
     db.doc(`resources/${resourceId}`).get(),
     db.doc(`users/${viewerUid}`).get(),
-    db.doc(`subscriptions/${viewerUid}`).get(),
-    db.doc(`usage/${viewerUid}_${periodKey()}`).get(),
     db
       .collection("resourceReviews")
       .where("resourceId", "==", resourceId)
@@ -423,15 +379,8 @@ export async function getResourceDetail(
   const authorMap = new Map(
     authors.map((author) => [author.id, author.data()]),
   );
-  const plan = resolveEffectivePlan(
-    subscriptionRecord(subscriptionSnapshot.data()),
-  );
   const access = canDownloadResource({
     status: viewerSnapshot.data()?.status ?? "deleted",
-    plan,
-    accessTier: data.accessTier === "plus" ? "plus" : "free",
-    ownsResource,
-    downloadsThisMonth: number(usageSnapshot.data()?.resourceDownloads),
   });
   return {
     resource: {
@@ -574,7 +523,7 @@ export async function updateResource(
       tags: [
         ...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US"))),
       ],
-      accessTier: input.accessTier,
+      accessTier: "free",
       editedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
@@ -590,25 +539,15 @@ export async function downloadResource(
   const period = periodKey(now);
   const resourceRef = db.doc(`resources/${resourceId}`);
   const usageRef = db.doc(`usage/${uid}_${period}`);
-  const [resource, user, subscription, usage] = await Promise.all([
+  const [resource, user] = await Promise.all([
     resourceRef.get(),
     db.doc(`users/${uid}`).get(),
-    db.doc(`subscriptions/${uid}`).get(),
-    usageRef.get(),
   ]);
   if (!resource.exists || resource.data()?.status !== "active")
     throw new ResourceActionError("not-found");
   const data = resource.data()!;
-  const plan = resolveEffectivePlan(
-    subscriptionRecord(subscription.data()),
-    now,
-  );
   const decision = canDownloadResource({
     status: user.data()?.status ?? "deleted",
-    plan,
-    accessTier: data.accessTier === "plus" ? "plus" : "free",
-    ownsResource: data.authorId === uid,
-    downloadsThisMonth: number(usage.data()?.resourceDownloads),
   });
   if (!decision.allowed) throw new ResourceActionError(decision.reason);
   let bytes: Buffer;
@@ -621,33 +560,22 @@ export async function downloadResource(
     throw new ResourceActionError("not-ready");
   }
   await db.runTransaction(async (transaction) => {
-    const [currentResource, currentUser, currentSubscription, currentUsage] =
+    const [currentResource, currentUser, currentUsage] =
       await transaction.getAll(
         resourceRef,
         db.doc(`users/${uid}`),
-        db.doc(`subscriptions/${uid}`),
         usageRef,
       );
     if (!currentResource.exists || currentResource.data()?.status !== "active")
       throw new ResourceActionError("not-found");
-    const currentPlan = resolveEffectivePlan(
-      subscriptionRecord(currentSubscription.data()),
-      now,
-    );
     const ownsResource = currentResource.data()?.authorId === uid;
     const downloads = number(currentUsage.data()?.resourceDownloads);
     const currentDecision = canDownloadResource({
       status: currentUser.data()?.status ?? "deleted",
-      plan: currentPlan,
-      accessTier:
-        currentResource.data()?.accessTier === "plus" ? "plus" : "free",
-      ownsResource,
-      downloadsThisMonth: downloads,
     });
     if (!currentDecision.allowed)
       throw new ResourceActionError(currentDecision.reason);
-    const limit = PLAN_ENTITLEMENTS[currentPlan].resourceDownloadsPerMonth;
-    if (!ownsResource && limit !== null) {
+    if (!ownsResource) {
       transaction.set(
         usageRef,
         {

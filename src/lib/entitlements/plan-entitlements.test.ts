@@ -74,7 +74,8 @@ describe("entitlement limits", () => {
     expect(entitlements.aiLessonCreationsPerMonth).toBe(1);
     expect(entitlements.aiRefinementsPerMonth).toBe(2);
     expect(entitlements.lessonExportsPerMonth).toBe(2);
-    expect(entitlements.resourceDownloadsPerMonth).toBe(5);
+    expect(entitlements.resourceUploadsPerMonth).toBeNull();
+    expect(entitlements.resourceDownloadsPerMonth).toBeNull();
   });
 
   it("treats null limits as unlimited", () => {

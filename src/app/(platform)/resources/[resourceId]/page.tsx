@@ -50,11 +50,6 @@ export default async function ResourcePage({
                 <span className="bg-secondary text-primary rounded-full px-2.5 py-1 font-bold capitalize">
                   {resource.type.replace("-", " ")}
                 </span>
-                {resource.accessTier === "plus" && (
-                  <span className="bg-accent/10 text-accent rounded-full px-2.5 py-1 font-bold">
-                    Plus
-                  </span>
-                )}
               </div>
               <h1 className="mt-3 font-serif text-3xl">{resource.title}</h1>
               <p className="text-foreground/75 mt-3 text-sm leading-6">

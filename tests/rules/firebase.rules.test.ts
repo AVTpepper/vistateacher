@@ -965,7 +965,7 @@ describe("Firestore rules", () => {
     });
   });
 
-  it("reserves resource quota transactionally and keeps metadata server-owned", async () => {
+  it("allows unlimited resource reservations and keeps metadata server-owned", async () => {
     await seedNetworkUser("author");
     const input = {
       title: "Fraction comparison cards",
@@ -979,14 +979,13 @@ describe("Firestore rules", () => {
       fileType: "application/pdf" as const,
       fileSize: 1024,
     };
-    for (let index = 0; index < 5; index += 1)
-      await reserveResourceUpload("author", {
+    for (let index = 0; index < 6; index += 1) {
+      const reservation = await reserveResourceUpload("author", {
         ...input,
         title: `${input.title} ${index}`,
       });
-    await expect(reserveResourceUpload("author", input)).rejects.toMatchObject({
-      code: "limit-reached",
-    } satisfies Partial<ResourceActionError>);
+      expect(reservation.uploadsRemaining).toBeNull();
+    }
     await assertFails(
       setDoc(
         doc(
@@ -1067,7 +1066,7 @@ describe("Firestore rules", () => {
     });
   });
 
-  it("limits Community resource downloads but exempts the owner", async () => {
+  it("keeps Community resource downloads unlimited", async () => {
     await seedNetworkUser("author");
     await seedNetworkUser("downloader");
     const filePath = "resources/author/download-test/resource.pdf";
@@ -1107,11 +1106,9 @@ describe("Firestore rules", () => {
       });
     });
 
-    await expect(
-      downloadResource("downloader", "download-test"),
-    ).rejects.toMatchObject({
-      code: "download-limit-reached",
-    } satisfies Partial<ResourceActionError>);
+    await expect(downloadResource("downloader", "download-test")).resolves.toMatchObject({
+      fileName: "resource.pdf",
+    });
     await expect(
       downloadResource("author", "download-test"),
     ).resolves.toMatchObject({

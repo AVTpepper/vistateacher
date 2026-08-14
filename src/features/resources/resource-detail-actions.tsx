@@ -1,7 +1,6 @@
 "use client";
 
-import { Download, LoaderCircle, Lock, Star, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { Download, LoaderCircle, Star, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -19,7 +18,6 @@ export function ResourceDetailActions({
   const [review, setReview] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [downloadLimitReached, setDownloadLimitReached] = useState(false);
 
   async function submitReview() {
     setSubmitting(true);
@@ -111,8 +109,6 @@ export function ResourceDetailActions({
           code?: string;
           error?: string;
         } | null;
-        if (result?.code === "download-limit-reached")
-          setDownloadLimitReached(true);
         throw new Error(result?.error ?? "We couldn't download this resource.");
       }
       const blob = await response.blob();
@@ -130,42 +126,22 @@ export function ResourceDetailActions({
     }
   }
 
-  const canDownload = resource.canDownload && !downloadLimitReached;
-  const limitReached =
-    resource.downloadBlockReason === "download-limit-reached" ||
-    downloadLimitReached;
-
   return (
     <>
       <div className="flex flex-wrap gap-2">
-        {canDownload ? (
-          <button
-            type="button"
-            onClick={() => void download()}
-            disabled={downloading}
-            className="bg-primary text-primary-foreground flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-bold"
-          >
-            {downloading ? (
-              <LoaderCircle
-                aria-hidden="true"
-                className="size-4 animate-spin"
-              />
-            ) : (
-              <Download aria-hidden="true" className="size-4" />
-            )}
-            Download
-          </button>
-        ) : (
-          <Link
-            href="/settings/billing"
-            className="bg-accent text-accent-foreground flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-bold"
-          >
-            <Lock aria-hidden="true" className="size-4" />
-            {limitReached
-              ? "Monthly download limit reached"
-              : "Upgrade to download"}
-          </Link>
-        )}
+        <button
+          type="button"
+          onClick={() => void download()}
+          disabled={downloading || !resource.canDownload}
+          className="bg-primary text-primary-foreground flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {downloading ? (
+            <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+          ) : (
+            <Download aria-hidden="true" className="size-4" />
+          )}
+          {resource.canDownload ? "Download" : "Download unavailable"}
+        </button>
         {resource.ownedByViewer && (
           <button
             type="button"

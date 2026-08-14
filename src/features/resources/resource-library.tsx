@@ -9,7 +9,6 @@ import {
   Filter,
   Grid2X2,
   List,
-  Lock,
   Search,
   Star,
 } from "lucide-react";
@@ -20,7 +19,6 @@ import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import { ResourceUploadDialog } from "@/features/resources/resource-upload-dialog";
 import type { ResourceSummary } from "@/lib/resources/server";
 import { cn } from "@/lib/utils";
-import type { Plan } from "@/types/models";
 
 const typeIcon = {
   "lesson-plan": FileText,
@@ -37,13 +35,7 @@ const typeColor = {
   activity: "bg-amber",
 };
 
-export function ResourceLibrary({
-  resources,
-  plan,
-}: {
-  resources: ResourceSummary[];
-  plan: Plan;
-}) {
+export function ResourceLibrary({ resources }: { resources: ResourceSummary[] }) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query.toLocaleLowerCase("en-US"));
   const [type, setType] = useState("");
@@ -206,7 +198,6 @@ export function ResourceLibrary({
             <ResourceCard
               key={resource.id}
               resource={resource}
-              plan={plan}
               view={view}
             />
           ))}
@@ -229,15 +220,12 @@ export function ResourceLibrary({
 
 function ResourceCard({
   resource,
-  plan,
   view,
 }: {
   resource: ResourceSummary;
-  plan: Plan;
   view: "grid" | "list";
 }) {
   const Icon = typeIcon[resource.type];
-  const locked = resource.accessTier === "plus" && plan === "free";
   if (view === "list")
     return (
       <article className="surface-card surface-card-interactive group flex items-center gap-4 p-4">
@@ -262,7 +250,7 @@ function ResourceCard({
           </p>
           <ResourceMeta resource={resource} />
         </div>
-        <DownloadLink resource={resource} locked={locked} compact={false} />
+        <DownloadLink resource={resource} compact={false} />
       </article>
     );
   return (
@@ -278,22 +266,9 @@ function ResourceCard({
           aria-hidden="true"
           className="size-12 opacity-80 transition-transform duration-200 group-hover:scale-110"
         />
-        {locked && (
-          <span className="absolute inset-0 grid place-items-center bg-black/45">
-            <span className="flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-bold backdrop-blur">
-              <Lock aria-hidden="true" className="size-3.5" />
-              Plus only
-            </span>
-          </span>
-        )}
         <span className="absolute top-2 left-2 rounded-full bg-black/25 px-2 py-1 text-[10px] font-bold capitalize">
           {resource.type.replace("-", " ")}
         </span>
-        {resource.accessTier === "plus" && (
-          <span className="bg-accent absolute top-2 right-2 rounded-full px-2 py-1 text-[10px] font-bold">
-            Plus
-          </span>
-        )}
       </Link>
       <div className="p-4">
         <Link
@@ -321,7 +296,7 @@ function ResourceCard({
         </div>
         <div className="mt-3 flex items-center justify-between">
           <ResourceMeta resource={resource} />
-          <DownloadLink resource={resource} locked={locked} compact />
+          <DownloadLink resource={resource} compact />
         </div>
       </div>
     </article>
@@ -344,28 +319,21 @@ function ResourceMeta({ resource }: { resource: ResourceSummary }) {
 }
 function DownloadLink({
   resource,
-  locked,
   compact,
 }: {
   resource: ResourceSummary;
-  locked: boolean;
   compact: boolean;
 }) {
   return (
     <Link
-      href={locked ? "/pricing" : `/api/resources/${resource.id}/download`}
+      href={`/api/resources/${resource.id}/download`}
       className={cn(
-        "shrink-0 rounded-lg px-3 py-2 text-xs font-bold",
-        locked ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary",
+        "bg-primary/10 text-primary shrink-0 rounded-lg px-3 py-2 text-xs font-bold",
         !compact && "bg-primary text-primary-foreground",
       )}
-      aria-label={
-        locked
-          ? `Upgrade to download ${resource.title}`
-          : `Download ${resource.title}`
-      }
+      aria-label={`Download ${resource.title}`}
     >
-      {locked ? "Upgrade" : compact ? "Download" : "Download"}
+      Download
     </Link>
   );
 }
