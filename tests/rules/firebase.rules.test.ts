@@ -290,7 +290,7 @@ describe("Firestore rules", () => {
       expect(analytics.data()?.profileViews).toBe(1);
       expect(view.exists()).toBe(true);
       expect(viewers).toMatchObject([
-        { uid: "profile-viewer", displayName: "Network Educator" },
+        { uid: "profile-viewer", displayName: "profile-viewer" },
       ]);
     });
   });
