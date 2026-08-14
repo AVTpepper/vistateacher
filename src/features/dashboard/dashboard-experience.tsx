@@ -1,6 +1,7 @@
 import {
   ArrowRight,
   BarChart3,
+  Bell,
   BookOpen,
   Clock3,
   Download,
@@ -15,6 +16,7 @@ import {
   TrendingUp,
   UserPlus,
   Users,
+  WandSparkles,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -223,6 +225,47 @@ export function DashboardExperience({
           );
         })}
       </nav>
+
+      {dashboard.actionItems.length > 0 && (
+        <section
+          className="surface-card p-5"
+          aria-labelledby="action-center-heading"
+        >
+          <div className="mb-4">
+            <h2 id="action-center-heading" className="font-serif text-xl">
+              Action center
+            </h2>
+            <p className="text-muted-foreground text-xs">
+              Small next steps to finish your work and improve visibility.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {dashboard.actionItems.map((item) => {
+              const Icon = item.kind === "notification" ? Bell : WandSparkles;
+              return (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className="bg-muted/35 hover:border-primary/25 flex min-w-0 items-start gap-3 rounded-lg border p-4"
+                >
+                  <span className="bg-accent text-accent-foreground grid size-8 shrink-0 place-items-center rounded-lg">
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="line-clamp-2 text-sm font-bold">
+                      {item.title}
+                    </span>
+                    <span className="text-muted-foreground mt-1 line-clamp-2 text-xs leading-5">
+                      {item.detail}
+                    </span>
+                  </span>
+                  <ArrowRight className="text-muted-foreground mt-1 size-3.5 shrink-0" />
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section aria-labelledby="analytics-heading">
         <div className="mb-3 flex items-end justify-between gap-3">
@@ -457,7 +500,7 @@ export function DashboardExperience({
                   {index + 1}
                 </span>
                 <span className="min-w-0 flex-1 overflow-hidden">
-                  <span className="line-clamp-2 break-words text-sm leading-5 font-bold">
+                  <span className="line-clamp-2 text-sm leading-5 font-bold break-words">
                     {resource.title}
                   </span>
                   <span className="text-muted-foreground mt-0.5 flex items-center gap-1 text-xs">

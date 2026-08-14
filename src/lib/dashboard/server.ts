@@ -18,6 +18,7 @@ import {
   type EducatorDiscoveryResult,
 } from "@/lib/network/server";
 import {
+  listIncompleteResources,
   listOwnedResources,
   listResources,
   type ResourceSummary,
@@ -37,6 +38,14 @@ export interface DashboardQuota {
   limit: number | null;
   period: "day" | "month" | "total";
   href: string;
+}
+
+export interface DashboardActionItem {
+  id: string;
+  title: string;
+  detail: string;
+  href: string;
+  kind: "resource-draft" | "lesson-draft" | "notification" | "resource-tip";
 }
 
 export interface DashboardData {
@@ -67,6 +76,7 @@ export interface DashboardData {
     discussions: ForumThreadSummary[];
   };
   topResources: ResourceSummary[];
+  actionItems: DashboardActionItem[];
 }
 
 function number(value: unknown): number {
@@ -165,6 +175,71 @@ async function getLiveAnalytics(
   };
 }
 
+async function getDashboardActionItems(
+  uid: string,
+): Promise<DashboardActionItem[]> {
+  const db = adminDb();
+  const [resourceDrafts, lessons, notifications, ownedResources] =
+    await Promise.all([
+      listIncompleteResources(uid),
+      db.collection("lessons").where("ownerId", "==", uid).limit(100).get(),
+      db.collection(`users/${uid}/notifications`).limit(100).get(),
+      listOwnedResources(uid),
+    ]);
+  const items: DashboardActionItem[] = resourceDrafts
+    .slice(0, 3)
+    .map((draft) => ({
+      id: `resource_${draft.id}`,
+      kind: "resource-draft",
+      title: `Finish “${draft.title}”`,
+      detail:
+        "Add subject, grade level, and a file so educators can find and use it.",
+      href: `/resources?complete=${encodeURIComponent(draft.id)}#resource-drafts-heading`,
+    }));
+  lessons.docs
+    .filter(
+      (lesson) =>
+        lesson.data().visibility === "draft" && Boolean(lesson.data().content),
+    )
+    .slice(0, 3)
+    .forEach((lesson) => {
+      items.push({
+        id: `lesson_${lesson.id}`,
+        kind: "lesson-draft",
+        title: `Continue “${String(lesson.data().content?.title ?? "lesson draft")}”`,
+        detail: "Refine the plan or publish it to Resources when it is ready.",
+        href: `/ai-lessons?lesson=${encodeURIComponent(lesson.id)}`,
+      });
+    });
+  const unreadCount = notifications.docs.filter(
+    (notification) =>
+      notification.data().read !== true &&
+      notification.data().archived !== true,
+  ).length;
+  if (unreadCount > 0)
+    items.push({
+      id: "unread_notifications",
+      kind: "notification",
+      title: `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`,
+      detail:
+        "Check the notification bell so you do not miss community activity.",
+      href: "/app",
+    });
+  const quietResource = ownedResources.find(
+    (resource) => resource.downloadCount === 0,
+  );
+  if (quietResource)
+    items.push({
+      id: `tip_${quietResource.id}`,
+      kind: "resource-tip",
+      title: `Help “${quietResource.title}” get discovered`,
+      detail:
+        "Review its title, description, and tags to improve search visibility.",
+      href: `/resources/${quietResource.id}`,
+    });
+  return items.slice(0, 8);
+}
+
 export async function getDashboardData(
   uid: string,
   role: UserRole,
@@ -192,15 +267,23 @@ export async function getDashboardData(
     analyticsSnapshot.data() ?? {},
   );
 
-  const [aggregate, educators, resources, ownedResources, feed, forum] =
-    await Promise.all([
-      getLiveAnalytics(uid, storedAnalytics),
-      getNetworkList(uid, uid, "suggestions"),
-      listResources({ query: "", type: "", subject: "", sort: "rating" }),
-      listOwnedResources(uid),
-      getFeedPage(uid, "all"),
-      getForumPage(uid, role, { categoryId: "", cursor: undefined }),
-    ]);
+  const [
+    aggregate,
+    educators,
+    resources,
+    ownedResources,
+    feed,
+    forum,
+    actionItems,
+  ] = await Promise.all([
+    getLiveAnalytics(uid, storedAnalytics),
+    getNetworkList(uid, uid, "suggestions"),
+    listResources({ query: "", type: "", subject: "", sort: "rating" }),
+    listOwnedResources(uid),
+    getFeedPage(uid, "all"),
+    getForumPage(uid, role, { categoryId: "", cursor: undefined }),
+    getDashboardActionItems(uid),
+  ]);
   const recommendedResources = resources
     .filter((resource) => resource.author.uid !== uid)
     .sort(
@@ -293,5 +376,6 @@ export async function getDashboardData(
     topResources: ownedResources
       .sort((left, right) => right.downloadCount - left.downloadCount)
       .slice(0, 4),
+    actionItems,
   };
 }

@@ -18,6 +18,7 @@ import {
   formatFileSize,
   resourceFileError,
 } from "@/lib/resources/file-validation";
+import type { IncompleteResource } from "@/lib/resources/server";
 import type { ResourceType } from "@/schemas/resource";
 
 const emptyForm = {
@@ -30,7 +31,21 @@ const emptyForm = {
   accessTier: "free" as const,
 };
 
-export function ResourceUploadDialog() {
+function initialForm(draft?: IncompleteResource) {
+  if (!draft) return emptyForm;
+  return {
+    ...emptyForm,
+    title: draft.title,
+    description: draft.description,
+    tags: draft.tags.join(", "),
+  };
+}
+
+export function ResourceUploadDialog({
+  draft,
+}: {
+  draft?: IncompleteResource;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const fileButtonRef = useRef<HTMLButtonElement>(null);
@@ -45,7 +60,7 @@ export function ResourceUploadDialog() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [progress, setProgress] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => initialForm(draft));
 
   function reset() {
     setFile(null);
@@ -53,7 +68,7 @@ export function ResourceUploadDialog() {
     setServerError(null);
     setErrors({});
     setProgress(0);
-    setForm(emptyForm);
+    setForm(initialForm(draft));
   }
 
   function chooseFile(nextFile: File | undefined) {
@@ -107,6 +122,7 @@ export function ResourceUploadDialog() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          ...(draft ? { draftResourceId: draft.id } : {}),
           tags: form.tags
             .split(",")
             .map((tag) => tag.trim())
@@ -196,14 +212,18 @@ export function ResourceUploadDialog() {
       }}
     >
       <Dialog.Trigger asChild>
-        <Button>
-          <Upload aria-hidden="true" /> Upload
+        <Button variant={draft ? "outline" : "default"}>
+          <Upload aria-hidden="true" /> {draft ? "Finish resource" : "Upload"}
         </Button>
       </Dialog.Trigger>
       {open && (
         <FormDialogContent
-          title="Upload Resource"
-          description="Share a classroom-ready file with the details educators need to use it."
+          title={draft ? "Finish Resource" : "Upload Resource"}
+          description={
+            draft
+              ? "Complete the details and add a classroom-ready file to publish this resource."
+              : "Share a classroom-ready file with the details educators need to use it."
+          }
           className="sm:max-w-lg"
           footer={
             <div className="flex justify-end gap-2">

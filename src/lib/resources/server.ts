@@ -46,6 +46,15 @@ export interface ResourceDetail extends ResourceSummary {
     "plus-required" | "download-limit-reached" | "inactive" | null;
 }
 
+export interface IncompleteResource {
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  sourcePostId: string;
+  createdAt: string;
+}
+
 export interface ResourceReview {
   id: string;
   author: { uid: string; displayName: string; photoURL: string | null };
@@ -146,22 +155,35 @@ export async function reserveResourceUpload(
   uploadsRemaining: number | null;
 }> {
   const db = adminDb();
-  const resourceRef = db.collection("resources").doc();
+  const resourceRef = input.draftResourceId
+    ? db.doc(`resources/${input.draftResourceId}`)
+    : db.collection("resources").doc();
   const period = periodKey();
   const usageRef = db.doc(`usage/${uid}_${period}`);
   const uploadPath = `resources/${uid}/${resourceRef.id}/resource.${extensionForMime(input.fileType)}`;
   let uploadsRemaining: number | null = null;
 
   await db.runTransaction(async (transaction) => {
-    const [user, usage] = await Promise.all([
-      transaction.get(db.doc(`users/${uid}`)),
-      transaction.get(usageRef),
-    ]);
+    const [user, usage, draft] = await transaction.getAll(
+      db.doc(`users/${uid}`),
+      usageRef,
+      resourceRef,
+    );
     const uploads = number(usage.data()?.resourceUploads);
     const decision = canReserveResource({
       status: user.data()?.status ?? "deleted",
     });
     if (!decision.allowed) throw new ResourceActionError(decision.reason);
+    if (input.draftResourceId) {
+      if (!draft.exists) throw new ResourceActionError("not-found");
+      if (draft.data()?.authorId !== uid)
+        throw new ResourceActionError("not-owner");
+      if (
+        draft.data()?.status !== "draft" ||
+        draft.data()?.completionStatus !== "incomplete"
+      )
+        throw new ResourceActionError("not-ready");
+    }
     uploadsRemaining = null;
     transaction.set(
       usageRef,
@@ -173,7 +195,7 @@ export async function reserveResourceUpload(
       },
       { merge: true },
     );
-    transaction.create(resourceRef, {
+    const resourceData = {
       authorId: uid,
       title: input.title,
       titleLower: input.title.toLocaleLowerCase("en-US"),
@@ -197,10 +219,16 @@ export async function reserveResourceUpload(
       ratingCount: 0,
       status: "uploading",
       moderationStatus: "pending",
+      completionStatus: "complete",
       usagePeriod: period,
-      createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
-    });
+    };
+    if (input.draftResourceId) transaction.update(resourceRef, resourceData);
+    else
+      transaction.create(resourceRef, {
+        ...resourceData,
+        createdAt: FieldValue.serverTimestamp(),
+      });
   });
 
   return { resourceId: resourceRef.id, uploadPath, uploadsRemaining };
@@ -250,6 +278,7 @@ export async function finalizeResourceUpload(
     transaction.update(resourceRef, {
       status: "active",
       moderationStatus: "approved",
+      completionStatus: "complete",
       updatedAt: FieldValue.serverTimestamp(),
     });
     writePublicActivity(transaction, {
@@ -291,24 +320,19 @@ export async function cancelResourceUpload(
       },
       { merge: true },
     );
-    transaction.delete(resourceRef);
-    const sourceLessonId =
-      typeof current.data()?.sourceLessonId === "string"
-        ? current.data()!.sourceLessonId
-        : null;
-    if (sourceLessonId) {
-      transaction.update(db.doc(`lessons/${sourceLessonId}`), {
-        visibility: "draft",
+    if (typeof data.sourcePostId === "string")
+      transaction.update(resourceRef, {
+        status: "draft",
+        moderationStatus: "pending",
+        completionStatus: "incomplete",
+        filePath: FieldValue.delete(),
+        fileName: FieldValue.delete(),
+        fileType: FieldValue.delete(),
+        fileSize: FieldValue.delete(),
+        usagePeriod: FieldValue.delete(),
         updatedAt: FieldValue.serverTimestamp(),
       });
-      transaction.delete(
-        db.doc(`posts/activity_lesson-published_${sourceLessonId}`),
-      );
-    } else {
-      transaction.delete(
-        db.doc(`posts/activity_resource-published_${resourceId}`),
-      );
-    }
+    else transaction.delete(resourceRef);
   });
   if (filePath)
     await adminStorage()
@@ -393,6 +417,32 @@ export async function listOwnedResources(
         document.data().moderationStatus === "approved",
     )
     .map((document) => summary(document.id, document.data(), owner.data()))
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+export async function listIncompleteResources(
+  uid: string,
+): Promise<IncompleteResource[]> {
+  const snapshot = await adminDb()
+    .collection("resources")
+    .where("authorId", "==", uid)
+    .limit(RESOURCE_LIMIT)
+    .get();
+  return snapshot.docs
+    .filter(
+      (document) =>
+        document.data().status === "draft" &&
+        document.data().completionStatus === "incomplete" &&
+        typeof document.data().sourcePostId === "string",
+    )
+    .map((document) => ({
+      id: document.id,
+      title: String(document.data().title ?? "Untitled resource"),
+      description: String(document.data().description ?? ""),
+      tags: stringArray(document.data().tags),
+      sourcePostId: String(document.data().sourcePostId),
+      createdAt: timestamp(document.data().createdAt),
+    }))
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
@@ -677,8 +727,19 @@ export async function deleteResource(
   if (!resource.exists) throw new ResourceActionError("not-found");
   const data = resource.data()!;
   if (data.authorId !== uid) throw new ResourceActionError("not-owner");
+  const sourceLessonId =
+    typeof data.sourceLessonId === "string" ? data.sourceLessonId : null;
+  const usageRef =
+    data.status === "uploading" && typeof data.usagePeriod === "string"
+      ? db.doc(`usage/${uid}_${data.usagePeriod}`)
+      : null;
   await db.runTransaction(async (transaction) => {
-    const current = await transaction.get(resourceRef);
+    const snapshots = await transaction.getAll(
+      resourceRef,
+      ...(sourceLessonId ? [db.doc(`lessons/${sourceLessonId}`)] : []),
+      ...(usageRef ? [usageRef] : []),
+    );
+    const [current, linkedLesson, usage] = snapshots;
     if (!current.exists || current.data()?.authorId !== uid)
       throw new ResourceActionError("not-owner");
     transaction.delete(resourceRef);
@@ -686,9 +747,7 @@ export async function deleteResource(
       transaction.update(db.doc(`users/${uid}`), {
         resourceCount: FieldValue.increment(-1),
       });
-    else {
-      const usageRef = db.doc(`usage/${uid}_${current.data()?.usagePeriod}`);
-      const usage = await transaction.get(usageRef);
+    else if (usageRef) {
       transaction.set(
         usageRef,
         {
@@ -699,6 +758,19 @@ export async function deleteResource(
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true },
+      );
+    }
+    if (sourceLessonId && linkedLesson?.exists) {
+      transaction.update(linkedLesson.ref, {
+        visibility: "draft",
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      transaction.delete(
+        db.doc(`posts/activity_lesson-published_${sourceLessonId}`),
+      );
+    } else {
+      transaction.delete(
+        db.doc(`posts/activity_resource-published_${resourceId}`),
       );
     }
   });

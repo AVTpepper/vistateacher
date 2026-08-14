@@ -17,7 +17,10 @@ import { useDeferredValue, useState } from "react";
 
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import { ResourceUploadDialog } from "@/features/resources/resource-upload-dialog";
-import type { ResourceSummary } from "@/lib/resources/server";
+import type {
+  IncompleteResource,
+  ResourceSummary,
+} from "@/lib/resources/server";
 import { cn } from "@/lib/utils";
 
 const typeIcon = {
@@ -37,8 +40,10 @@ const typeColor = {
 
 export function ResourceLibrary({
   resources,
+  incompleteResources,
 }: {
   resources: ResourceSummary[];
+  incompleteResources: IncompleteResource[];
 }) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query.toLocaleLowerCase("en-US"));
@@ -85,6 +90,41 @@ export function ResourceLibrary({
         </div>
         <ResourceUploadDialog />
       </header>
+      {incompleteResources.length > 0 && (
+        <section
+          className="surface-card mb-5 p-4"
+          aria-labelledby="resource-drafts-heading"
+        >
+          <div className="mb-3">
+            <h2 id="resource-drafts-heading" className="font-serif text-lg">
+              Finish your resource posts
+            </h2>
+            <p className="text-muted-foreground text-xs">
+              Add the missing classroom details and file to publish these in
+              Resources.
+            </p>
+          </div>
+          <div className="divide-y">
+            {incompleteResources.map((draft) => (
+              <div
+                key={draft.id}
+                className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold">{draft.title}</p>
+                  <Link
+                    href={`/post/${draft.sourcePostId}`}
+                    className="text-primary text-xs font-semibold hover:underline"
+                  >
+                    View original post
+                  </Link>
+                </div>
+                <ResourceUploadDialog draft={draft} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <div className="mb-4 flex items-center gap-3">
         <label className="surface-card relative max-w-md flex-1">
           <Search

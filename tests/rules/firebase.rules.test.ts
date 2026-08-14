@@ -40,6 +40,7 @@ import {
 import {
   downloadResource,
   finalizeResourceUpload,
+  listIncompleteResources,
   reserveResourceUpload,
   reviewResource,
 } from "@/lib/resources/server";
@@ -1129,6 +1130,78 @@ describe("Firestore rules", () => {
         { authorId: "author", status: "active", moderationStatus: "approved" },
       ),
     );
+  });
+
+  it("turns resource-tagged posts into completable resource drafts", async () => {
+    await seedNetworkUser("post-resource-author");
+    const postId = await createPost("post-resource-author", {
+      type: "post",
+      content:
+        "Plant cell comparison cards for a middle school science lesson.",
+      imageURLs: [],
+      tags: ["Resources", "Science"],
+      resourceId: null,
+    });
+    const drafts = await listIncompleteResources("post-resource-author");
+    expect(drafts).toMatchObject([
+      {
+        id: `post_${postId}`,
+        sourcePostId: postId,
+        tags: ["resources", "science"],
+      },
+    ]);
+    const dashboard = await getDashboardData(
+      "post-resource-author",
+      "educator",
+    );
+    expect(dashboard.actionItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "resource-draft",
+          href: expect.stringContaining(`complete=post_${postId}`),
+        }),
+      ]),
+    );
+
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    const reservation = await reserveResourceUpload("post-resource-author", {
+      draftResourceId: `post_${postId}`,
+      title: "Plant cell comparison cards",
+      description: "Printable cards for comparing plant cell structures.",
+      type: "activity",
+      subject: "Science",
+      gradeLevel: "Grade 7",
+      tags: ["resources", "science"],
+      accessTier: "free",
+      fileName: "plant-cells.pdf",
+      fileType: "application/pdf",
+      fileSize: bytes.length,
+    });
+    await uploadBytes(
+      ref(
+        testEnv
+          .authenticatedContext("post-resource-author")
+          .storage(storageBucketUrl),
+        reservation.uploadPath,
+      ),
+      bytes,
+      { contentType: "application/pdf" },
+    );
+    await finalizeResourceUpload(
+      "post-resource-author",
+      reservation.resourceId,
+    );
+    expect(await listIncompleteResources("post-resource-author")).toEqual([]);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const resource = await getDoc(
+        doc(context.firestore(), "resources", `post_${postId}`),
+      );
+      expect(resource.data()).toMatchObject({
+        sourcePostId: postId,
+        status: "active",
+        moderationStatus: "approved",
+      });
+    });
   });
 
   it("uploads common and phone image resources and cleans failed reservations", async () => {

@@ -400,6 +400,7 @@ export async function createPost(
 ): Promise<string> {
   const db = adminDb();
   const postRef = db.collection("posts").doc();
+  const resourceDraftRef = db.doc(`resources/post_${postRef.id}`);
   await db.runTransaction(async (transaction) => {
     const authorRef = db.doc(`users/${authorId}`);
     const author = await transaction.get(authorRef);
@@ -407,12 +408,15 @@ export async function createPost(
       throw new FeedActionError("inactive");
     const mentions = await resolveMentions(transaction, input.mentionUids);
     const actorName = String(author.data()?.displayName ?? "An educator");
+    const tags = [
+      ...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US"))),
+    ];
     transaction.create(postRef, {
       authorId,
       type: input.type,
       content: input.content,
       imageURLs: input.imageURLs,
-      tags: [...new Set(input.tags.map((tag) => tag.toLowerCase()))],
+      tags,
       mentions,
       resourceId: input.type === "resource" ? input.resourceId : null,
       activity: null,
@@ -435,6 +439,38 @@ export async function createPost(
       context: "post",
       href: `/post/${postRef.id}`,
     });
+    const createsResourceDraft =
+      !input.resourceId &&
+      tags.some((tag) => tag === "resource" || tag === "resources");
+    if (createsResourceDraft) {
+      const firstLine = input.content.split(/\r?\n/u)[0]?.trim() ?? "";
+      const title =
+        firstLine.length >= 3
+          ? firstLine.slice(0, 140)
+          : "Resource shared from a post";
+      transaction.create(resourceDraftRef, {
+        authorId,
+        sourcePostId: postRef.id,
+        completionStatus: "incomplete",
+        title,
+        titleLower: title.toLocaleLowerCase("en-US"),
+        description: input.content.slice(0, 2_000),
+        type: "activity",
+        subject: "",
+        subjectLower: "",
+        gradeLevel: "",
+        tags,
+        accessTier: "free",
+        downloadCount: 0,
+        ratingTotal: 0,
+        ratingAverage: 0,
+        ratingCount: 0,
+        status: "draft",
+        moderationStatus: "pending",
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
     transaction.update(authorRef, { postCount: FieldValue.increment(1) });
   });
   return postRef.id;
@@ -777,10 +813,20 @@ export async function deletePost(uid: string, postId: string): Promise<void> {
   const db = adminDb();
   const postRef = db.doc(`posts/${postId}`);
   await db.runTransaction(async (transaction) => {
-    const post = await transaction.get(postRef);
+    const resourceDraftRef = db.doc(`resources/post_${postId}`);
+    const [post, resourceDraft] = await transaction.getAll(
+      postRef,
+      resourceDraftRef,
+    );
     if (!post.exists) throw new FeedActionError("not-found");
     if (post.data()?.authorId !== uid) throw new FeedActionError("not-owner");
     transaction.delete(postRef);
+    if (
+      resourceDraft.exists &&
+      resourceDraft.data()?.status === "draft" &&
+      resourceDraft.data()?.completionStatus === "incomplete"
+    )
+      transaction.delete(resourceDraftRef);
     if (post.data()?.type !== "activity")
       transaction.update(db.doc(`users/${uid}`), {
         postCount: FieldValue.increment(-1),

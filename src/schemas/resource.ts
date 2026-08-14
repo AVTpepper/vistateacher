@@ -31,6 +31,7 @@ export const resourceMetadataSchema = z.object({
 });
 
 export const reserveResourceSchema = resourceMetadataSchema.extend({
+  draftResourceId: z.string().trim().min(1).max(128).optional(),
   fileName: z.string().trim().min(1).max(180),
   fileType: resourceMimeTypeSchema,
   fileSize: z
