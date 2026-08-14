@@ -297,7 +297,7 @@ export function MessagesExperience({
 
   return (
     <div className="messages-shell px-3 py-3 sm:px-4 sm:py-4 lg:px-6">
-      <div className="surface-card flex h-full min-h-[min(44rem,calc(100dvh-7.5rem))] overflow-hidden lg:min-h-[calc(100dvh-9.5rem)]">
+      <div className="surface-card flex h-full min-h-0 overflow-hidden">
         <section
           aria-label="Conversations"
           className={cn(
