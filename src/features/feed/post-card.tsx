@@ -91,7 +91,14 @@ export function PostCard({
   async function toggleBookmark() {
     const previous = post;
     const bookmarked = !post.bookmarked;
-    setPost((current) => ({ ...current, bookmarked }));
+    setPost((current) => ({
+      ...current,
+      bookmarked,
+      bookmarkCount: Math.max(
+        0,
+        current.bookmarkCount + (bookmarked ? 1 : -1),
+      ),
+    }));
     const response = await mutation(
       `/api/feed/${post.id}/bookmark`,
       bookmarked ? "PUT" : "DELETE",
@@ -445,6 +452,7 @@ export function PostCard({
           <span className="px-2">
             {post.shareCount} {post.shareCount === 1 ? "share" : "shares"}
           </span>
+          <span className="px-2">{post.bookmarkCount} saved</span>
         </span>
       </div>
       <div className="flex px-2 py-1">

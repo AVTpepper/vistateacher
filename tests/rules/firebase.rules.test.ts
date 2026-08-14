@@ -925,6 +925,7 @@ describe("Firestore rules", () => {
 
     await setPostLiked("reader", postId, true);
     await setPostBookmarked("reader", postId, true);
+    await setPostBookmarked("reader", postId, true);
     await addPostComment("reader", {
       postId,
       content: "I use a two-stars-and-a-wish protocol.",
@@ -942,6 +943,7 @@ describe("Firestore rules", () => {
         moderationStatus: "approved",
         likeCount: 1,
         commentCount: 1,
+        bookmarkCount: 1,
       });
       expect(author.data()?.postCount).toBe(1);
       expect(like.exists()).toBe(true);

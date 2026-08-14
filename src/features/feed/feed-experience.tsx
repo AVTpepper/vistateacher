@@ -92,6 +92,7 @@ export function FeedExperience({ initialPage, account }: FeedExperienceProps) {
       likeCount: 0,
       commentCount: 0,
       shareCount: 0,
+      bookmarkCount: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       editedAt: null,

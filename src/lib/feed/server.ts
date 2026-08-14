@@ -44,6 +44,7 @@ export interface FeedPost {
   likeCount: number;
   commentCount: number;
   shareCount: number;
+  bookmarkCount: number;
   createdAt: string;
   updatedAt: string;
   editedAt: string | null;
@@ -171,6 +172,7 @@ async function hydratePosts(
       likeCount: nonnegativeCount(data.likeCount),
       commentCount: nonnegativeCount(data.commentCount),
       shareCount: nonnegativeCount(data.shareCount),
+      bookmarkCount: nonnegativeCount(data.bookmarkCount),
       createdAt: createdAt.toDate().toISOString(),
       updatedAt: timestamp(data.updatedAt).toDate().toISOString(),
       editedAt:
@@ -336,6 +338,7 @@ export async function createPost(
       likeCount: 0,
       commentCount: 0,
       shareCount: 0,
+      bookmarkCount: 0,
       reportCount: 0,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -443,7 +446,7 @@ export async function setPostBookmarked(
   await db.runTransaction(async (transaction) => {
     const postRef = db.doc(`posts/${postId}`);
     const bookmarkRef = db.doc(`postBookmarks/${uid}_${postId}`);
-    const [, bookmark] = await Promise.all([
+    const [post, bookmark] = await Promise.all([
       assertVisiblePost(transaction, postRef),
       transaction.get(bookmarkRef),
     ]);
@@ -455,6 +458,12 @@ export async function setPostBookmarked(
         createdAt: FieldValue.serverTimestamp(),
       });
     else transaction.delete(bookmarkRef);
+    transaction.update(postRef, {
+      bookmarkCount: Math.max(
+        0,
+        nonnegativeCount(post.data()?.bookmarkCount) + (bookmarked ? 1 : -1),
+      ),
+    });
   });
 }
 
