@@ -38,6 +38,38 @@ function joinedLabel(value: unknown): string {
   });
 }
 
+async function recordUniqueProfileView(
+  profileUid: string,
+  viewerUid: string,
+): Promise<void> {
+  const db = adminDb();
+  await db.runTransaction(async (transaction) => {
+    const viewRef = db.doc(`profileViews/${profileUid}_${viewerUid}`);
+    const analyticsRef = db.doc(`userAnalytics/${profileUid}`);
+    const [view, analytics] = await Promise.all([
+      transaction.get(viewRef),
+      transaction.get(analyticsRef),
+    ]);
+    if (view.exists) return;
+    transaction.create(viewRef, {
+      profileUid,
+      viewerUid,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    transaction.set(
+      analyticsRef,
+      {
+        profileViews:
+          (typeof analytics.data()?.profileViews === "number"
+            ? Math.max(0, Math.trunc(analytics.data()!.profileViews))
+            : 0) + 1,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
+}
+
 export async function getProfileView(
   uid: string,
   viewerUid: string | null,
@@ -57,10 +89,14 @@ export async function getProfileView(
     ? privateUserDocumentSchema.parse(privateSnapshot.data())
     : null;
   const isOwner = viewerUid === uid;
-  const relationship =
+  const [relationship] = await Promise.all([
     viewerUid && !isOwner
-      ? await resolveConnectionRelationship(viewerUid, uid)
-      : null;
+      ? resolveConnectionRelationship(viewerUid, uid)
+      : Promise.resolve(null),
+    viewerUid && !isOwner
+      ? recordUniqueProfileView(uid, viewerUid)
+      : Promise.resolve(),
+  ]);
   const canViewContact = canViewContactDetails(
     uid,
     viewerUid,

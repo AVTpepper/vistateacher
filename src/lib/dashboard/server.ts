@@ -129,6 +129,38 @@ function rankResource(
   );
 }
 
+async function getLiveAnalytics(
+  uid: string,
+  stored: ReturnType<typeof userAnalyticsAggregateSchema.parse>,
+) {
+  const db = adminDb();
+  const [posts, resources, threads, replies, lessons] = await Promise.all([
+    db.collection("posts").where("authorId", "==", uid).get(),
+    db.collection("resources").where("authorId", "==", uid).get(),
+    db.collection("forumThreads").where("authorId", "==", uid).get(),
+    db.collectionGroup("replies").where("authorId", "==", uid).get(),
+    db.collection("lessons").where("ownerId", "==", uid).get(),
+  ]);
+  return {
+    ...stored,
+    postEngagements: posts.docs.reduce(
+      (total, document) =>
+        total +
+        number(document.data().likeCount) +
+        number(document.data().commentCount) +
+        number(document.data().shareCount) +
+        number(document.data().bookmarkCount),
+      0,
+    ),
+    resourceDownloadsTotal: resources.docs.reduce(
+      (total, document) => total + number(document.data().downloadCount),
+      0,
+    ),
+    forumContributions: threads.size + replies.size,
+    lessonsGeneratedTotal: lessons.size,
+  };
+}
+
 export async function getDashboardData(
   uid: string,
   role: UserRole,
@@ -152,11 +184,12 @@ export async function getDashboardData(
   const subscription = subscriptionRecord(subscriptionSnapshot.data());
   const plan = resolveEffectivePlan(subscription, now);
   const entitlements = PLAN_ENTITLEMENTS[plan];
-  const aggregate = userAnalyticsAggregateSchema.parse(
+  const storedAnalytics = userAnalyticsAggregateSchema.parse(
     analyticsSnapshot.data() ?? {},
   );
 
-  const [educators, resources, feed, forum] = await Promise.all([
+  const [aggregate, educators, resources, feed, forum] = await Promise.all([
+    getLiveAnalytics(uid, storedAnalytics),
     getNetworkList(uid, uid, "suggestions"),
     listResources({ query: "", type: "", subject: "", sort: "rating" }),
     getFeedPage(uid, "all"),

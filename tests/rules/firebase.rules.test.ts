@@ -73,6 +73,7 @@ import {
   startVistaTrial,
 } from "@/lib/billing/server";
 import { AdminActionError, performAdminAction } from "@/lib/admin/server";
+import { getProfileView } from "@/lib/profiles/server";
 const projectId = "demo-vista-teacher";
 const storageBucketUrl = `gs://${projectId}.appspot.com`;
 let testEnv: RulesTestEnvironment;
@@ -260,6 +261,29 @@ describe("Firestore rules", () => {
         totalUsers: 99_999,
       }),
     );
+  });
+
+  it("counts one profile view per visiting educator", async () => {
+    await seedNetworkUser("profile-owner");
+    await seedNetworkUser("profile-viewer");
+
+    await getProfileView("profile-owner", "profile-viewer");
+    await getProfileView("profile-owner", "profile-viewer");
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [analytics, view] = await Promise.all([
+        getDoc(doc(context.firestore(), "userAnalytics", "profile-owner")),
+        getDoc(
+          doc(
+            context.firestore(),
+            "profileViews",
+            "profile-owner_profile-viewer",
+          ),
+        ),
+      ]);
+      expect(analytics.data()?.profileViews).toBe(1);
+      expect(view.exists()).toBe(true);
+    });
   });
 
   it("keeps onboarding profile creation server-owned", async () => {
