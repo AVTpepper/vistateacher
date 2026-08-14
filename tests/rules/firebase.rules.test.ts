@@ -20,6 +20,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import {
   acceptConnectionRequest,
+  discoverEducators,
   getNetworkList,
   followEducator,
   NetworkActionError,
@@ -680,16 +681,38 @@ describe("Firestore rules", () => {
     } satisfies Partial<NetworkActionError>);
 
     const [
+      followerDiscovery,
+      educatorDiscovery,
       followerSuggestions,
       educatorSuggestions,
       followerConnections,
       educatorConnections,
     ] = await Promise.all([
+      discoverEducators("follower", {
+        query: "",
+        subject: "",
+        grade: "",
+        location: "",
+        verified: false,
+      }),
+      discoverEducators("educator", {
+        query: "",
+        subject: "",
+        grade: "",
+        location: "",
+        verified: false,
+      }),
       getNetworkList("follower", "follower", "suggestions"),
       getNetworkList("educator", "educator", "suggestions"),
       getNetworkList("follower", "follower", "connections"),
       getNetworkList("educator", "educator", "connections"),
     ]);
+    expect(followerDiscovery.map((result) => result.profile.uid)).not.toContain(
+      "educator",
+    );
+    expect(educatorDiscovery.map((result) => result.profile.uid)).not.toContain(
+      "follower",
+    );
     expect(
       followerSuggestions.map((result) => result.profile.uid),
     ).not.toContain("educator");

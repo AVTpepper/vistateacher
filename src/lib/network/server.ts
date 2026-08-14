@@ -155,7 +155,6 @@ export async function discoverEducators(
         profile.uid !== viewerUid && matchesDiscoveryFilters(profile, filters),
     )
     .sort((left, right) => left.displayName.localeCompare(right.displayName))
-    .slice(0, 30)
     .map((profile) => {
       const relationship = relationships.get(profile.uid) ?? {
         status: "none" as const,
@@ -168,7 +167,9 @@ export async function discoverEducators(
         connectionDirection: relationship.direction,
         relationshipId: relationship.relationshipId,
       };
-    });
+    })
+    .filter((result) => result.connectionStatus !== "accepted")
+    .slice(0, 30);
 }
 
 export async function getNetworkList(
