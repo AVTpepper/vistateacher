@@ -72,7 +72,7 @@ export function ProfileTabs({
           (resources.length ? (
             <div className="space-y-3">
               {resources.map((resource) => (
-                <a
+                <Link
                   href={`/resources/${resource.id}`}
                   key={resource.id}
                   className="surface-card surface-card-interactive flex items-center gap-4 p-4"
@@ -80,15 +80,15 @@ export function ProfileTabs({
                   <span className="bg-secondary text-primary grid size-12 shrink-0 place-items-center rounded-xl">
                     <BookOpen aria-hidden="true" className="size-5" />
                   </span>
-                  <span className="min-w-0">
+                  <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-bold">
                       {resource.title}
                     </span>
-                    <span className="text-muted-foreground mt-1 block text-xs">
-                      {resource.type}
+                    <span className="bg-accent text-accent-foreground mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold capitalize">
+                      {resource.type.replace("-", " ")}
                     </span>
                   </span>
-                </a>
+                </Link>
               ))}
             </div>
           ) : (
