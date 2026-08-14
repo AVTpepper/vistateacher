@@ -33,6 +33,7 @@ import {
   deletePost,
   FeedActionError,
   getFeedPage,
+  recordPostShare,
   setPostBookmarked,
   setPostLiked,
 } from "@/lib/feed/server";
@@ -653,6 +654,17 @@ describe("Firestore rules", () => {
       title: "Revised local food webs",
       ownedByViewer: false,
     });
+    const lessonActivity = (
+      await getFeedPage("lesson-outsider", "all")
+    ).posts.find((post) => post.activity?.kind === "lesson-published");
+    expect(lessonActivity).toMatchObject({
+      type: "activity",
+      content: "",
+      activity: {
+        title: "Revised local food webs",
+        href: `/lessons/${created.id}`,
+      },
+    });
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const resource = await getDoc(
         doc(context.firestore(), "resources", `lesson_${created.id}`),
@@ -991,6 +1003,8 @@ describe("Firestore rules", () => {
     await setPostLiked("reader", postId, true);
     await setPostBookmarked("reader", postId, true);
     await setPostBookmarked("reader", postId, true);
+    await expect(recordPostShare("reader", postId)).resolves.toBe(true);
+    await expect(recordPostShare("reader", postId)).resolves.toBe(false);
     const commentId = await addPostComment("reader", {
       postId,
       content: "I use a two-stars-and-a-wish protocol.",
@@ -1055,6 +1069,7 @@ describe("Firestore rules", () => {
         likeCount: 1,
         commentCount: 1,
         bookmarkCount: 1,
+        shareCount: 1,
       });
       expect(author.data()?.postCount).toBe(1);
       expect(like.exists()).toBe(true);
@@ -1354,6 +1369,17 @@ describe("Firestore rules", () => {
         "I am looking for routines that make space for every learner to contribute.",
       tags: ["discussion"],
       mentionUids: ["reviewer"],
+    });
+    const forumActivity = (await getFeedPage("reviewer", "all")).posts.find(
+      (post) => post.activity?.kind === "forum-thread",
+    );
+    expect(forumActivity).toMatchObject({
+      type: "activity",
+      content: "",
+      activity: {
+        href: `/forum/${threadId}`,
+        title: "How do you structure student-led discussion?",
+      },
     });
     const replyId = await addForumReply("reviewer", {
       threadId,

@@ -42,12 +42,18 @@ export interface FeedAuthor {
 export interface FeedPost {
   id: string;
   author: FeedAuthor;
-  type: CreatePostInput["type"];
+  type: CreatePostInput["type"] | "activity";
   content: string;
   imageURLs: string[];
   tags: string[];
   mentions: MentionTarget[];
   resourceId: string | null;
+  activity: {
+    kind: "forum-thread" | "lesson-published" | "resource-published";
+    label: string;
+    title: string;
+    href: string;
+  } | null;
   likeCount: number;
   commentCount: number;
   shareCount: number;
@@ -58,6 +64,49 @@ export interface FeedPost {
   liked: boolean;
   bookmarked: boolean;
   ownedByViewer: boolean;
+}
+
+export interface PublicActivityInput {
+  authorId: string;
+  kind: NonNullable<FeedPost["activity"]>["kind"];
+  entityId: string;
+  label: string;
+  title: string;
+  href: string;
+  tags: string[];
+}
+
+export function writePublicActivity(
+  transaction: FirebaseFirestore.Transaction,
+  input: PublicActivityInput,
+): FirebaseFirestore.DocumentReference {
+  const activityRef = adminDb().doc(
+    `posts/activity_${input.kind}_${input.entityId}`,
+  );
+  transaction.set(activityRef, {
+    authorId: input.authorId,
+    type: "activity",
+    content: "",
+    imageURLs: [],
+    tags: [...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US")))],
+    mentions: [],
+    resourceId: null,
+    activityKind: input.kind,
+    activityEntityId: input.entityId,
+    activityLabel: input.label,
+    activityTitle: input.title,
+    activityHref: input.href,
+    visibility: "public",
+    moderationStatus: "approved",
+    likeCount: 0,
+    commentCount: 0,
+    shareCount: 0,
+    bookmarkCount: 0,
+    reportCount: 0,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  return activityRef;
 }
 
 export interface FeedPage {
@@ -170,7 +219,9 @@ async function hydratePosts(
       id: document.id,
       author: authors.get(authorId) ?? authorFromData(authorId, undefined),
       type:
-        data.type === "question" || data.type === "resource"
+        data.type === "question" ||
+        data.type === "resource" ||
+        data.type === "activity"
           ? data.type
           : "post",
       content: String(data.content ?? ""),
@@ -178,6 +229,21 @@ async function hydratePosts(
       tags: stringArray(data.tags),
       mentions: mentionsFromData(data.mentions),
       resourceId: typeof data.resourceId === "string" ? data.resourceId : null,
+      activity:
+        data.type === "activity" &&
+        (data.activityKind === "forum-thread" ||
+          data.activityKind === "lesson-published" ||
+          data.activityKind === "resource-published") &&
+        typeof data.activityLabel === "string" &&
+        typeof data.activityTitle === "string" &&
+        typeof data.activityHref === "string"
+          ? {
+              kind: data.activityKind,
+              label: data.activityLabel,
+              title: data.activityTitle,
+              href: data.activityHref,
+            }
+          : null,
       likeCount: nonnegativeCount(data.likeCount),
       commentCount: nonnegativeCount(data.commentCount),
       shareCount: nonnegativeCount(data.shareCount),
@@ -312,7 +378,11 @@ export async function getProfilePosts(
     .where("authorId", "==", profileUid)
     .get();
   const visible = snapshot.docs
-    .filter((document) => document.data().moderationStatus === "approved")
+    .filter(
+      (document) =>
+        document.data().moderationStatus === "approved" &&
+        document.data().type !== "activity",
+    )
     .sort(
       (left, right) =>
         postTimestamp(right).toMillis() - postTimestamp(left).toMillis(),
@@ -345,6 +415,7 @@ export async function createPost(
       tags: [...new Set(input.tags.map((tag) => tag.toLowerCase()))],
       mentions,
       resourceId: input.type === "resource" ? input.resourceId : null,
+      activity: null,
       visibility: "public",
       moderationStatus: "approved",
       likeCount: 0,
@@ -485,6 +556,31 @@ export async function setPostBookmarked(
         nonnegativeCount(post.data()?.bookmarkCount) + (bookmarked ? 1 : -1),
       ),
     });
+  });
+}
+
+export async function recordPostShare(
+  uid: string,
+  postId: string,
+): Promise<boolean> {
+  const db = adminDb();
+  return db.runTransaction(async (transaction) => {
+    const postRef = db.doc(`posts/${postId}`);
+    const shareRef = db.doc(`postShares/${postId}_${uid}`);
+    const [post, share] = await Promise.all([
+      assertVisiblePost(transaction, postRef),
+      transaction.get(shareRef),
+    ]);
+    if (share.exists) return false;
+    transaction.create(shareRef, {
+      postId,
+      uid,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    transaction.update(postRef, {
+      shareCount: nonnegativeCount(post.data()?.shareCount) + 1,
+    });
+    return true;
   });
 }
 
@@ -685,19 +781,26 @@ export async function deletePost(uid: string, postId: string): Promise<void> {
     if (!post.exists) throw new FeedActionError("not-found");
     if (post.data()?.authorId !== uid) throw new FeedActionError("not-owner");
     transaction.delete(postRef);
-    transaction.update(db.doc(`users/${uid}`), {
-      postCount: FieldValue.increment(-1),
-    });
+    if (post.data()?.type !== "activity")
+      transaction.update(db.doc(`users/${uid}`), {
+        postCount: FieldValue.increment(-1),
+      });
   });
 
-  const [likes, bookmarks, reports] = await Promise.all([
+  const [likes, bookmarks, shares, reports] = await Promise.all([
     db.collection("postLikes").where("postId", "==", postId).get(),
     db.collection("postBookmarks").where("postId", "==", postId).get(),
+    db.collection("postShares").where("postId", "==", postId).get(),
     db.collection("reports").where("targetId", "==", postId).get(),
     db.recursiveDelete(postRef),
   ]);
   const writer = db.bulkWriter();
-  for (const document of [...likes.docs, ...bookmarks.docs, ...reports.docs])
+  for (const document of [
+    ...likes.docs,
+    ...bookmarks.docs,
+    ...shares.docs,
+    ...reports.docs,
+  ])
     writer.delete(document.ref);
   await writer.close();
 }

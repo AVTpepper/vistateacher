@@ -90,6 +90,7 @@ export function FeedExperience({ initialPage, account }: FeedExperienceProps) {
       tags: input.tags,
       mentions: [],
       resourceId: input.resourceId,
+      activity: null,
       likeCount: 0,
       commentCount: 0,
       shareCount: 0,

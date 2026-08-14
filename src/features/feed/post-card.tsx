@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -35,12 +36,14 @@ const typeStyle = {
   post: "bg-primary/10 text-primary",
   resource: "bg-success/10 text-success",
   question: "bg-accent/10 text-accent-readable",
+  activity: "bg-violet/10 text-violet",
 };
 
 const typeLabel = {
   post: "Post",
   resource: "Resource Share",
   question: "Question",
+  activity: "Activity",
 };
 
 async function mutation(url: string, method: string, body?: unknown) {
@@ -285,6 +288,15 @@ export function PostCard({
         await navigator.clipboard.writeText(url);
         toast.success("Post link copied.");
       }
+      const response = await mutation(`/api/feed/${post.id}/share`, "POST");
+      const result = (await response.json().catch(() => null)) as {
+        counted?: boolean;
+      } | null;
+      if (response.ok && result?.counted)
+        setPost((current) => ({
+          ...current,
+          shareCount: current.shareCount + 1,
+        }));
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError"))
         toast.error("We couldn't share this post.");
@@ -358,7 +370,7 @@ export function PostCard({
                   Report
                 </button>
               )}
-              {post.ownedByViewer && (
+              {post.ownedByViewer && post.type !== "activity" && (
                 <button
                   type="button"
                   onClick={() => {
@@ -371,7 +383,7 @@ export function PostCard({
                   <Pencil aria-hidden="true" className="size-3.5" /> Edit
                 </button>
               )}
-              {post.ownedByViewer && (
+              {post.ownedByViewer && post.type !== "activity" && (
                 <DeleteConfirmDialog itemName="post" onConfirm={removePost}>
                   <button
                     type="button"
@@ -386,7 +398,22 @@ export function PostCard({
         </div>
       </header>
       <div className="px-4 pb-3">
-        {editingPost ? (
+        {post.type === "activity" && post.activity ? (
+          <Link
+            href={post.activity.href}
+            className="bg-muted/35 hover:border-primary/25 block rounded-xl border p-4 transition-colors"
+          >
+            <span className="text-muted-foreground text-xs font-semibold">
+              {post.activity.label}
+            </span>
+            <span className="mt-1 block font-serif text-xl leading-7">
+              {post.activity.title}
+            </span>
+            <span className="text-primary mt-2 block text-xs font-bold">
+              View activity
+            </span>
+          </Link>
+        ) : editingPost ? (
           <div className="space-y-2">
             <textarea
               value={postDraft}

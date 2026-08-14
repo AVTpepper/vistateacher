@@ -12,6 +12,7 @@ import {
 import { decodeForumCursor, encodeForumCursor } from "@/lib/forum/cursor";
 import { DEFAULT_FORUM_CATEGORIES } from "@/lib/forum/categories";
 import { adminDb } from "@/lib/firebase/admin";
+import { writePublicActivity } from "@/lib/feed/server";
 import {
   mentionsFromData,
   resolveMentions,
@@ -437,6 +438,15 @@ export async function createForumThread(
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
+    writePublicActivity(transaction, {
+      authorId,
+      kind: "forum-thread",
+      entityId: threadRef.id,
+      label: `Started a forum discussion in ${String(category.data()?.name ?? "the forum")}`,
+      title: input.title,
+      href: `/forum/${threadRef.id}`,
+      tags: input.tags,
+    });
     writeMentionNotifications(transaction, {
       mentions,
       actorId: authorId,
@@ -743,6 +753,9 @@ export async function moderateForumThread(
       categoryId = String(thread.data()?.categoryId ?? "");
       replyCount = count(thread.data()?.replyCount);
       transaction.delete(threadRef);
+      transaction.delete(
+        db.doc(`posts/activity_forum-thread_${input.threadId}`),
+      );
       if (categoryId)
         transaction.update(db.doc(`forumCategories/${categoryId}`), {
           threadCount: FieldValue.increment(-1),

@@ -7,6 +7,7 @@ import {
   resolveEffectivePlan,
 } from "@/lib/entitlements/plan-entitlements";
 import { adminDb } from "@/lib/firebase/admin";
+import { writePublicActivity } from "@/lib/feed/server";
 import {
   generateLessonPlan,
   type LessonGenerationOptions,
@@ -670,6 +671,16 @@ export async function updateLesson(
         transaction.update(user.ref, {
           resourceCount: FieldValue.increment(1),
         });
+      if (!resourceWasActive)
+        writePublicActivity(transaction, {
+          authorId: uid,
+          kind: "lesson-published",
+          entityId: lessonId,
+          label: "Published a lesson plan",
+          title: content.title,
+          href: `/lessons/${lessonId}`,
+          tags: ["lesson-plan", content.subject],
+        });
     } else if (resourceWasActive) {
       transaction.update(resourceRef, {
         status: "draft",
@@ -752,6 +763,7 @@ export async function deleteLesson(
           resourceCount: FieldValue.increment(-1),
         });
     }
+    transaction.delete(db.doc(`posts/activity_lesson-published_${lessonId}`));
   });
   await db.recursiveDelete(lessonRef);
 }

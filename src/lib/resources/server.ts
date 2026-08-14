@@ -3,6 +3,7 @@ import "server-only";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { adminDb, adminStorage } from "@/lib/firebase/admin";
+import { writePublicActivity } from "@/lib/feed/server";
 import {
   canDownloadResource,
   canReserveResource,
@@ -251,6 +252,15 @@ export async function finalizeResourceUpload(
       moderationStatus: "approved",
       updatedAt: FieldValue.serverTimestamp(),
     });
+    writePublicActivity(transaction, {
+      authorId: uid,
+      kind: "resource-published",
+      entityId: resourceId,
+      label: "Published a resource",
+      title: String(current.data()?.title ?? "Classroom resource"),
+      href: `/resources/${resourceId}`,
+      tags: stringArray(current.data()?.tags),
+    });
     transaction.update(db.doc(`users/${uid}`), {
       resourceCount: FieldValue.increment(1),
     });
@@ -282,6 +292,23 @@ export async function cancelResourceUpload(
       { merge: true },
     );
     transaction.delete(resourceRef);
+    const sourceLessonId =
+      typeof current.data()?.sourceLessonId === "string"
+        ? current.data()!.sourceLessonId
+        : null;
+    if (sourceLessonId) {
+      transaction.update(db.doc(`lessons/${sourceLessonId}`), {
+        visibility: "draft",
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      transaction.delete(
+        db.doc(`posts/activity_lesson-published_${sourceLessonId}`),
+      );
+    } else {
+      transaction.delete(
+        db.doc(`posts/activity_resource-published_${resourceId}`),
+      );
+    }
   });
   if (filePath)
     await adminStorage()
