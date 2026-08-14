@@ -2,6 +2,7 @@
 
 import { Bell, Check, LoaderCircle } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -18,10 +19,12 @@ interface NotificationGroup {
 }
 
 export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState<NotificationPage | null>(null);
   const [loading, setLoading] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
+  const pendingReads = useRef<Promise<Response>[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -69,11 +72,17 @@ export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
         : current,
     );
     for (const notificationId of notificationIds) {
-      void fetch("/api/notifications", {
+      const request = fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notificationId, action: "mark-read" }),
         keepalive: true,
+      });
+      pendingReads.current.push(request);
+      void request.finally(() => {
+        pendingReads.current = pendingReads.current.filter(
+          (pending) => pending !== request,
+        );
       });
     }
   }
@@ -188,7 +197,17 @@ export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
             </div>
             <Link
               href="/notifications"
-              onClick={() => setOpen(false)}
+              onClick={(event) => {
+                if (!pendingReads.current.length) {
+                  setOpen(false);
+                  return;
+                }
+                event.preventDefault();
+                void Promise.allSettled(pendingReads.current).then(() => {
+                  setOpen(false);
+                  router.push("/notifications");
+                });
+              }}
               className="bg-primary text-primary-foreground hover:bg-primary/90 m-3 flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-bold"
             >
               View all notifications
