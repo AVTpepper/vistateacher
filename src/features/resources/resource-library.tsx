@@ -325,7 +325,7 @@ function DownloadLink({
   compact: boolean;
 }) {
   return (
-    <Link
+    <a
       href={`/api/resources/${resource.id}/download`}
       className={cn(
         "bg-primary/10 text-primary shrink-0 rounded-lg px-3 py-2 text-xs font-bold",
@@ -334,7 +334,7 @@ function DownloadLink({
       aria-label={`Download ${resource.title}`}
     >
       Download
-    </Link>
+    </a>
   );
 }
 function ViewButton({
