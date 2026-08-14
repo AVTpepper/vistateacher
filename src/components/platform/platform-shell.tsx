@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { LogoutButton } from "@/features/auth/logout-button";
 import { NotificationMenu } from "@/features/notifications/notification-menu";
+import { PresenceHeartbeat } from "@/features/presence/presence-heartbeat";
 import { GlobalSearch } from "@/features/search/global-search";
 import { cn } from "@/lib/utils";
 import type { Plan } from "@/types/models";
@@ -175,6 +176,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
 
   return (
     <div className="platform-shell bg-background flex min-h-dvh flex-col">
+      <PresenceHeartbeat />
       <div
         aria-hidden={!mobileOpen}
         className={cn(

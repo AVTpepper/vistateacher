@@ -5,6 +5,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getBillingState } from "@/lib/billing/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { resolveConnectionRelationship } from "@/lib/network/server";
+import { isRecentlyOnline } from "@/lib/presence/policy";
 import { canViewContactDetails } from "@/lib/profiles/privacy";
 import {
   createSearchKeywords,
@@ -28,6 +29,8 @@ export interface ProfileView {
   isOwner: boolean;
   connectionStatus: "none" | "pending" | "accepted" | null;
   connectionDirection: "incoming" | "outgoing" | null;
+  canViewOnlineStatus: boolean;
+  isOnline: boolean;
 }
 
 export interface ProfileViewer {
@@ -130,11 +133,15 @@ export async function getProfileView(
   viewerUid: string | null,
 ): Promise<ProfileView | null> {
   const db = adminDb();
-  const [profileSnapshot, privateSnapshot, billing] = await Promise.all([
-    db.doc(`users/${uid}`).get(),
-    db.doc(`userPrivate/${uid}`).get(),
-    getBillingState(uid).catch(() => null),
-  ]);
+  const [profileSnapshot, privateSnapshot, billing, viewerBilling] =
+    await Promise.all([
+      db.doc(`users/${uid}`).get(),
+      db.doc(`userPrivate/${uid}`).get(),
+      getBillingState(uid).catch(() => null),
+      viewerUid && viewerUid !== uid
+        ? getBillingState(viewerUid).catch(() => null)
+        : Promise.resolve(null),
+    ]);
   if (!profileSnapshot.exists) return null;
 
   const profile = profileDocumentSchema.parse(profileSnapshot.data());
@@ -144,6 +151,10 @@ export async function getProfileView(
     ? privateUserDocumentSchema.parse(privateSnapshot.data())
     : null;
   const isOwner = viewerUid === uid;
+  const lastActiveAt =
+    profileSnapshot.data()?.lastActiveAt instanceof Timestamp
+      ? profileSnapshot.data()!.lastActiveAt.toDate()
+      : null;
   const [relationship] = await Promise.all([
     viewerUid && !isOwner
       ? resolveConnectionRelationship(viewerUid, uid)
@@ -174,6 +185,9 @@ export async function getProfileView(
     isOwner,
     connectionStatus,
     connectionDirection,
+    canViewOnlineStatus:
+      Boolean(viewerUid && !isOwner) && viewerBilling?.effectivePlan === "plus",
+    isOnline: isRecentlyOnline(lastActiveAt),
   };
 }
 

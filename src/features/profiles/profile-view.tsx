@@ -94,7 +94,20 @@ export function ProfileView({
           <div className="mt-1 min-w-0 flex-1 sm:mt-8">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h1 className="font-serif text-2xl">{profile.displayName}</h1>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="font-serif text-2xl">{profile.displayName}</h1>
+                  {data.canViewOnlineStatus && (
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-bold ${data.isOnline ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`size-1.5 rounded-full ${data.isOnline ? "bg-success" : "bg-muted-foreground/50"}`}
+                      />
+                      {data.isOnline ? "Online" : "Offline"}
+                    </span>
+                  )}
+                </div>
                 <p className="text-muted-foreground mt-0.5 text-sm">
                   {profile.professionalRoles.join(", ")}
                 </p>
