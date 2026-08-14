@@ -40,7 +40,6 @@ import {
   downloadResource,
   finalizeResourceUpload,
   reserveResourceUpload,
-  ResourceActionError,
   reviewResource,
 } from "@/lib/resources/server";
 import {
@@ -927,17 +926,36 @@ describe("Firestore rules", () => {
     await setPostLiked("reader", postId, true);
     await setPostBookmarked("reader", postId, true);
     await setPostBookmarked("reader", postId, true);
-    await addPostComment("reader", {
+    const commentId = await addPostComment("reader", {
       postId,
       content: "I use a two-stars-and-a-wish protocol.",
     });
 
     await testEnv.withSecurityRulesDisabled(async (context) => {
-      const [post, author, like, bookmark] = await Promise.all([
+      const [post, author, like, bookmark, likeNotification, commentNotification] =
+        await Promise.all([
         getDoc(doc(context.firestore(), "posts", postId)),
         getDoc(doc(context.firestore(), "users", "author")),
         getDoc(doc(context.firestore(), "postLikes", `${postId}_reader`)),
         getDoc(doc(context.firestore(), "postBookmarks", `reader_${postId}`)),
+        getDoc(
+          doc(
+            context.firestore(),
+            "users",
+            "author",
+            "notifications",
+            `post-like_${postId}_reader`,
+          ),
+        ),
+        getDoc(
+          doc(
+            context.firestore(),
+            "users",
+            "author",
+            "notifications",
+            `post-comment_${commentId}`,
+          ),
+        ),
       ]);
       expect(post.data()).toMatchObject({
         authorId: "author",
@@ -949,6 +967,10 @@ describe("Firestore rules", () => {
       expect(author.data()?.postCount).toBe(1);
       expect(like.exists()).toBe(true);
       expect(bookmark.exists()).toBe(true);
+      expect(likeNotification.data()?.href).toBe(`/post/${postId}`);
+      expect(commentNotification.data()?.href).toBe(
+        `/post/${postId}#comment-${commentId}`,
+      );
     });
 
     await expect(deletePost("reader", postId)).rejects.toMatchObject({
@@ -1208,7 +1230,8 @@ describe("Firestore rules", () => {
       action: "lock",
     });
     await testEnv.withSecurityRulesDisabled(async (context) => {
-      const [category, thread, reply] = await Promise.all([
+      const [category, thread, reply, replyNotification, likeNotification] =
+        await Promise.all([
         getDoc(
           doc(context.firestore(), "forumCategories", "student-engagement"),
         ),
@@ -1222,6 +1245,24 @@ describe("Firestore rules", () => {
             replyId,
           ),
         ),
+        getDoc(
+          doc(
+            context.firestore(),
+            "users",
+            "author",
+            "notifications",
+            `forum-reply_${threadId}_${replyId}`,
+          ),
+        ),
+        getDoc(
+          doc(
+            context.firestore(),
+            "users",
+            "author",
+            "notifications",
+            `forum-like_thread_${threadId}_reviewer`,
+          ),
+        ),
       ]);
       expect(category.data()).toMatchObject({ threadCount: 1, postCount: 2 });
       expect(thread.data()).toMatchObject({
@@ -1233,6 +1274,10 @@ describe("Firestore rules", () => {
         viewCount: 2,
       });
       expect(reply.data()).toMatchObject({ likeCount: 1, accepted: true });
+      expect(replyNotification.data()?.href).toBe(
+        `/forum/${threadId}#reply-${replyId}`,
+      );
+      expect(likeNotification.data()?.href).toBe(`/forum/${threadId}`);
     });
     await assertFails(
       setDoc(

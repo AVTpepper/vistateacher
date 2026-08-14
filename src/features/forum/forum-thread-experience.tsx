@@ -409,7 +409,8 @@ function ReplyCard({
 }) {
   return (
     <article
-      className={`surface-card p-5 ${reply.accepted ? "border-success/40 shadow-sm" : ""}`}
+      id={`reply-${reply.id}`}
+      className={`surface-card scroll-mt-24 p-5 ${reply.accepted ? "border-success/40 shadow-sm" : ""}`}
     >
       {reply.accepted && (
         <div className="text-success mb-3 flex items-center gap-1.5 text-xs font-bold">

@@ -468,6 +468,25 @@ export async function addForumReply(
     transaction.update(db.doc(`forumCategories/${thread.data()?.categoryId}`), {
       postCount: FieldValue.increment(1),
     });
+    const ownerId = String(thread.data()?.authorId ?? "");
+    if (ownerId && ownerId !== authorId) {
+      transaction.create(
+        db.doc(
+          `users/${ownerId}/notifications/forum-reply_${input.threadId}_${replyRef.id}`,
+        ),
+        {
+          type: "forum-reply",
+          actorId: authorId,
+          actorName: String(user.data()?.displayName ?? "An educator"),
+          entityId: input.threadId,
+          message: `${String(user.data()?.displayName ?? "An educator")} replied to your forum discussion.`,
+          href: `/forum/${input.threadId}#reply-${replyRef.id}`,
+          read: false,
+          archived: false,
+          createdAt: FieldValue.serverTimestamp(),
+        },
+      );
+    }
   });
   return replyRef.id;
 }
@@ -574,6 +593,28 @@ export async function setForumLiked(
         count(target.data()?.likeCount) + (liked ? 1 : -1),
       ),
     });
+    const ownerId = String(target.data()?.authorId ?? "");
+    if (ownerId && ownerId !== uid) {
+      const notificationRef = db.doc(
+        `users/${ownerId}/notifications/forum-like_${targetKey}_${uid}`,
+      );
+      if (liked) {
+        const actorName = String(user.data()?.displayName ?? "An educator");
+        transaction.set(notificationRef, {
+          type: "forum-like",
+          actorId: uid,
+          actorName,
+          entityId: threadId,
+          message: `${actorName} found your ${replyId ? "forum reply" : "discussion"} helpful.`,
+          href: replyId
+            ? `/forum/${threadId}#reply-${replyId}`
+            : `/forum/${threadId}`,
+          read: false,
+          archived: false,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      } else transaction.delete(notificationRef);
+    }
   });
 }
 

@@ -513,7 +513,11 @@ export function PostCard({
             <p className="text-muted-foreground text-xs">Loading comments...</p>
           ) : (
             comments.map((item) => (
-              <div key={item.id} className="flex items-start gap-2.5">
+              <div
+                id={`comment-${item.id}`}
+                key={item.id}
+                className="flex scroll-mt-24 items-start gap-2.5"
+              >
                 <ProfileIdentityLink
                   uid={item.author.uid}
                   displayName={item.author.displayName}

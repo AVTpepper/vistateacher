@@ -394,7 +394,7 @@ export function DashboardExperience({
             dashboard.recommendations.posts.map((post) => (
               <Link
                 key={post.id}
-                href="/app"
+                href={`/post/${post.id}`}
                 className="bg-muted/35 hover:border-primary/20 rounded-lg border p-4"
               >
                 <div className="flex items-center gap-2">

@@ -287,11 +287,15 @@ function NotificationActionButton({
 
 function NotificationIcon({ type }: { type: string }) {
   const className = "size-4";
-  if (type === "message" || type === "post-comment")
+  if (
+    type === "message" ||
+    type === "post-comment" ||
+    type === "forum-reply"
+  )
     return <MessageSquare aria-hidden="true" className={className} />;
   if (type === "follow")
     return <UserPlus aria-hidden="true" className={className} />;
-  if (type === "post-like")
+  if (type === "post-like" || type === "forum-like")
     return <Heart aria-hidden="true" className={className} />;
   if (type === "resource-download")
     return <Download aria-hidden="true" className={className} />;
