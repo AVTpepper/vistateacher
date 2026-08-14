@@ -22,8 +22,8 @@ interface FeedExperienceProps {
 }
 
 const tabs: { value: FeedView; label: string }[] = [
-  { value: "all", label: "All Posts" },
-  { value: "following", label: "Following" },
+  { value: "all", label: "Community feed" },
+  { value: "following", label: "Connections feed" },
   { value: "saved", label: "Saved" },
 ];
 
@@ -172,7 +172,7 @@ export function FeedExperience({ initialPage, account }: FeedExperienceProps) {
             {view === "saved"
               ? "Save posts to read them later."
               : view === "following"
-                ? "Posts from educators you follow will appear here."
+                ? "Posts from your connections will appear here."
                 : "Start a useful conversation with the community."}
           </p>
         </section>

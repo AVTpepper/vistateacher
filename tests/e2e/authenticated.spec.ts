@@ -42,7 +42,9 @@ test("signs in a seeded educator and protects platform workflows", async ({
 }) => {
   await signIn(page, "community@vista.local");
 
-  await expect(page.getByRole("button", { name: "All Posts" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Community feed" }),
+  ).toBeVisible();
   await expectNoPageOverflow(page);
   const mobileMenu = page.getByRole("button", { name: "Open menu" });
   if (await mobileMenu.isVisible()) {
