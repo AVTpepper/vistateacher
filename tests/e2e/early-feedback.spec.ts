@@ -70,7 +70,7 @@ test("forum category URLs, validation, API errors, and creation remain stable", 
   await expect(page).toHaveURL(/\/forum\/[^?]+$/, { timeout: 20_000 });
 });
 
-test("JPEG and PNG resource uploads complete and the mobile dialog stays inside the viewport", async ({
+test("common and phone image resource uploads complete and the mobile dialog stays inside the viewport", async ({
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium");
@@ -116,9 +116,10 @@ test("JPEG and PNG resource uploads complete and the mobile dialog stays inside 
     await page
       .getByRole("button", { name: "Upload Resource", exact: true })
       .click();
-    await expect(page.getByText("Resource published.")).toBeVisible({
+    await expect(page.getByText("Resource published.").last()).toBeVisible({
       timeout: 30_000,
     });
+    await page.getByRole("button", { name: "Close toast" }).last().click();
   }
 });
 
