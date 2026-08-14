@@ -45,7 +45,7 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/resources/$(resourceId)).data.fileType == request.resource.contentType
         && firestore.get(/databases/(default)/documents/resources/$(resourceId)).data.fileSize == request.resource.size
         && request.resource.size <= 25 * 1024 * 1024
-        && request.resource.contentType.matches('(application/pdf|application/vnd.openxmlformats-officedocument.wordprocessingml.document|application/vnd.openxmlformats-officedocument.presentationml.presentation|image/(jpeg|png|webp)|video/mp4)');
+        && request.resource.contentType.matches('(application/pdf|application/vnd.openxmlformats-officedocument.wordprocessingml.document|application/vnd.openxmlformats-officedocument.presentationml.presentation|image/(jpeg|png|webp|heic|heif)|video/mp4)');
       allow delete: if false;
     }
 

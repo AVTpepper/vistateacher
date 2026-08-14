@@ -86,6 +86,8 @@ function extensionForMime(mime: ReserveResourceInput["fileType"]): string {
     "image/jpeg": "jpg",
     "image/png": "png",
     "image/webp": "webp",
+    "image/heic": "heic",
+    "image/heif": "heif",
     "video/mp4": "mp4",
   };
   return extensions[mime];
@@ -347,20 +349,18 @@ export async function getResourceDetail(
   viewerUid: string,
 ): Promise<{ resource: ResourceDetail; reviews: ResourceReview[] } | null> {
   const db = adminDb();
-  const [
-    resourceSnapshot,
-    viewerSnapshot,
-    reviewSnapshots,
-  ] = await Promise.all([
-    db.doc(`resources/${resourceId}`).get(),
-    db.doc(`users/${viewerUid}`).get(),
-    db
-      .collection("resourceReviews")
-      .where("resourceId", "==", resourceId)
-      .orderBy("createdAt", "desc")
-      .limit(50)
-      .get(),
-  ]);
+  const [resourceSnapshot, viewerSnapshot, reviewSnapshots] = await Promise.all(
+    [
+      db.doc(`resources/${resourceId}`).get(),
+      db.doc(`users/${viewerUid}`).get(),
+      db
+        .collection("resourceReviews")
+        .where("resourceId", "==", resourceId)
+        .orderBy("createdAt", "desc")
+        .limit(50)
+        .get(),
+    ],
+  );
   if (!resourceSnapshot.exists) return null;
   const data = resourceSnapshot.data()!;
   const ownsResource = data.authorId === viewerUid;
@@ -561,11 +561,7 @@ export async function downloadResource(
   }
   await db.runTransaction(async (transaction) => {
     const [currentResource, currentUser, currentUsage] =
-      await transaction.getAll(
-        resourceRef,
-        db.doc(`users/${uid}`),
-        usageRef,
-      );
+      await transaction.getAll(resourceRef, db.doc(`users/${uid}`), usageRef);
     if (!currentResource.exists || currentResource.data()?.status !== "active")
       throw new ResourceActionError("not-found");
     const ownsResource = currentResource.data()?.authorId === uid;

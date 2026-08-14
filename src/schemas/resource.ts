@@ -15,6 +15,8 @@ export const resourceMimeTypeSchema = z.enum([
   "image/jpeg",
   "image/png",
   "image/webp",
+  "image/heic",
+  "image/heif",
   "video/mp4",
 ]);
 

@@ -1076,7 +1076,7 @@ describe("Firestore rules", () => {
     );
   });
 
-  it("uploads JPEG and PNG resources and cleans failed reservations", async () => {
+  it("uploads common and phone image resources and cleans failed reservations", async () => {
     await seedNetworkUser("image-author");
     const base = {
       title: "Classroom image resource",
@@ -1091,6 +1091,8 @@ describe("Firestore rules", () => {
     for (const [extension, fileType] of [
       ["jpg", "image/jpeg"],
       ["png", "image/png"],
+      ["heic", "image/heic"],
+      ["heif", "image/heif"],
     ] as const) {
       const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
       const reservation = await reserveResourceUpload("image-author", {
@@ -1140,7 +1142,7 @@ describe("Firestore rules", () => {
         ),
       ]);
       expect(resource.exists()).toBe(false);
-      expect(usage.data()?.resourceUploads).toBe(2);
+      expect(usage.data()?.resourceUploads).toBe(4);
     });
   });
 

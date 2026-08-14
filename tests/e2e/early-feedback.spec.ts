@@ -88,6 +88,11 @@ test("JPEG and PNG resource uploads complete and the mobile dialog stays inside 
       mimeType: "image/png",
       buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47]),
     },
+    {
+      name: "classroom.heic",
+      mimeType: "image/heic",
+      buffer: Buffer.from([0x00, 0x00, 0x00, 0x18]),
+    },
   ]) {
     await page.getByRole("button", { name: "Upload", exact: true }).click();
     await page

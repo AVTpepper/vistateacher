@@ -384,7 +384,7 @@ export function ResourceUploadDialog() {
               id="resource-file"
               label="Resource file"
               required
-              hint="PDF, DOCX, PPTX, JPEG, PNG, WebP, or MP4 up to 25 MB."
+              hint="PDF, DOCX, PPTX, JPEG, PNG, WebP, HEIC, HEIF, or MP4 up to 25 MB."
               error={errors.file ?? fileError}
             >
               {({ describedBy, invalid }) => (
@@ -424,7 +424,7 @@ export function ResourceUploadDialog() {
               type="file"
               className="sr-only"
               tabIndex={-1}
-              accept=".pdf,.docx,.pptx,image/jpeg,image/png,image/webp,video/mp4"
+              accept=".pdf,.docx,.pptx,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4"
               onChange={(event) => {
                 chooseFile(event.target.files?.[0]);
                 setErrors((current) => ({ ...current, file: "" }));

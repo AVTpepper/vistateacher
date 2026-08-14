@@ -7,12 +7,14 @@ export const RESOURCE_MIME_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
+  "image/heic",
+  "image/heif",
   "video/mp4",
 ] as const;
 
 export function resourceFileError(file: { type: string; size: number }) {
   if (!(RESOURCE_MIME_TYPES as readonly string[]).includes(file.type))
-    return "This file type is not supported. Choose a PDF, DOCX, PPTX, JPEG, PNG, WebP, or MP4 file.";
+    return "This file type is not supported. Choose a PDF, DOCX, PPTX, JPEG, PNG, WebP, HEIC, HEIF, or MP4 file.";
   if (file.size > RESOURCE_MAX_FILE_SIZE)
     return "This file is too large. Resource files must be 25 MB or smaller.";
   if (file.size <= 0) return "This file is empty. Choose a file with content.";

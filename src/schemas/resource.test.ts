@@ -21,6 +21,13 @@ const valid = {
 describe("resource schemas", () => {
   it("accepts safe bounded metadata", () => {
     expect(reserveResourceSchema.safeParse(valid).success).toBe(true);
+    expect(
+      reserveResourceSchema.safeParse({
+        ...valid,
+        fileName: "classroom.heic",
+        fileType: "image/heic",
+      }).success,
+    ).toBe(true);
   });
 
   it("rejects executable files and files over 25 MB", () => {
