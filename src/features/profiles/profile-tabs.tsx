@@ -1,39 +1,50 @@
-"use client";
-
 import { BookOpen, FileText, Users } from "lucide-react";
-import { useState } from "react";
+import Link from "next/link";
 
+import { ProfilePostList } from "@/features/profiles/profile-post-list";
+import type { FeedPost } from "@/lib/feed/server";
 import { cn } from "@/lib/utils";
 
 export function ProfileTabs({
+  active,
+  profileBasePath,
+  profileUid,
   displayName,
   bio,
   details,
+  posts,
   resources,
+  viewer,
 }: {
+  active: "about" | "resources" | "posts";
+  profileBasePath: "/profile" | "/educators";
+  profileUid: string;
   displayName: string;
   bio: string;
   details: Array<{ label: string; value: string }>;
+  posts: FeedPost[];
   resources: Array<{ id: string; title: string; type: string }>;
+  viewer: { uid: string; displayName: string; photoURL: string | null };
 }) {
-  const [active, setActive] = useState<"posts" | "resources" | "about">(
-    "posts",
-  );
   const tabs = [
-    { key: "posts" as const, label: "Posts", icon: FileText },
-    { key: "resources" as const, label: "Resources", icon: BookOpen },
     { key: "about" as const, label: "About", icon: Users },
+    { key: "resources" as const, label: "Resources", icon: BookOpen },
+    { key: "posts" as const, label: "Posts", icon: FileText },
   ];
+  const profileHref = `${profileBasePath}/${encodeURIComponent(profileUid)}`;
 
   return (
     <>
-      <div className="surface-card mt-4 flex gap-1 p-1">
+      <nav
+        id="profile-content"
+        aria-label="Profile sections"
+        className="surface-card mt-4 flex gap-1 p-1"
+      >
         {tabs.map(({ key, label, icon: Icon }) => (
-          <button
+          <Link
             key={key}
-            type="button"
-            aria-pressed={active === key}
-            onClick={() => setActive(key)}
+            aria-current={active === key ? "page" : undefined}
+            href={`${profileHref}?tab=${key}#profile-content`}
             className={cn(
               "text-muted-foreground hover:text-foreground hover:bg-muted flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors",
               active === key &&
@@ -42,18 +53,21 @@ export function ProfileTabs({
           >
             <Icon aria-hidden="true" className="size-3.5" />
             {label}
-          </button>
+          </Link>
         ))}
-      </div>
+      </nav>
 
       <div className="mt-4">
-        {active === "posts" && (
-          <EmptyState
-            icon={FileText}
-            title={`Posts from ${displayName}`}
-            detail="Published community posts will appear here."
-          />
-        )}
+        {active === "posts" &&
+          (posts.length ? (
+            <ProfilePostList initialPosts={posts} viewer={viewer} />
+          ) : (
+            <EmptyState
+              icon={FileText}
+              title={`No posts from ${displayName} yet`}
+              detail="Published community posts will appear here."
+            />
+          ))}
         {active === "resources" &&
           (resources.length ? (
             <div className="space-y-3">

@@ -18,17 +18,31 @@ import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { FollowButton } from "@/features/network/follow-button";
 import { ProfileTabs } from "@/features/profiles/profile-tabs";
+import type { FeedPost } from "@/lib/feed/server";
 import { coverThemeById, resolveCoverTheme } from "@/lib/profiles/cover-themes";
 import type { ProfileView as ProfileViewData } from "@/lib/profiles/server";
 
 export function ProfileView({
   data,
+  activeTab,
+  postCount,
+  posts,
+  profileBasePath = "/profile",
+  resourceCount,
   resources,
+  viewer,
 }: {
   data: ProfileViewData;
+  activeTab: "about" | "resources" | "posts";
+  postCount: number;
+  posts: FeedPost[];
+  profileBasePath?: "/profile" | "/educators";
+  resourceCount: number;
   resources: Array<{ id: string; title: string; type: string }>;
+  viewer: { uid: string; displayName: string; photoURL: string | null };
 }) {
   const { profile } = data;
+  const profileHref = `${profileBasePath}/${encodeURIComponent(profile.uid)}`;
   const coverTheme = coverThemeById(resolveCoverTheme(profile.coverTheme));
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
   const stats = [
@@ -36,15 +50,20 @@ export function ProfileView({
       icon: Users,
       value: profile.connectionCount,
       label: "Connections",
-      href: null,
+      href: `/network?view=connections&uid=${encodeURIComponent(profile.uid)}&scope=shared`,
     },
     {
       icon: BookOpen,
-      value: profile.resourceCount,
+      value: resourceCount,
       label: "Resources",
-      href: null,
+      href: `${profileHref}?tab=resources#profile-content`,
     },
-    { icon: FileText, value: profile.postCount, label: "Posts", href: null },
+    {
+      icon: FileText,
+      value: postCount,
+      label: "Posts",
+      href: `${profileHref}?tab=posts#profile-content`,
+    },
   ];
 
   return (
@@ -119,14 +138,26 @@ export function ProfileView({
                       connectionDirection={data.connectionDirection}
                       mode="connect"
                     />
-                    <Button asChild size="sm" variant="outline">
-                      <Link
-                        href={`/messages?compose=${encodeURIComponent(profile.uid)}`}
+                    {data.connectionStatus === "accepted" ? (
+                      <Button asChild size="sm" variant="outline">
+                        <Link
+                          href={`/messages?compose=${encodeURIComponent(profile.uid)}`}
+                        >
+                          <MessageCircle aria-hidden="true" />
+                          Message
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button
+                        disabled
+                        size="sm"
+                        variant="outline"
+                        title={`Connect with ${profile.displayName} to send a message.`}
                       >
                         <MessageCircle aria-hidden="true" />
                         Message
-                      </Link>
-                    </Button>
+                      </Button>
+                    )}
                   </>
                 )}
               </div>
@@ -184,35 +215,39 @@ export function ProfileView({
               )}
             </div>
           )}
-        <dl className="mt-5 grid grid-cols-2 gap-4 border-t pt-5 sm:grid-cols-4">
+        <div
+          aria-label="Profile statistics"
+          className="mt-5 grid grid-cols-3 gap-2 border-t pt-5"
+        >
           {stats.map(({ icon: Icon, value, label, href }) => (
-            <div className="text-center" key={label}>
-              <dt className="flex items-center justify-center gap-1.5">
+            <Link
+              aria-label={`View ${profile.displayName}'s ${label.toLowerCase()}`}
+              className="hover:bg-muted focus-visible:ring-ring rounded-xl px-2 py-2 text-center transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              href={href}
+              key={label}
+            >
+              <span className="flex items-center justify-center gap-1.5">
                 <Icon aria-hidden="true" className="text-primary size-3.5" />
                 <span className="text-lg font-bold">
                   {value.toLocaleString()}
                 </span>
-              </dt>
-              <dd className="text-muted-foreground text-xs">
-                {href ? (
-                  <Link
-                    href={href}
-                    className="hover:text-primary hover:underline"
-                  >
-                    {label}
-                  </Link>
-                ) : (
-                  label
-                )}
-              </dd>
-            </div>
+              </span>
+              <span className="text-muted-foreground mt-0.5 block text-xs">
+                {label}
+              </span>
+            </Link>
           ))}
-        </dl>
+        </div>
       </section>
       <ProfileTabs
+        active={activeTab}
+        profileBasePath={profileBasePath}
+        profileUid={profile.uid}
         displayName={profile.displayName}
         bio={profile.bio}
+        posts={posts}
         resources={resources}
+        viewer={viewer}
         details={[
           { label: "Roles", value: profile.professionalRoles.join(", ") },
           {

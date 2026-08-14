@@ -66,6 +66,13 @@ const educators = [
   },
 ] as const;
 
+const connectionCounts: Record<string, number> = {
+  "free-educator": 2,
+  "plus-educator": 3,
+  "educator-three": 2,
+  "platform-admin": 1,
+};
+
 async function upsertAuthUser(user: (typeof educators)[number]) {
   try {
     await auth.getUser(user.uid);
@@ -113,9 +120,9 @@ for (const educator of educators) {
     interests: ["collaboration", "student-engagement"],
     searchKeywords: normalizedName.split(" "),
     isVerified: educator.uid === "plus-educator",
-    connectionCount: 0,
+    connectionCount: connectionCounts[educator.uid] ?? 0,
     resourceCount: educator.uid === "plus-educator" ? 1 : 0,
-    postCount: 1,
+    postCount: educator.uid === "free-educator" ? 1 : 0,
     status: "active",
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
@@ -147,6 +154,22 @@ for (const educator of educators) {
     stripeEventCreatedAt:
       educator.plan === "plus" ? new Date("2026-08-04T12:00:00.000Z") : null,
     updatedAt: FieldValue.serverTimestamp(),
+  });
+}
+
+for (const [followerUid, followingUid] of [
+  ["free-educator", "plus-educator"],
+  ["free-educator", "educator-three"],
+  ["plus-educator", "educator-three"],
+  ["plus-educator", "platform-admin"],
+] as const) {
+  batch.set(db.doc(`follows/${followerUid}_${followingUid}`), {
+    followerUid,
+    followingUid,
+    status: "accepted",
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+    acceptedAt: FieldValue.serverTimestamp(),
   });
 }
 

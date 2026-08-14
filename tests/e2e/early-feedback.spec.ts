@@ -152,6 +152,71 @@ test("post permalinks preserve authentication destinations and expose profile li
   ).toBeVisible();
 });
 
+test("profile stats reveal real content and connection-aware actions", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium");
+  await signIn(page);
+
+  await page.goto("/profile/free-educator");
+  const profileSections = page.getByRole("navigation", {
+    name: "Profile sections",
+  });
+  await expect(
+    profileSections.getByRole("link", { name: "About" }),
+  ).toHaveAttribute("aria-current", "page");
+  expect(await profileSections.getByRole("link").allTextContents()).toEqual([
+    "About",
+    "Resources",
+    "Posts",
+  ]);
+
+  await page.getByRole("link", { name: "View Alex Rivera's posts" }).click();
+  await expect(page).toHaveURL(/\/profile\/free-educator\?tab=posts/);
+  await expect(
+    page.getByText("What routines help students make their thinking visible?"),
+  ).toBeVisible();
+
+  await page.goto("/profile/plus-educator");
+  await page.getByRole("link", { name: "View Maya Chen's resources" }).click();
+  await expect(page).toHaveURL(/\/profile\/plus-educator\?tab=resources/);
+  await expect(page.getByText("Ecosystem Notice and Wonder")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Message" })).toBeEnabled();
+
+  await page.goto("/profile/platform-admin");
+  const disabledMessage = page.getByRole("button", { name: "Message" });
+  await expect(disabledMessage).toBeDisabled();
+  await expect(disabledMessage).toHaveAttribute(
+    "title",
+    "Connect with Sam Admin to send a message.",
+  );
+
+  await page.goto("/profile/plus-educator");
+  await page
+    .getByRole("link", { name: "View Maya Chen's connections" })
+    .click();
+  await expect(page).toHaveURL(
+    /\/network\?view=connections&uid=plus-educator&scope=shared/,
+  );
+  await expect(
+    page.getByRole("heading", { name: "Maya Chen's connections" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("article").filter({ hasText: "Jordan Okafor" }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: /Other connections/ }).click();
+  await expect(
+    page.getByRole("article").filter({ hasText: "Sam Admin" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("article")
+      .filter({ hasText: "Sam Admin" })
+      .getByRole("button", { name: "Connect" }),
+  ).toBeVisible();
+});
+
 test("unsafe return destinations are ignored", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium");
   await page.goto("/sign-in?returnTo=https%3A%2F%2Fevil.example");

@@ -57,6 +57,11 @@ export interface FeedPage {
   nextCursor: string | null;
 }
 
+export interface ProfilePostPage {
+  posts: FeedPost[];
+  total: number;
+}
+
 export interface FeedComment {
   id: string;
   author: FeedAuthor;
@@ -284,6 +289,27 @@ export async function getFeedPage(
             documentId: last.id,
           })
         : null,
+  };
+}
+
+export async function getProfilePosts(
+  viewerUid: string,
+  profileUid: string,
+): Promise<ProfilePostPage> {
+  const snapshot = await adminDb()
+    .collection("posts")
+    .where("authorId", "==", profileUid)
+    .get();
+  const visible = snapshot.docs
+    .filter((document) => document.data().moderationStatus === "approved")
+    .sort(
+      (left, right) =>
+        postTimestamp(right).toMillis() - postTimestamp(left).toMillis(),
+    );
+
+  return {
+    posts: await hydratePosts(viewerUid, visible.slice(0, 20)),
+    total: visible.length,
   };
 }
 
