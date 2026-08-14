@@ -6,7 +6,9 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { MentionTextarea } from "@/features/mentions/mention-textarea";
 import { getFirebaseClient } from "@/lib/firebase/client";
+import type { MentionTarget } from "@/lib/mentions/types";
 import { cn } from "@/lib/utils";
 import type { CreatePostInput } from "@/schemas/feed";
 
@@ -41,6 +43,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
   const [expanded, setExpanded] = useState(false);
   const [type, setType] = useState<CreatePostInput["type"]>("post");
   const [content, setContent] = useState("");
+  const [mentions, setMentions] = useState<MentionTarget[]>([]);
   const [tags, setTags] = useState("");
   const [imageURL, setImageURL] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -84,10 +87,12 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
         .filter(Boolean)
         .slice(0, 5),
       resourceId: null,
+      mentionUids: mentions.map((mention) => mention.uid),
     });
     setSubmitting(false);
     if (!created) return;
     setContent("");
+    setMentions([]);
     setTags("");
     setImageURL(null);
     setType("post");
@@ -133,11 +138,14 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
               </button>
             ))}
           </div>
-          <textarea
+          <MentionTextarea
             autoFocus
             value={content}
+            mentions={mentions}
+            onMentionsChange={setMentions}
+            excludeUid={account.uid}
             maxLength={5_000}
-            onChange={(event) => setContent(event.target.value)}
+            onValueChange={setContent}
             placeholder={
               type === "question"
                 ? "Ask your fellow educators a question..."
@@ -147,6 +155,9 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
             }
             className="text-foreground placeholder:text-muted-foreground min-h-24 w-full resize-none bg-transparent text-sm leading-6 outline-none"
           />
+          <p className="text-muted-foreground mt-1 text-[11px]">
+            Type @ and an educator&apos;s name to tag them.
+          </p>
           <input
             value={tags}
             maxLength={160}

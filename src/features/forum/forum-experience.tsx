@@ -35,7 +35,8 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { MentionTextarea } from "@/features/mentions/mention-textarea";
+import type { MentionTarget } from "@/lib/mentions/types";
 import type {
   ForumCategory,
   ForumPage,
@@ -426,6 +427,7 @@ function NewThreadForm({
     tags: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [mentions, setMentions] = useState<MentionTarget[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -455,6 +457,7 @@ function NewThreadForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          mentionUids: mentions.map((mention) => mention.uid),
           tags: form.tags
             .split(",")
             .map((tag) => tag.trim())
@@ -548,7 +551,7 @@ function NewThreadForm({
         error={errors.content}
       >
         {({ describedBy, invalid }) => (
-          <Textarea
+          <MentionTextarea
             ref={contentRef}
             id="thread-content"
             value={form.content}
@@ -558,8 +561,10 @@ function NewThreadForm({
             rows={6}
             placeholder="Share your question, experience, or discussion prompt..."
             className="resize-y"
-            onChange={(event) => {
-              setForm({ ...form, content: event.target.value });
+            mentions={mentions}
+            onMentionsChange={setMentions}
+            onValueChange={(value) => {
+              setForm({ ...form, content: value });
               setErrors((current) => ({ ...current, content: "" }));
             }}
           />

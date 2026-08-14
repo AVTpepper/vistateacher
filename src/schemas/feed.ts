@@ -10,12 +10,18 @@ const tagSchema = z
   .max(30)
   .regex(/^[\p{L}\p{N}][\p{L}\p{N} -]*$/u, "Use letters and numbers in tags.");
 
+const mentionUidsSchema = z
+  .array(z.string().trim().min(1).max(128))
+  .max(10)
+  .optional();
+
 export const createPostSchema = z.object({
   type: postTypeSchema,
   content: z.string().trim().min(1, "Write something to share.").max(5_000),
   imageURLs: z.array(z.url()).max(4).default([]),
   tags: z.array(tagSchema).max(5).default([]),
   resourceId: z.string().trim().min(1).max(128).nullable().default(null),
+  mentionUids: mentionUidsSchema,
 });
 
 export const updatePostSchema = createPostSchema
@@ -38,6 +44,7 @@ export const postActionSchema = z.object({
 
 export const createCommentSchema = postActionSchema.extend({
   content: z.string().trim().min(1, "Write a comment.").max(1_000),
+  mentionUids: mentionUidsSchema,
 });
 
 export const commentActionSchema = postActionSchema.extend({

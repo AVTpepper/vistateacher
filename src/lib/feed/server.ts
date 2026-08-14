@@ -12,6 +12,12 @@ import {
 
 import { decodeFeedCursor, encodeFeedCursor } from "@/lib/feed/cursor";
 import { adminDb } from "@/lib/firebase/admin";
+import {
+  mentionsFromData,
+  resolveMentions,
+  writeMentionNotifications,
+} from "@/lib/mentions/server";
+import type { MentionTarget } from "@/lib/mentions/types";
 import { getAcceptedConnectionUids } from "@/lib/network/server";
 import type {
   CreateCommentInput,
@@ -40,6 +46,7 @@ export interface FeedPost {
   content: string;
   imageURLs: string[];
   tags: string[];
+  mentions: MentionTarget[];
   resourceId: string | null;
   likeCount: number;
   commentCount: number;
@@ -67,6 +74,7 @@ export interface FeedComment {
   id: string;
   author: FeedAuthor;
   content: string;
+  mentions: MentionTarget[];
   createdAt: string;
   updatedAt: string;
   editedAt: string | null;
@@ -168,6 +176,7 @@ async function hydratePosts(
       content: String(data.content ?? ""),
       imageURLs: stringArray(data.imageURLs),
       tags: stringArray(data.tags),
+      mentions: mentionsFromData(data.mentions),
       resourceId: typeof data.resourceId === "string" ? data.resourceId : null,
       likeCount: nonnegativeCount(data.likeCount),
       commentCount: nonnegativeCount(data.commentCount),
@@ -326,12 +335,15 @@ export async function createPost(
     const author = await transaction.get(authorRef);
     if (!author.exists || author.data()?.status !== "active")
       throw new FeedActionError("inactive");
+    const mentions = await resolveMentions(transaction, input.mentionUids);
+    const actorName = String(author.data()?.displayName ?? "An educator");
     transaction.create(postRef, {
       authorId,
       type: input.type,
       content: input.content,
       imageURLs: input.imageURLs,
       tags: [...new Set(input.tags.map((tag) => tag.toLowerCase()))],
+      mentions,
       resourceId: input.type === "resource" ? input.resourceId : null,
       visibility: "public",
       moderationStatus: "approved",
@@ -342,6 +354,15 @@ export async function createPost(
       reportCount: 0,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
+    });
+    writeMentionNotifications(transaction, {
+      mentions,
+      actorId: authorId,
+      actorName,
+      entityId: postRef.id,
+      entityKey: `post_${postRef.id}`,
+      context: "post",
+      href: `/post/${postRef.id}`,
     });
     transaction.update(authorRef, { postCount: FieldValue.increment(1) });
   });
@@ -482,12 +503,24 @@ export async function addPostComment(
     ]);
     if (!user.exists || user.data()?.status !== "active")
       throw new FeedActionError("inactive");
+    const mentions = await resolveMentions(transaction, input.mentionUids);
+    const actorName = String(user.data()?.displayName ?? "An educator");
     transaction.create(commentRef, {
       authorId: uid,
       content: input.content,
+      mentions,
       moderationStatus: "approved",
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
+    });
+    writeMentionNotifications(transaction, {
+      mentions,
+      actorId: uid,
+      actorName,
+      entityId: input.postId,
+      entityKey: `comment_${commentRef.id}`,
+      context: "comment",
+      href: `/post/${input.postId}#comment-${commentRef.id}`,
     });
     transaction.update(postRef, {
       commentCount: nonnegativeCount(post.data()?.commentCount) + 1,
@@ -499,9 +532,9 @@ export async function addPostComment(
         {
           type: "post-comment",
           actorId: uid,
-          actorName: String(user.data()?.displayName ?? "An educator"),
+          actorName,
           entityId: input.postId,
-          message: `${String(user.data()?.displayName ?? "An educator")} commented on your post.`,
+          message: `${actorName} commented on your post.`,
           href: `/post/${input.postId}#comment-${commentRef.id}`,
           read: false,
           archived: false,
@@ -554,6 +587,7 @@ export async function getPostComments(
       id: comment.id,
       author: authorMap.get(authorId) ?? authorFromData(authorId, undefined),
       content: String(data.content ?? ""),
+      mentions: mentionsFromData(data.mentions),
       createdAt: createdAt.toDate().toISOString(),
       updatedAt: timestamp(data.updatedAt).toDate().toISOString(),
       editedAt:

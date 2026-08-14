@@ -7,6 +7,11 @@ const tagSchema = z
   .max(30)
   .regex(/^[\p{L}\p{N}][\p{L}\p{N} -]*$/u, "Use letters and numbers in tags.");
 
+const mentionUidsSchema = z
+  .array(z.string().trim().min(1).max(128))
+  .max(10)
+  .optional();
+
 export const forumReportReasonSchema = z.enum([
   "spam",
   "harassment",
@@ -20,11 +25,13 @@ export const createForumThreadSchema = z.object({
   title: z.string().trim().min(8).max(180),
   content: z.string().trim().min(20).max(10_000),
   tags: z.array(tagSchema).max(5).default([]),
+  mentionUids: mentionUidsSchema,
 });
 
 export const createForumReplySchema = z.object({
   threadId: z.string().trim().min(1).max(128),
   content: z.string().trim().min(3).max(5_000),
+  mentionUids: mentionUidsSchema,
 });
 
 export const forumQuerySchema = z.object({

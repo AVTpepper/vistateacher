@@ -16,8 +16,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { MentionText } from "@/features/mentions/mention-text";
+import { MentionTextarea } from "@/features/mentions/mention-textarea";
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import type { FeedComment, FeedPost } from "@/lib/feed/server";
+import type { MentionTarget } from "@/lib/mentions/types";
 import { cn } from "@/lib/utils";
 
 interface PostCardProps {
@@ -64,6 +67,7 @@ export function PostCard({
     initialComments ?? null,
   );
   const [comment, setComment] = useState("");
+  const [commentMentions, setCommentMentions] = useState<MentionTarget[]>([]);
   const [commenting, setCommenting] = useState(false);
   const [editingPost, setEditingPost] = useState(false);
   const [postDraft, setPostDraft] = useState(initialPost.content);
@@ -94,10 +98,7 @@ export function PostCard({
     setPost((current) => ({
       ...current,
       bookmarked,
-      bookmarkCount: Math.max(
-        0,
-        current.bookmarkCount + (bookmarked ? 1 : -1),
-      ),
+      bookmarkCount: Math.max(0, current.bookmarkCount + (bookmarked ? 1 : -1)),
     }));
     const response = await mutation(
       `/api/feed/${post.id}/bookmark`,
@@ -128,6 +129,7 @@ export function PostCard({
     if (!content || commenting) return;
     setCommenting(true);
     const temporaryId = `pending-${crypto.randomUUID()}`;
+    const selectedMentions = commentMentions;
     const optimistic: FeedComment = {
       id: temporaryId,
       author: {
@@ -138,6 +140,7 @@ export function PostCard({
         school: "",
       },
       content,
+      mentions: selectedMentions,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       editedAt: null,
@@ -149,8 +152,10 @@ export function PostCard({
       commentCount: current.commentCount + 1,
     }));
     setComment("");
+    setCommentMentions([]);
     const response = await mutation(`/api/feed/${post.id}/comments`, "POST", {
       content,
+      mentionUids: selectedMentions.map((mention) => mention.uid),
     });
     const result = (await response.json().catch(() => null)) as {
       commentId?: string;
@@ -171,6 +176,7 @@ export function PostCard({
         commentCount: Math.max(0, current.commentCount - 1),
       }));
       setComment(content);
+      setCommentMentions(selectedMentions);
       toast.error("We couldn't add that comment.");
     }
     setCommenting(false);
@@ -408,7 +414,7 @@ export function PostCard({
           </div>
         ) : (
           <p className="text-sm leading-6 whitespace-pre-line">
-            {post.content}
+            <MentionText content={post.content} mentions={post.mentions} />
           </p>
         )}
         {post.tags.length > 0 && (
@@ -573,7 +579,10 @@ export function PostCard({
                     </div>
                   ) : (
                     <p className="mt-0.5 text-xs leading-5 wrap-break-word">
-                      {item.content}
+                      <MentionText
+                        content={item.content}
+                        mentions={item.mentions}
+                      />
                     </p>
                   )}
                   {item.ownedByViewer && editingCommentId !== item.id && (
@@ -614,15 +623,22 @@ export function PostCard({
               showName={false}
             />
             <div className="bg-muted flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2">
-              <input
+              <MentionTextarea
                 value={comment}
+                mentions={commentMentions}
+                onMentionsChange={setCommentMentions}
+                excludeUid={viewer.uid}
                 maxLength={1_000}
-                onChange={(event) => setComment(event.target.value)}
+                onValueChange={setComment}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") void addComment();
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    void addComment();
+                  }
                 }}
                 placeholder="Write a comment..."
-                className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none md:text-sm"
+                rows={1}
+                className="placeholder:text-muted-foreground min-h-6 resize-none bg-transparent text-base outline-none md:text-sm"
               />
               <button
                 type="button"

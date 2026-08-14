@@ -25,8 +25,11 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { MentionText } from "@/features/mentions/mention-text";
+import { MentionTextarea } from "@/features/mentions/mention-textarea";
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import type { ForumReply, ForumThreadDetail } from "@/lib/forum/server";
+import type { MentionTarget } from "@/lib/mentions/types";
 import type { UserRole } from "@/types/models";
 
 export function ForumThreadExperience({
@@ -44,6 +47,7 @@ export function ForumThreadExperience({
   const router = useRouter();
   const [data, setData] = useState(initialData);
   const [reply, setReply] = useState("");
+  const [replyMentions, setReplyMentions] = useState<MentionTarget[]>([]);
   const [pending, setPending] = useState(false);
   const { thread, replies } = data;
 
@@ -95,7 +99,10 @@ export function ForumThreadExperience({
     const response = await fetch(`/api/forum/${thread.id}/replies`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: reply }),
+      body: JSON.stringify({
+        content: reply,
+        mentionUids: replyMentions.map((mention) => mention.uid),
+      }),
     });
     const result = (await response.json().catch(() => null)) as {
       error?: string;
@@ -104,6 +111,7 @@ export function ForumThreadExperience({
     if (!response.ok)
       return toast.error(result?.error ?? "We couldn't post this reply.");
     setReply("");
+    setReplyMentions([]);
     toast.success("Reply posted.");
     router.refresh();
   }
@@ -244,7 +252,7 @@ export function ForumThreadExperience({
           </div>
         </div>
         <p className="text-foreground/80 mt-5 text-sm leading-7 whitespace-pre-wrap">
-          {thread.content}
+          <MentionText content={thread.content} mentions={thread.mentions} />
         </p>
         {thread.tags.length > 0 && (
           <div className="mt-5 flex flex-wrap gap-2">
@@ -363,9 +371,12 @@ export function ForumThreadExperience({
               showName={false}
             />
             <div className="min-w-0 flex-1">
-              <textarea
+              <MentionTextarea
                 value={reply}
-                onChange={(event) => setReply(event.target.value)}
+                onValueChange={setReply}
+                mentions={replyMentions}
+                onMentionsChange={setReplyMentions}
+                excludeUid={viewer.uid}
                 maxLength={5_000}
                 rows={4}
                 placeholder="Share your experience, insight, or advice..."
@@ -478,7 +489,7 @@ function ReplyCard({
             </div>
           </div>
           <p className="text-foreground/80 mt-3 text-sm leading-6 whitespace-pre-wrap">
-            {reply.content}
+            <MentionText content={reply.content} mentions={reply.mentions} />
           </p>
           <button
             type="button"

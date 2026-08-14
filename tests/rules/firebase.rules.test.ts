@@ -945,6 +945,7 @@ describe("Firestore rules", () => {
       imageURLs: [],
       tags: ["Feedback"],
       resourceId: null,
+      mentionUids: ["reader"],
     });
 
     await setPostLiked("reader", postId, true);
@@ -953,11 +954,20 @@ describe("Firestore rules", () => {
     const commentId = await addPostComment("reader", {
       postId,
       content: "I use a two-stars-and-a-wish protocol.",
+      mentionUids: ["author"],
     });
 
     await testEnv.withSecurityRulesDisabled(async (context) => {
-      const [post, author, like, bookmark, likeNotification, commentNotification] =
-        await Promise.all([
+      const [
+        post,
+        author,
+        like,
+        bookmark,
+        likeNotification,
+        commentNotification,
+        postMention,
+        commentMention,
+      ] = await Promise.all([
         getDoc(doc(context.firestore(), "posts", postId)),
         getDoc(doc(context.firestore(), "users", "author")),
         getDoc(doc(context.firestore(), "postLikes", `${postId}_reader`)),
@@ -980,6 +990,24 @@ describe("Firestore rules", () => {
             `post-comment_${commentId}`,
           ),
         ),
+        getDoc(
+          doc(
+            context.firestore(),
+            "users",
+            "reader",
+            "notifications",
+            `mention_post_${postId}_author`,
+          ),
+        ),
+        getDoc(
+          doc(
+            context.firestore(),
+            "users",
+            "author",
+            "notifications",
+            `mention_comment_${commentId}_reader`,
+          ),
+        ),
       ]);
       expect(post.data()).toMatchObject({
         authorId: "author",
@@ -993,6 +1021,10 @@ describe("Firestore rules", () => {
       expect(bookmark.exists()).toBe(true);
       expect(likeNotification.data()?.href).toBe(`/post/${postId}`);
       expect(commentNotification.data()?.href).toBe(
+        `/post/${postId}#comment-${commentId}`,
+      );
+      expect(postMention.data()?.href).toBe(`/post/${postId}`);
+      expect(commentMention.data()?.href).toBe(
         `/post/${postId}#comment-${commentId}`,
       );
     });
@@ -1152,7 +1184,9 @@ describe("Firestore rules", () => {
       });
     });
 
-    await expect(downloadResource("downloader", "download-test")).resolves.toMatchObject({
+    await expect(
+      downloadResource("downloader", "download-test"),
+    ).resolves.toMatchObject({
       fileName: "resource.pdf",
     });
     await expect(
@@ -1232,10 +1266,12 @@ describe("Firestore rules", () => {
       content:
         "I am looking for routines that make space for every learner to contribute.",
       tags: ["discussion"],
+      mentionUids: ["reviewer"],
     });
     const replyId = await addForumReply("reviewer", {
       threadId,
       content: "Silent writing before partner talk has worked well for us.",
+      mentionUids: ["author"],
     });
     await expect(
       getForumThread(threadId, "reviewer", "educator"),
@@ -1254,8 +1290,15 @@ describe("Firestore rules", () => {
       action: "lock",
     });
     await testEnv.withSecurityRulesDisabled(async (context) => {
-      const [category, thread, reply, replyNotification, likeNotification] =
-        await Promise.all([
+      const [
+        category,
+        thread,
+        reply,
+        replyNotification,
+        likeNotification,
+        threadMention,
+        replyMention,
+      ] = await Promise.all([
         getDoc(
           doc(context.firestore(), "forumCategories", "student-engagement"),
         ),
@@ -1287,6 +1330,24 @@ describe("Firestore rules", () => {
             `forum-like_thread_${threadId}_reviewer`,
           ),
         ),
+        getDoc(
+          doc(
+            context.firestore(),
+            "users",
+            "reviewer",
+            "notifications",
+            `mention_forum_thread_${threadId}_author`,
+          ),
+        ),
+        getDoc(
+          doc(
+            context.firestore(),
+            "users",
+            "author",
+            "notifications",
+            `mention_forum_reply_${threadId}_${replyId}_reviewer`,
+          ),
+        ),
       ]);
       expect(category.data()).toMatchObject({ threadCount: 1, postCount: 2 });
       expect(thread.data()).toMatchObject({
@@ -1302,6 +1363,10 @@ describe("Firestore rules", () => {
         `/forum/${threadId}#reply-${replyId}`,
       );
       expect(likeNotification.data()?.href).toBe(`/forum/${threadId}`);
+      expect(threadMention.data()?.href).toBe(`/forum/${threadId}`);
+      expect(replyMention.data()?.href).toBe(
+        `/forum/${threadId}#reply-${replyId}`,
+      );
     });
     await assertFails(
       setDoc(

@@ -12,6 +12,12 @@ import {
 import { decodeForumCursor, encodeForumCursor } from "@/lib/forum/cursor";
 import { DEFAULT_FORUM_CATEGORIES } from "@/lib/forum/categories";
 import { adminDb } from "@/lib/firebase/admin";
+import {
+  mentionsFromData,
+  resolveMentions,
+  writeMentionNotifications,
+} from "@/lib/mentions/server";
+import type { MentionTarget } from "@/lib/mentions/types";
 import type {
   CreateForumReplyInput,
   CreateForumThreadInput,
@@ -51,6 +57,7 @@ export interface ForumThreadSummary {
   title: string;
   content: string;
   tags: string[];
+  mentions: MentionTarget[];
   pinned: boolean;
   locked: boolean;
   solved: boolean;
@@ -71,6 +78,7 @@ export interface ForumReply {
   id: string;
   author: ForumAuthor;
   content: string;
+  mentions: MentionTarget[];
   likeCount: number;
   createdAt: string;
   updatedAt: string;
@@ -237,6 +245,7 @@ async function hydrateThreads(
       title: String(data.title ?? ""),
       content: String(data.content ?? ""),
       tags: strings(data.tags),
+      mentions: mentionsFromData(data.mentions),
       pinned: data.pinned === true,
       locked: data.locked === true,
       solved: data.solved === true,
@@ -366,6 +375,7 @@ export async function getForumThread(
         id: reply.id,
         author: authorMap.get(authorId) ?? author(authorId, undefined),
         content: String(data.content ?? ""),
+        mentions: mentionsFromData(data.mentions),
         likeCount: count(data.likeCount),
         createdAt: timestamp(data.createdAt).toDate().toISOString(),
         updatedAt: timestamp(data.updatedAt).toDate().toISOString(),
@@ -402,6 +412,8 @@ export async function createForumThread(
       throw new ForumActionError("inactive");
     if (!category.exists || category.data()?.active !== true)
       throw new ForumActionError("invalid-category");
+    const mentions = await resolveMentions(transaction, input.mentionUids);
+    const actorName = String(user.data()?.displayName ?? "An educator");
     transaction.create(threadRef, {
       authorId,
       categoryId: input.categoryId,
@@ -411,6 +423,7 @@ export async function createForumThread(
       tags: [
         ...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US"))),
       ],
+      mentions,
       pinned: false,
       locked: false,
       solved: false,
@@ -423,6 +436,15 @@ export async function createForumThread(
       lastActivityAt: FieldValue.serverTimestamp(),
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
+    });
+    writeMentionNotifications(transaction, {
+      mentions,
+      actorId: authorId,
+      actorName,
+      entityId: threadRef.id,
+      entityKey: `forum_thread_${threadRef.id}`,
+      context: "forum discussion",
+      href: `/forum/${threadRef.id}`,
     });
     transaction.update(categoryRef, {
       threadCount: FieldValue.increment(1),
@@ -450,15 +472,27 @@ export async function addForumReply(
     if (!thread.exists || thread.data()?.moderationStatus !== "approved")
       throw new ForumActionError("not-found");
     if (thread.data()?.locked === true) throw new ForumActionError("locked");
+    const mentions = await resolveMentions(transaction, input.mentionUids);
+    const actorName = String(user.data()?.displayName ?? "An educator");
     transaction.create(replyRef, {
       authorId,
       content: input.content,
+      mentions,
       likeCount: 0,
       reportCount: 0,
       accepted: false,
       moderationStatus: "approved",
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
+    });
+    writeMentionNotifications(transaction, {
+      mentions,
+      actorId: authorId,
+      actorName,
+      entityId: input.threadId,
+      entityKey: `forum_reply_${input.threadId}_${replyRef.id}`,
+      context: "forum reply",
+      href: `/forum/${input.threadId}#reply-${replyRef.id}`,
     });
     transaction.update(threadRef, {
       replyCount: FieldValue.increment(1),
@@ -477,9 +511,9 @@ export async function addForumReply(
         {
           type: "forum-reply",
           actorId: authorId,
-          actorName: String(user.data()?.displayName ?? "An educator"),
+          actorName,
           entityId: input.threadId,
-          message: `${String(user.data()?.displayName ?? "An educator")} replied to your forum discussion.`,
+          message: `${actorName} replied to your forum discussion.`,
           href: `/forum/${input.threadId}#reply-${replyRef.id}`,
           read: false,
           archived: false,

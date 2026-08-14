@@ -88,6 +88,7 @@ export function FeedExperience({ initialPage, account }: FeedExperienceProps) {
       content: input.content,
       imageURLs: input.imageURLs,
       tags: input.tags,
+      mentions: [],
       resourceId: input.resourceId,
       likeCount: 0,
       commentCount: 0,

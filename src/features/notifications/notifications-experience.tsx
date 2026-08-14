@@ -3,6 +3,7 @@
 import {
   Archive,
   ArchiveRestore,
+  AtSign,
   Bell,
   Check,
   CheckCheck,
@@ -287,11 +288,7 @@ function NotificationActionButton({
 
 function NotificationIcon({ type }: { type: string }) {
   const className = "size-4";
-  if (
-    type === "message" ||
-    type === "post-comment" ||
-    type === "forum-reply"
-  )
+  if (type === "message" || type === "post-comment" || type === "forum-reply")
     return <MessageSquare aria-hidden="true" className={className} />;
   if (type === "follow")
     return <UserPlus aria-hidden="true" className={className} />;
@@ -299,5 +296,7 @@ function NotificationIcon({ type }: { type: string }) {
     return <Heart aria-hidden="true" className={className} />;
   if (type === "resource-download")
     return <Download aria-hidden="true" className={className} />;
+  if (type === "mention")
+    return <AtSign aria-hidden="true" className={className} />;
   return <Bell aria-hidden="true" className={className} />;
 }
