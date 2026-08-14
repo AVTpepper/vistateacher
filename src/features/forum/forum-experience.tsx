@@ -20,16 +20,22 @@ import {
   Sparkles,
   TrendingUp,
   Users,
-  X,
   Zap,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
-import { UserAvatar } from "@/components/ui/user-avatar";
+import { Button } from "@/components/ui/button";
+import { FormDialogContent } from "@/components/ui/form-dialog";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type {
   ForumCategory,
   ForumPage,
@@ -53,32 +59,22 @@ const categoryIcons: Record<string, LucideIcon> = {
 export function ForumExperience({
   categories,
   initialPage,
+  selectedCategory,
+  showThreads,
 }: {
   categories: ForumCategory[];
   initialPage: ForumPage;
+  selectedCategory: ForumCategory | null;
+  showThreads: boolean;
 }) {
-  const [view, setView] = useState<"categories" | "threads">("categories");
-  const [selectedCategory, setSelectedCategory] =
-    useState<ForumCategory | null>(null);
   const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const contentHeadingRef = useRef<HTMLHeadingElement>(null);
 
-  async function loadThreads(category: ForumCategory | null) {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (category) params.set("categoryId", category.id);
-    const response = await fetch(`/api/forum?${params}`);
-    const result = (await response
-      .json()
-      .catch(() => null)) as ForumPage | null;
-    setLoading(false);
-    if (!response.ok || !result)
-      return toast.error("We couldn't load forum discussions.");
-    setSelectedCategory(category);
-    setPage(result);
-    setView("threads");
-  }
+  useEffect(() => {
+    if (showThreads) contentHeadingRef.current?.focus({ preventScroll: true });
+  }, [showThreads]);
 
   async function loadMore() {
     if (!page.nextCursor || loading) return;
@@ -120,41 +116,41 @@ export function ForumExperience({
         <ViewButton
           label="Categories"
           icon={LayoutGrid}
-          active={view === "categories"}
-          onClick={() => {
-            setView("categories");
-            setSelectedCategory(null);
-          }}
+          active={!showThreads}
+          href="/forum"
         />
         <ViewButton
           label="All Threads"
           icon={TrendingUp}
-          active={view === "threads" && !selectedCategory}
-          onClick={() => void loadThreads(null)}
+          active={showThreads && !selectedCategory}
+          href="/forum?category=all"
         />
       </div>
 
-      {view === "categories" ? (
+      {!showThreads ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {categories.map((category) => (
-            <CategoryCard
-              key={category.id}
-              category={category}
-              onClick={() => void loadThreads(category)}
-            />
+            <CategoryCard key={category.id} category={category} />
           ))}
         </div>
       ) : (
-        <section>
+        <section aria-labelledby="forum-content-heading">
+          <h2
+            ref={contentHeadingRef}
+            id="forum-content-heading"
+            tabIndex={-1}
+            className="mb-4 font-serif text-2xl outline-none"
+          >
+            {selectedCategory?.name ?? "All discussions"}
+          </h2>
           {selectedCategory && (
             <div className="mb-4 flex items-center gap-2 text-sm">
-              <button
-                type="button"
-                onClick={() => setView("categories")}
+              <Link
+                href="/forum"
                 className="text-muted-foreground hover:text-foreground"
               >
                 Categories
-              </button>
+              </Link>
               <ChevronRight aria-hidden="true" className="size-4" />
               <span className="font-semibold">{selectedCategory.name}</span>
             </div>
@@ -201,18 +197,11 @@ export function ForumExperience({
   );
 }
 
-function CategoryCard({
-  category,
-  onClick,
-}: {
-  category: ForumCategory;
-  onClick: () => void;
-}) {
+function CategoryCard({ category }: { category: ForumCategory }) {
   const Icon = categoryIcons[category.icon] ?? MessageSquare;
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <Link
+      href={`/forum?category=${encodeURIComponent(category.id)}`}
       className="surface-card surface-card-interactive group w-full p-5 text-left"
     >
       <div className="flex items-start gap-4">
@@ -251,21 +240,20 @@ function CategoryCard({
           className="text-muted-foreground group-hover:text-accent size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-1"
         />
       </div>
-    </button>
+    </Link>
   );
 }
 
 function ThreadRow({ thread }: { thread: ForumThreadSummary }) {
   return (
-    <Link
-      href={`/forum/${thread.id}`}
-      className="surface-card surface-card-interactive group block p-4"
-    >
+    <article className="surface-card surface-card-interactive group p-4">
       <div className="flex items-start gap-3">
-        <UserAvatar
-          name={thread.author.displayName}
+        <ProfileIdentityLink
+          uid={thread.author.uid}
+          displayName={thread.author.displayName}
           photoURL={thread.author.photoURL}
-          className="size-9 rounded-full text-[10px]"
+          avatarClassName="size-9 rounded-full text-[10px]"
+          showName={false}
         />
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-2">
@@ -273,15 +261,25 @@ function ThreadRow({ thread }: { thread: ForumThreadSummary }) {
             {thread.solved && (
               <StatusBadge icon={CheckCircle2} label="Solved" success />
             )}
-            <h2 className="group-hover:text-primary min-w-0 flex-1 truncate text-sm font-bold">
+            <Link
+              href={`/forum/${thread.id}`}
+              className="group-hover:text-primary min-w-0 flex-1 truncate text-sm font-bold"
+            >
               {thread.title}
-            </h2>
+            </Link>
           </div>
           <p className="text-foreground/65 line-clamp-2 text-xs leading-5">
             {thread.content}
           </p>
           <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-3 text-xs">
-            <span>{thread.author.displayName}</span>
+            <ProfileIdentityLink
+              uid={thread.author.uid}
+              displayName={thread.author.displayName}
+              photoURL={thread.author.photoURL}
+              showName
+              showAvatar={false}
+              className="font-normal"
+            />
             <span className="bg-muted rounded-full px-2 py-0.5">
               {thread.category.name}
             </span>
@@ -306,7 +304,7 @@ function ThreadRow({ thread }: { thread: ForumThreadSummary }) {
           {thread.likeCount}
         </span>
       </div>
-    </Link>
+    </article>
   );
 }
 
@@ -333,22 +331,22 @@ function ViewButton({
   label,
   icon: Icon,
   active,
-  onClick,
+  href,
 }: {
   label: string;
   icon: LucideIcon;
   active: boolean;
-  onClick: () => void;
+  href: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
       className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
     >
       <Icon aria-hidden="true" className="size-4" />
       {label}
-    </button>
+    </Link>
   );
 }
 
@@ -364,166 +362,233 @@ function NewThreadDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({
-    categoryId: selectedCategory?.id ?? categories[0]?.id ?? "",
-    title: "",
-    content: "",
-    tags: "",
-  });
-
-  useEffect(() => {
-    if (open) {
-      setForm((current) => ({
-        ...current,
-        categoryId: selectedCategory?.id ?? categories[0]?.id ?? "",
-      }));
-    } else {
-      setForm({
-        categoryId: selectedCategory?.id ?? categories[0]?.id ?? "",
-        title: "",
-        content: "",
-        tags: "",
-      });
-    }
-  }, [open, selectedCategory, categories]);
-
-  async function submit() {
-    setSubmitting(true);
-    const response = await fetch("/api/forum", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        tags: form.tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean)
-          .slice(0, 5),
-      }),
-    });
-    const result = (await response.json().catch(() => null)) as {
-      threadId?: string;
-      error?: string;
-    } | null;
-    setSubmitting(false);
-    if (!response.ok || !result?.threadId)
-      return toast.error(result?.error ?? "We couldn't post this discussion.");
-    location.assign(`/forum/${result.threadId}`);
-  }
-
-  const valid =
-    form.categoryId &&
-    form.title.trim().length >= 8 &&
-    form.content.trim().length >= 20;
 
   return (
     <Dialog.Root
       open={open}
       onOpenChange={(next) => !submitting && onOpenChange(next)}
     >
-      <Dialog.Trigger
-        aria-label="Start a new discussion"
-        className="bg-primary text-primary-foreground flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold"
-      >
-        <PlusCircle aria-hidden="true" className="size-4" />
-        <span className="hidden sm:inline">New Thread</span>
+      <Dialog.Trigger asChild>
+        <Button aria-label="Start a new discussion">
+          <PlusCircle aria-hidden="true" className="size-4" />
+          <span className="hidden sm:inline">New Thread</span>
+        </Button>
       </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
-        <Dialog.Content className="bg-card fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border p-5 shadow-2xl sm:p-6">
-          <Dialog.Title className="font-serif text-2xl">
-            Start a Discussion
-          </Dialog.Title>
-          <Dialog.Description className="sr-only">
-            Create a forum discussion.
-          </Dialog.Description>
-          <Dialog.Close
-            aria-label="Close discussion form"
-            className="text-muted-foreground hover:bg-muted absolute top-2.5 right-2.5 grid size-11 place-items-center rounded-lg"
-          >
-            <X aria-hidden="true" className="size-4" />
-          </Dialog.Close>
-          <div className="mt-5 space-y-4">
-            <Field label="Category">
-              <select
-                value={form.categoryId}
-                onChange={(event) =>
-                  setForm({ ...form, categoryId: event.target.value })
-                }
-                className="resource-input"
+      {open && (
+        <FormDialogContent
+          title="Start a Discussion"
+          description="Choose a category and add a clear title and discussion prompt."
+          footer={
+            <div className="flex justify-end gap-2">
+              <Dialog.Close asChild>
+                <Button type="button" variant="ghost" disabled={submitting}>
+                  Cancel
+                </Button>
+              </Dialog.Close>
+              <Button
+                type="submit"
+                form="new-thread-form"
+                disabled={submitting}
               >
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Title">
-              <input
-                value={form.title}
-                onChange={(event) =>
-                  setForm({ ...form, title: event.target.value })
-                }
-                maxLength={180}
-                placeholder="Give your discussion a clear title..."
-                className="resource-input"
-              />
-            </Field>
-            <Field label="Your post">
-              <textarea
-                value={form.content}
-                onChange={(event) =>
-                  setForm({ ...form, content: event.target.value })
-                }
-                maxLength={10_000}
-                rows={6}
-                placeholder="Share your question, experience, or discussion prompt..."
-                className="resource-input resize-none"
-              />
-            </Field>
-            <Field label="Tags">
-              <input
-                value={form.tags}
-                onChange={(event) =>
-                  setForm({ ...form, tags: event.target.value })
-                }
-                maxLength={180}
-                placeholder="discussion, student voice"
-                className="resource-input"
-              />
-            </Field>
-          </div>
-          <div className="mt-6 flex justify-end gap-2">
-            <Dialog.Close className="hover:bg-muted h-10 rounded-lg px-4 text-sm font-semibold">
-              Cancel
-            </Dialog.Close>
-            <button
-              type="button"
-              disabled={!valid || submitting}
-              onClick={() => void submit()}
-              className="bg-primary text-primary-foreground h-10 rounded-lg px-5 text-sm font-bold disabled:opacity-50"
-            >
-              {submitting ? "Posting..." : "Post Discussion"}
-            </button>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
+                {submitting ? "Posting discussion..." : "Post Discussion"}
+              </Button>
+            </div>
+          }
+        >
+          <NewThreadForm
+            categories={categories}
+            initialCategoryId={selectedCategory?.id ?? categories[0]?.id ?? ""}
+            onSubmittingChange={setSubmitting}
+          />
+        </FormDialogContent>
+      )}
     </Dialog.Root>
   );
 }
 
-function Field({
-  label,
-  children,
+function NewThreadForm({
+  categories,
+  initialCategoryId,
+  onSubmittingChange,
 }: {
-  label: string;
-  children: React.ReactNode;
+  categories: ForumCategory[];
+  initialCategoryId: string;
+  onSubmittingChange: (submitting: boolean) => void;
 }) {
+  const router = useRouter();
+  const titleRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const categoryRef = useRef<HTMLSelectElement>(null);
+  const [form, setForm] = useState({
+    categoryId: initialCategoryId,
+    title: "",
+    content: "",
+    tags: "",
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextErrors: Record<string, string> = {};
+    if (!form.categoryId) nextErrors.categoryId = "Choose a forum category.";
+    if (form.title.trim().length < 8)
+      nextErrors.title = "Use at least 8 characters for the title.";
+    if (form.content.trim().length < 20)
+      nextErrors.content = "Use at least 20 characters for your post.";
+    setErrors(nextErrors);
+    const first = Object.keys(nextErrors)[0];
+    if (first) {
+      requestAnimationFrame(() => {
+        if (first === "categoryId") categoryRef.current?.focus();
+        if (first === "title") titleRef.current?.focus();
+        if (first === "content") contentRef.current?.focus();
+      });
+      return;
+    }
+
+    setServerError(null);
+    onSubmittingChange(true);
+    try {
+      const response = await fetch("/api/forum", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          tags: form.tags
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+            .slice(0, 5),
+        }),
+      });
+      const result = (await response.json().catch(() => null)) as {
+        threadId?: string;
+        error?: string;
+      } | null;
+      if (!response.ok || !result?.threadId) {
+        const message = result?.error ?? "We couldn't post this discussion.";
+        setServerError(message);
+        toast.error(message);
+        return;
+      }
+      router.push(`/forum/${result.threadId}`);
+      router.refresh();
+    } catch {
+      const message =
+        "We couldn't reach the forum. Check your connection and try again.";
+      setServerError(message);
+      toast.error(message);
+    } finally {
+      onSubmittingChange(false);
+    }
+  }
+
   return (
-    <label className="block text-xs font-semibold">
-      <span className="text-muted-foreground mb-1.5 block">{label}</span>
-      {children}
-    </label>
+    <form
+      id="new-thread-form"
+      className="space-y-4"
+      onSubmit={submit}
+      noValidate
+    >
+      <FormField
+        id="thread-category"
+        label="Category"
+        required
+        error={errors.categoryId}
+      >
+        {({ describedBy, invalid }) => (
+          <Select
+            ref={categoryRef}
+            id="thread-category"
+            value={form.categoryId}
+            aria-describedby={describedBy}
+            aria-invalid={invalid}
+            onChange={(event) => {
+              setForm({ ...form, categoryId: event.target.value });
+              setErrors((current) => ({ ...current, categoryId: "" }));
+            }}
+          >
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </Select>
+        )}
+      </FormField>
+      <FormField
+        id="thread-title"
+        label="Title"
+        required
+        hint="At least 8 characters."
+        error={errors.title}
+      >
+        {({ describedBy, invalid }) => (
+          <Input
+            ref={titleRef}
+            id="thread-title"
+            value={form.title}
+            aria-describedby={describedBy}
+            aria-invalid={invalid}
+            maxLength={180}
+            placeholder="Give your discussion a clear title..."
+            onChange={(event) => {
+              setForm({ ...form, title: event.target.value });
+              setErrors((current) => ({ ...current, title: "" }));
+            }}
+          />
+        )}
+      </FormField>
+      <FormField
+        id="thread-content"
+        label="Your post"
+        required
+        hint="At least 20 characters."
+        error={errors.content}
+      >
+        {({ describedBy, invalid }) => (
+          <Textarea
+            ref={contentRef}
+            id="thread-content"
+            value={form.content}
+            aria-describedby={describedBy}
+            aria-invalid={invalid}
+            maxLength={10_000}
+            rows={6}
+            placeholder="Share your question, experience, or discussion prompt..."
+            className="resize-y"
+            onChange={(event) => {
+              setForm({ ...form, content: event.target.value });
+              setErrors((current) => ({ ...current, content: "" }));
+            }}
+          />
+        )}
+      </FormField>
+      <FormField
+        id="thread-tags"
+        label="Tags"
+        hint="Optional. Separate up to five tags with commas."
+      >
+        {({ describedBy }) => (
+          <Input
+            id="thread-tags"
+            value={form.tags}
+            aria-describedby={describedBy}
+            maxLength={180}
+            placeholder="discussion, student voice"
+            onChange={(event) => setForm({ ...form, tags: event.target.value })}
+          />
+        )}
+      </FormField>
+      <p className="sr-only" aria-live="polite">
+        {serverError ?? ""}
+      </p>
+      {serverError && (
+        <p className="text-destructive text-sm" role="alert">
+          {serverError}
+        </p>
+      )}
+    </form>
   );
 }

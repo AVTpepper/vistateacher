@@ -12,14 +12,18 @@ function makeRequest(headers: Record<string, string>): NextRequest {
   } as NextRequest;
 }
 
+function setNodeEnv(value: string | undefined) {
+  Object.assign(process.env, { NODE_ENV: value });
+}
+
 afterEach(() => {
-  process.env.NODE_ENV = ORIGINAL_NODE_ENV;
+  setNodeEnv(ORIGINAL_NODE_ENV);
   process.env.NEXT_PUBLIC_APP_URL = ORIGINAL_APP_URL;
 });
 
 describe("hasTrustedOrigin", () => {
   it("accepts production requests when origin host matches host", () => {
-    process.env.NODE_ENV = "production";
+    setNodeEnv("production");
     process.env.NEXT_PUBLIC_APP_URL = "https://stale-hosted-app.web.app";
 
     const trusted = hasTrustedOrigin(
@@ -33,7 +37,7 @@ describe("hasTrustedOrigin", () => {
   });
 
   it("accepts production requests when origin host matches x-forwarded-host", () => {
-    process.env.NODE_ENV = "production";
+    setNodeEnv("production");
     process.env.NEXT_PUBLIC_APP_URL = "https://stale-hosted-app.web.app";
 
     const trusted = hasTrustedOrigin(
@@ -48,7 +52,7 @@ describe("hasTrustedOrigin", () => {
   });
 
   it("rejects cross-origin requests", () => {
-    process.env.NODE_ENV = "production";
+    setNodeEnv("production");
     process.env.NEXT_PUBLIC_APP_URL = "https://vistateacher.com";
 
     const trusted = hasTrustedOrigin(
@@ -62,7 +66,7 @@ describe("hasTrustedOrigin", () => {
   });
 
   it("falls back to configured app URL matching", () => {
-    process.env.NODE_ENV = "production";
+    setNodeEnv("production");
     process.env.NEXT_PUBLIC_APP_URL = "https://vistateacher.com";
 
     const trusted = hasTrustedOrigin(

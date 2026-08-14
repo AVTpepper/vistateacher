@@ -5,7 +5,6 @@ import {
   Compass,
   GraduationCap,
   Handshake,
-  Lightbulb,
   MessageSquare,
   NotebookPen,
   Sparkles,
@@ -14,7 +13,6 @@ import {
   UsersRound,
   UserRoundSearch,
   Globe,
-  Save,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -137,8 +135,7 @@ export async function LandingPage() {
             </h1>
             <p className="text-muted-foreground mx-auto mt-5 max-w-2xl px-2 text-base leading-8 sm:text-lg md:text-xl">
               Build your professional network, exchange practical ideas,
-              discover opportunities, and grow your classroom practice
-              together.
+              discover opportunities, and grow your classroom practice together.
             </p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Button asChild size="lg" variant="accent">
@@ -156,13 +153,13 @@ export async function LandingPage() {
               </Button>
             </div>
             <div className="text-muted-foreground mt-8 flex items-center justify-center gap-3 text-sm">
-              <div className="-space-x-2 flex">
+              <div className="flex -space-x-2">
                 {heroParticipants.map((participant) => (
                   <UserAvatar
                     key={participant.uid}
                     name={participant.displayName}
                     photoURL={participant.photoURL}
-                    className="border-background h-8 w-8 shrink-0 rounded-full border-2 text-[11px] object-cover shadow-sm"
+                    className="border-background h-8 w-8 shrink-0 rounded-full border-2 object-cover text-[11px] shadow-sm"
                   />
                 ))}
               </div>
@@ -187,7 +184,7 @@ export async function LandingPage() {
           </div>
         </section>
 
-        <section className="relative overflow-hidden bg-primary py-12 text-primary-foreground sm:py-16">
+        <section className="bg-primary text-primary-foreground relative overflow-hidden py-12 sm:py-16">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--accent)_28%,transparent),transparent_42%),radial-gradient(circle_at_bottom_left,color-mix(in_srgb,white_12%,transparent),transparent_36%)]"
@@ -295,17 +292,15 @@ export async function LandingPage() {
           </div>
         </section>
 
-        <section
-          id="how-it-works"
-          className="scroll-mt-20 py-16 sm:py-24"
-        >
+        <section id="how-it-works" className="scroll-mt-20 py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="mb-10 text-center sm:mb-16">
               <h2 className="font-serif text-4xl tracking-tight sm:text-5xl">
                 How VistaTeacher works
               </h2>
               <p className="text-muted-foreground mx-auto mt-3 max-w-xl text-base sm:text-lg">
-                Discover people, build trusted relationships, and collaborate with purpose.
+                Discover people, build trusted relationships, and collaborate
+                with purpose.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-3 sm:gap-6">
@@ -317,7 +312,8 @@ export async function LandingPage() {
                   Discover
                 </h3>
                 <p className="text-muted-foreground mt-2 text-sm leading-6 sm:text-base">
-                  Filter by subject, grade, and role to find educators who match your teaching context.
+                  Filter by subject, grade, and role to find educators who match
+                  your teaching context.
                 </p>
               </article>
               <article className="surface-card surface-card-interactive group p-6 sm:p-7">
@@ -328,7 +324,8 @@ export async function LandingPage() {
                   Connect
                 </h3>
                 <p className="text-muted-foreground mt-2 text-sm leading-6 sm:text-base">
-                  Follow peers, explore their work, and build a network that supports your goals.
+                  Follow peers, explore their work, and build a network that
+                  supports your goals.
                 </p>
               </article>
               <article className="surface-card surface-card-interactive group p-6 sm:p-7">
@@ -339,7 +336,8 @@ export async function LandingPage() {
                   Collaborate
                 </h3>
                 <p className="text-muted-foreground mt-2 text-sm leading-6 sm:text-base">
-                  Turn connections into practical outcomes through forum posts, resources, and shared ideas.
+                  Turn connections into practical outcomes through forum posts,
+                  resources, and shared ideas.
                 </p>
               </article>
             </div>
@@ -356,34 +354,40 @@ export async function LandingPage() {
                 Who are you looking to connect with?
               </h2>
               <p className="text-muted-foreground mx-auto mt-3 max-w-xl text-base sm:text-lg">
-                Start with your intent. Then create your profile to unlock full educator discovery.
+                Start with your intent. Then create your profile to unlock full
+                educator discovery.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[
                 {
                   title: "Teachers in your subject",
-                  description: "Swap ideas with people teaching the same content and classroom realities.",
+                  description:
+                    "Swap ideas with people teaching the same content and classroom realities.",
                   icon: UserRoundSearch,
                 },
                 {
                   title: "International educators",
-                  description: "Compare approaches from different school systems and teaching cultures.",
+                  description:
+                    "Compare approaches from different school systems and teaching cultures.",
                   icon: Globe,
                 },
                 {
                   title: "Collaborators",
-                  description: "Find partners for planning, projects, and long-term professional growth.",
+                  description:
+                    "Find partners for planning, projects, and long-term professional growth.",
                   icon: Handshake,
                 },
                 {
                   title: "Mentors",
-                  description: "Learn from experienced educators who can support your next career step.",
+                  description:
+                    "Learn from experienced educators who can support your next career step.",
                   icon: UserCheck,
                 },
                 {
                   title: "Education professionals",
-                  description: "Connect beyond classroom roles across curriculum, leadership, and support teams.",
+                  description:
+                    "Connect beyond classroom roles across curriculum, leadership, and support teams.",
                   icon: Users,
                 },
               ].map(({ title, description, icon: Icon }) => (
@@ -406,34 +410,35 @@ export async function LandingPage() {
           </div>
         </section>
 
-        <section
-          id="tools"
-          className="scroll-mt-20 py-16 sm:py-24"
-        >
+        <section id="tools" className="scroll-mt-20 py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="mb-10 text-center sm:mb-16">
               <h2 className="font-serif text-4xl tracking-tight sm:text-5xl">
                 Tools that strengthen your educator network
               </h2>
               <p className="text-muted-foreground mx-auto mt-3 max-w-xl text-base sm:text-lg">
-                Keep your people connections active with resources, planning support, and community engagement.
+                Keep your people connections active with resources, planning
+                support, and community engagement.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[
                 {
                   title: "Forum",
-                  description: "Join forum posts about shared challenges and practical ideas with educators.",
+                  description:
+                    "Join forum posts about shared challenges and practical ideas with educators.",
                   icon: Users,
                 },
                 {
                   title: "Resources",
-                  description: "Discover and share teaching materials that save planning time.",
+                  description:
+                    "Discover and share teaching materials that save planning time.",
                   icon: BookOpen,
                 },
                 {
                   title: "Lesson Builder",
-                  description: "Create and refine lesson plans with structured workflows.",
+                  description:
+                    "Create and refine lesson plans with structured workflows.",
                   icon: NotebookPen,
                 },
               ].map(({ title, description, icon: Icon }) => (
@@ -529,7 +534,7 @@ export async function LandingPage() {
           </div>
         </section>
 
-        <section className="relative overflow-hidden bg-primary py-16 text-primary-foreground sm:py-24">
+        <section className="bg-primary text-primary-foreground relative overflow-hidden py-16 sm:py-24">
           <div className="mx-auto max-w-5xl px-4 text-center sm:px-6">
             <GraduationCap
               aria-hidden="true"

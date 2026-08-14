@@ -89,7 +89,7 @@ export function ProfileTabs({
             <h2 className="font-serif text-xl">
               About {displayName.split(" ")[0]}
             </h2>
-            <p className="text-foreground/80 mt-3 text-sm leading-6">
+            <p className="text-foreground mt-3 text-sm leading-6">
               {bio || "This educator has not added a bio yet."}
             </p>
             <dl className="mt-6 grid gap-4 border-t pt-5 sm:grid-cols-2">

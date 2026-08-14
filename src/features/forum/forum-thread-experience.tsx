@@ -24,8 +24,8 @@ import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { UserAvatar } from "@/components/ui/user-avatar";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import type { ForumReply, ForumThreadDetail } from "@/lib/forum/server";
 import type { UserRole } from "@/types/models";
 
@@ -50,7 +50,10 @@ export function ForumThreadExperience({
   async function saveThreadEdit() {
     const nextTitle = window.prompt("Edit discussion title", thread.title);
     if (!nextTitle) return;
-    const nextContent = window.prompt("Edit discussion content", thread.content);
+    const nextContent = window.prompt(
+      "Edit discussion content",
+      thread.content,
+    );
     if (!nextContent) return;
     const nextTags = window.prompt(
       "Edit tags (comma-separated)",
@@ -219,15 +222,21 @@ export function ForumThreadExperience({
           <p className="text-muted-foreground mt-1 text-xs">Edited</p>
         )}
         <div className="mt-4 flex items-center gap-3">
-          <UserAvatar
-            name={thread.author.displayName}
+          <ProfileIdentityLink
+            uid={thread.author.uid}
+            displayName={thread.author.displayName}
             photoURL={thread.author.photoURL}
-            className="size-10 rounded-full text-xs"
+            avatarClassName="size-10 rounded-full text-xs"
+            showName={false}
           />
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold">
-              {thread.author.displayName}
-            </p>
+            <ProfileIdentityLink
+              uid={thread.author.uid}
+              displayName={thread.author.displayName}
+              photoURL={thread.author.photoURL}
+              showAvatar={false}
+              className="text-sm"
+            />
             <p className="text-muted-foreground truncate text-xs">
               {thread.author.gradeLevel}
               {thread.author.school ? ` · ${thread.author.school}` : ""}
@@ -346,10 +355,12 @@ export function ForumThreadExperience({
         <section className="surface-card p-5">
           <h2 className="font-serif text-xl">Add Your Reply</h2>
           <div className="mt-4 flex items-start gap-3">
-            <UserAvatar
-              name={viewer.displayName}
+            <ProfileIdentityLink
+              uid={viewer.uid}
+              displayName={viewer.displayName}
               photoURL={viewer.photoURL}
-              className="size-9 rounded-full text-[10px]"
+              avatarClassName="size-9 rounded-full text-[10px]"
+              showName={false}
             />
             <div className="min-w-0 flex-1">
               <textarea
@@ -407,10 +418,12 @@ function ReplyCard({
       )}
       <div className="flex items-start gap-3">
         <div className="flex shrink-0 flex-col items-center gap-1">
-          <UserAvatar
-            name={reply.author.displayName}
+          <ProfileIdentityLink
+            uid={reply.author.uid}
+            displayName={reply.author.displayName}
             photoURL={reply.author.photoURL}
-            className="size-9 rounded-full text-[10px]"
+            avatarClassName="size-9 rounded-full text-[10px]"
+            showName={false}
           />
           <span className="text-muted-foreground font-mono text-[11px]">
             {number}
@@ -419,9 +432,13 @@ function ReplyCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <span className="text-sm font-bold">
-                {reply.author.displayName}
-              </span>
+              <ProfileIdentityLink
+                uid={reply.author.uid}
+                displayName={reply.author.displayName}
+                photoURL={reply.author.photoURL}
+                showAvatar={false}
+                className="text-sm"
+              />
               <span className="text-muted-foreground ml-2 text-xs">
                 {formatDistanceToNow(new Date(reply.createdAt), {
                   addSuffix: true,
@@ -446,10 +463,7 @@ function ReplyCard({
                 />
               )}
               {reply.canModerate && (
-                <DeleteConfirmDialog
-                  itemName="reply"
-                  onConfirm={onDelete}
-                >
+                <DeleteConfirmDialog itemName="reply" onConfirm={onDelete}>
                   <button
                     type="button"
                     aria-label="Delete reply"

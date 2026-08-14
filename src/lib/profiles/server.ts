@@ -4,7 +4,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { getBillingState } from "@/lib/billing/server";
 import { adminDb } from "@/lib/firebase/admin";
-import { getFollowId } from "@/lib/network/server";
+import { resolveConnectionRelationship } from "@/lib/network/server";
 import { canViewContactDetails } from "@/lib/profiles/privacy";
 import {
   createSearchKeywords,
@@ -27,7 +27,7 @@ export interface ProfileView {
   contactDetails: PrivateSettings["contactDetails"] | null;
   isOwner: boolean;
   connectionStatus: "none" | "pending" | "accepted" | null;
-  incomingRequestFrom: boolean;
+  connectionDirection: "incoming" | "outgoing" | null;
 }
 
 function joinedLabel(value: unknown): string {
@@ -57,9 +57,9 @@ export async function getProfileView(
     ? privateUserDocumentSchema.parse(privateSnapshot.data())
     : null;
   const isOwner = viewerUid === uid;
-  const relationshipSnapshot =
+  const relationship =
     viewerUid && !isOwner
-      ? await db.doc(`follows/${getFollowId(viewerUid, uid)}`).get()
+      ? await resolveConnectionRelationship(viewerUid, uid)
       : null;
   const canViewContact = canViewContactDetails(
     uid,
@@ -68,27 +68,10 @@ export async function getProfileView(
   );
 
   let connectionStatus: "none" | "pending" | "accepted" | null = null;
-  let incomingRequestFrom = false;
+  let connectionDirection: "incoming" | "outgoing" | null = null;
   if (viewerUid && !isOwner) {
-    if (!relationshipSnapshot?.exists) {
-      connectionStatus = "none";
-      // Check for incoming request (profile owner -> viewer)
-      const incomingSnapshot = await db
-        .doc(`follows/${getFollowId(uid, viewerUid)}`)
-        .get();
-      if (incomingSnapshot.exists) {
-        const incomingData = incomingSnapshot.data() as Record<
-          string,
-          unknown
-        >;
-        if (incomingData.status === "pending") {
-          incomingRequestFrom = true;
-        }
-      }
-    } else {
-      const data = relationshipSnapshot.data() as Record<string, unknown>;
-      connectionStatus = data.status === "pending" ? "pending" : "accepted";
-    }
+    connectionStatus = relationship?.status ?? "none";
+    connectionDirection = relationship?.direction ?? null;
   }
 
   return {
@@ -99,7 +82,7 @@ export async function getProfileView(
       canViewContact && privateUser ? privateUser.contactDetails : null,
     isOwner,
     connectionStatus,
-    incomingRequestFrom,
+    connectionDirection,
   };
 }
 

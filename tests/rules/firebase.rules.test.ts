@@ -19,8 +19,11 @@ import { getBytes, ref, uploadBytes } from "firebase/storage";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import {
+  acceptConnectionRequest,
+  getNetworkList,
   followEducator,
   NetworkActionError,
+  resolveConnectionRelationship,
   unfollowEducator,
 } from "@/lib/network/server";
 import {
@@ -34,6 +37,7 @@ import {
 } from "@/lib/feed/server";
 import {
   downloadResource,
+  finalizeResourceUpload,
   reserveResourceUpload,
   ResourceActionError,
   reviewResource,
@@ -68,8 +72,8 @@ import {
   startVistaTrial,
 } from "@/lib/billing/server";
 import { AdminActionError, performAdminAction } from "@/lib/admin/server";
-
 const projectId = "demo-vista-teacher";
+const storageBucketUrl = `gs://${projectId}.appspot.com`;
 let testEnv: RulesTestEnvironment;
 
 beforeAll(async () => {
@@ -457,7 +461,9 @@ describe("Firestore rules", () => {
 
   it("allows only exact reserved message attachment uploads", async () => {
     await seedNetworkUser("sender");
-    const senderStorage = testEnv.authenticatedContext("sender").storage();
+    const senderStorage = testEnv
+      .authenticatedContext("sender")
+      .storage(storageBucketUrl);
     await testEnv.withSecurityRulesDisabled(async (context) => {
       await setDoc(
         doc(context.firestore(), "messageAttachments", "attachment-one"),
@@ -646,11 +652,12 @@ describe("Firestore rules", () => {
     );
   });
 
-  it("updates both counters transactionally when following and unfollowing", async () => {
+  it("resolves accepted connections symmetrically and updates counters once", async () => {
     await seedNetworkUser("follower");
     await seedNetworkUser("educator");
 
     await followEducator("follower", "educator");
+    await acceptConnectionRequest("follower", "educator");
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const [follower, educator, relationship] = await Promise.all([
         getDoc(doc(context.firestore(), "users", "follower")),
@@ -662,7 +669,41 @@ describe("Firestore rules", () => {
       expect(relationship.exists()).toBe(true);
     });
 
-    await unfollowEducator("follower", "educator");
+    await expect(
+      resolveConnectionRelationship("follower", "educator"),
+    ).resolves.toMatchObject({ status: "accepted", direction: "outgoing" });
+    await expect(
+      resolveConnectionRelationship("educator", "follower"),
+    ).resolves.toMatchObject({ status: "accepted", direction: "incoming" });
+    await expect(followEducator("educator", "follower")).rejects.toMatchObject({
+      code: "already-following",
+    } satisfies Partial<NetworkActionError>);
+
+    const [
+      followerSuggestions,
+      educatorSuggestions,
+      followerConnections,
+      educatorConnections,
+    ] = await Promise.all([
+      getNetworkList("follower", "follower", "suggestions"),
+      getNetworkList("educator", "educator", "suggestions"),
+      getNetworkList("follower", "follower", "connections"),
+      getNetworkList("educator", "educator", "connections"),
+    ]);
+    expect(
+      followerSuggestions.map((result) => result.profile.uid),
+    ).not.toContain("educator");
+    expect(
+      educatorSuggestions.map((result) => result.profile.uid),
+    ).not.toContain("follower");
+    expect(followerConnections.map((result) => result.profile.uid)).toContain(
+      "educator",
+    );
+    expect(educatorConnections.map((result) => result.profile.uid)).toContain(
+      "follower",
+    );
+
+    await unfollowEducator("educator", "follower");
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const [follower, educator, relationship] = await Promise.all([
         getDoc(doc(context.firestore(), "users", "follower")),
@@ -932,6 +973,74 @@ describe("Firestore rules", () => {
     );
   });
 
+  it("uploads JPEG and PNG resources and cleans failed reservations", async () => {
+    await seedNetworkUser("image-author");
+    const base = {
+      title: "Classroom image resource",
+      description: "A classroom-ready image with accessible context.",
+      type: "activity" as const,
+      subject: "Art",
+      gradeLevel: "Grades 3-5",
+      tags: ["visual"],
+      accessTier: "free" as const,
+    };
+
+    for (const [extension, fileType] of [
+      ["jpg", "image/jpeg"],
+      ["png", "image/png"],
+    ] as const) {
+      const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+      const reservation = await reserveResourceUpload("image-author", {
+        ...base,
+        title: `${base.title} ${extension}`,
+        fileName: `classroom.${extension}`,
+        fileType,
+        fileSize: bytes.length,
+      });
+      await uploadBytes(
+        ref(
+          testEnv
+            .authenticatedContext("image-author")
+            .storage(storageBucketUrl),
+          reservation.uploadPath,
+        ),
+        bytes,
+        { contentType: fileType },
+      );
+      await finalizeResourceUpload("image-author", reservation.resourceId);
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const resource = await getDoc(
+          doc(context.firestore(), "resources", reservation.resourceId),
+        );
+        expect(resource.data()?.status).toBe("active");
+      });
+    }
+
+    const failed = await reserveResourceUpload("image-author", {
+      ...base,
+      fileName: "missing.png",
+      fileType: "image/png",
+      fileSize: 4,
+    });
+    await expect(
+      finalizeResourceUpload("image-author", failed.resourceId),
+    ).rejects.toMatchObject({ code: "invalid-upload" });
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [resource, usage] = await Promise.all([
+        getDoc(doc(context.firestore(), "resources", failed.resourceId)),
+        getDoc(
+          doc(
+            context.firestore(),
+            "usage",
+            `image-author_${new Date().toISOString().slice(0, 7)}`,
+          ),
+        ),
+      ]);
+      expect(resource.exists()).toBe(false);
+      expect(usage.data()?.resourceUploads).toBe(2);
+    });
+  });
+
   it("limits Community resource downloads but exempts the owner", async () => {
     await seedNetworkUser("author");
     await seedNetworkUser("downloader");
@@ -958,7 +1067,10 @@ describe("Firestore rules", () => {
       );
     });
     await uploadBytes(
-      ref(testEnv.authenticatedContext("author").storage(), filePath),
+      ref(
+        testEnv.authenticatedContext("author").storage(storageBucketUrl),
+        filePath,
+      ),
       new Uint8Array([1, 2, 3, 4]),
       { contentType: "application/pdf" },
     );
@@ -1360,7 +1472,9 @@ describe("Firestore rules", () => {
 describe("Storage rules", () => {
   it("allows active owners to upload safe avatars", async () => {
     await seedActiveUser("owner");
-    const storage = testEnv.authenticatedContext("owner").storage();
+    const storage = testEnv
+      .authenticatedContext("owner")
+      .storage(storageBucketUrl);
 
     await assertSucceeds(
       uploadBytes(
@@ -1375,8 +1489,12 @@ describe("Storage rules", () => {
 
   it("rejects another user's upload and unsafe avatar MIME types", async () => {
     await seedActiveUser("owner");
-    const otherStorage = testEnv.authenticatedContext("other").storage();
-    const ownerStorage = testEnv.authenticatedContext("owner").storage();
+    const otherStorage = testEnv
+      .authenticatedContext("other")
+      .storage(storageBucketUrl);
+    const ownerStorage = testEnv
+      .authenticatedContext("owner")
+      .storage(storageBucketUrl);
 
     await assertFails(
       uploadBytes(
@@ -1396,7 +1514,9 @@ describe("Storage rules", () => {
 
   it("keeps profile cover writes server-owned", async () => {
     await seedActiveUser("owner");
-    const ownerStorage = testEnv.authenticatedContext("owner").storage();
+    const ownerStorage = testEnv
+      .authenticatedContext("owner")
+      .storage(storageBucketUrl);
 
     await assertFails(
       uploadBytes(
@@ -1409,8 +1529,12 @@ describe("Storage rules", () => {
 
   it("limits post media writes to active owners and reads to signed-in users", async () => {
     await seedActiveUser("owner");
-    const ownerStorage = testEnv.authenticatedContext("owner").storage();
-    const otherStorage = testEnv.authenticatedContext("other").storage();
+    const ownerStorage = testEnv
+      .authenticatedContext("owner")
+      .storage(storageBucketUrl);
+    const otherStorage = testEnv
+      .authenticatedContext("other")
+      .storage(storageBucketUrl);
     const postPath = "posts/owner/post-one/classroom.webp";
 
     await assertSucceeds(
@@ -1427,17 +1551,26 @@ describe("Storage rules", () => {
       ),
     );
     await assertFails(
-      getBytes(ref(testEnv.unauthenticatedContext().storage(), postPath)),
+      getBytes(
+        ref(
+          testEnv.unauthenticatedContext().storage(storageBucketUrl),
+          postPath,
+        ),
+      ),
     );
   });
 
   it("accepts safe owner verification evidence but denies every direct read", async () => {
     await seedActiveUser("owner");
-    const ownerStorage = testEnv.authenticatedContext("owner").storage();
-    const otherStorage = testEnv.authenticatedContext("other").storage();
+    const ownerStorage = testEnv
+      .authenticatedContext("owner")
+      .storage(storageBucketUrl);
+    const otherStorage = testEnv
+      .authenticatedContext("other")
+      .storage(storageBucketUrl);
     const adminStorage = testEnv
       .authenticatedContext("admin", { role: "platform_admin" })
-      .storage();
+      .storage(storageBucketUrl);
     const evidencePath = "verification/owner/evidence.pdf";
 
     await assertSucceeds(
@@ -1474,7 +1607,9 @@ describe("Storage rules", () => {
         fileSize: 3,
       });
     });
-    const storage = testEnv.authenticatedContext("owner").storage();
+    const storage = testEnv
+      .authenticatedContext("owner")
+      .storage(storageBucketUrl);
     await assertSucceeds(
       uploadBytes(
         ref(storage, "resources/owner/reserved/resource.pdf"),

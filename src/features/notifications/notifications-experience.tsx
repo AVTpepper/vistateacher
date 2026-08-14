@@ -22,11 +22,7 @@ import { cn } from "@/lib/utils";
 
 type NotificationFilter = "all" | "unread" | "archived";
 type NotificationAction =
-  | "mark-read"
-  | "mark-unread"
-  | "archive"
-  | "restore"
-  | "delete";
+  "mark-read" | "mark-unread" | "archive" | "restore" | "delete";
 
 export function NotificationsExperience({
   initialPage,
@@ -138,7 +134,7 @@ export function NotificationsExperience({
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {value}
+              {value[0].toUpperCase() + value.slice(1)}
             </button>
           ))}
         </div>
@@ -163,7 +159,9 @@ export function NotificationsExperience({
               className="text-muted-foreground/30 mx-auto size-9"
             />
             <h2 className="mt-3 font-serif text-xl">
-              {filter === "archived" ? "No archived updates" : "You're all caught up"}
+              {filter === "archived"
+                ? "No archived updates"
+                : "You're all caught up"}
             </h2>
             <p className="text-muted-foreground mt-1 text-sm">
               {filter === "archived"

@@ -10,7 +10,7 @@ import {
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { UserAvatar } from "@/components/ui/user-avatar";
+import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import { ResourceDetailActions } from "@/features/resources/resource-detail-actions";
 import { requireCurrentAccount } from "@/lib/auth/session";
 import { getResourceDetail } from "@/lib/resources/server";
@@ -68,15 +68,21 @@ export default async function ResourcePage({
                 ))}
               </div>
               <div className="mt-5 flex items-center gap-3 border-t pt-5">
-                <UserAvatar
-                  name={resource.author.displayName}
+                <ProfileIdentityLink
+                  uid={resource.author.uid}
+                  displayName={resource.author.displayName}
                   photoURL={resource.author.photoURL}
-                  className="size-10 rounded-full text-xs"
+                  avatarClassName="size-10 rounded-full text-xs"
+                  showName={false}
                 />
                 <div>
-                  <p className="text-sm font-bold">
-                    {resource.author.displayName}
-                  </p>
+                  <ProfileIdentityLink
+                    uid={resource.author.uid}
+                    displayName={resource.author.displayName}
+                    photoURL={resource.author.photoURL}
+                    showAvatar={false}
+                    className="text-sm"
+                  />
                   <p className="text-muted-foreground text-xs">
                     {resource.subject} · {resource.gradeLevel}
                   </p>
@@ -127,20 +133,23 @@ export default async function ResourcePage({
           {reviews.length ? (
             <div className="mt-3 space-y-3">
               {reviews.map((review) => (
-                <article
-                  key={review.id}
-                  className="surface-card p-4"
-                >
+                <article key={review.id} className="surface-card p-4">
                   <div className="flex items-center gap-3">
-                    <UserAvatar
-                      name={review.author.displayName}
+                    <ProfileIdentityLink
+                      uid={review.author.uid}
+                      displayName={review.author.displayName}
                       photoURL={review.author.photoURL}
-                      className="size-8 rounded-full text-[10px]"
+                      avatarClassName="size-8 rounded-full text-[10px]"
+                      showName={false}
                     />
                     <div className="flex-1">
-                      <p className="text-sm font-bold">
-                        {review.author.displayName}
-                      </p>
+                      <ProfileIdentityLink
+                        uid={review.author.uid}
+                        displayName={review.author.displayName}
+                        photoURL={review.author.photoURL}
+                        showAvatar={false}
+                        className="text-sm"
+                      />
                       <div className="flex">
                         {Array.from({ length: 5 }, (_, index) => (
                           <Star

@@ -166,7 +166,8 @@ test("protects the platform shell without a server session", async ({
     "/settings/billing/checkout?interval=month",
   ]) {
     await page.goto(path);
-    await expect(page).toHaveURL(/\/sign-in$/);
+    await expect(page).toHaveURL(/\/sign-in\?returnTo=/);
+    expect(new URL(page.url()).searchParams.get("returnTo")).toBe(path);
     await expect(
       page.getByRole("heading", { name: "Welcome back" }),
     ).toBeVisible();

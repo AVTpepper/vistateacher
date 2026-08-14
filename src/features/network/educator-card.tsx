@@ -1,7 +1,7 @@
 import { MapPin, School } from "lucide-react";
 import Link from "next/link";
 
-import { UserAvatar } from "@/components/ui/user-avatar";
+import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import { FollowButton } from "@/features/network/follow-button";
 import type { EducatorDiscoveryResult } from "@/lib/network/server";
 
@@ -12,16 +12,18 @@ export function EducatorCard({
   result: EducatorDiscoveryResult;
   viewerUid: string;
 }) {
-  const { profile, connectionStatus } = result;
+  const { profile, connectionStatus, connectionDirection } = result;
   return (
     <article className="surface-card surface-card-interactive group overflow-hidden">
       <div className="from-primary/25 via-sidebar-primary/15 to-accent/10 relative h-24 bg-linear-to-br">
         <div className="absolute bottom-0 left-4 translate-y-1/2">
           <div className="relative">
-            <UserAvatar
-              name={profile.displayName}
+            <ProfileIdentityLink
+              uid={profile.uid}
+              displayName={profile.displayName}
               photoURL={profile.photoURL}
-              className="ring-card size-14 rounded-full text-sm ring-3"
+              avatarClassName="ring-card size-14 rounded-full text-sm ring-3"
+              showName={false}
             />
             {profile.isVerified && (
               <span
@@ -35,12 +37,13 @@ export function EducatorCard({
         </div>
       </div>
       <div className="p-4 pt-9">
-        <Link
-          href={`/profile/${profile.uid}`}
-          className="group-hover:text-primary text-sm font-bold transition-colors"
-        >
-          {profile.displayName}
-        </Link>
+        <ProfileIdentityLink
+          uid={profile.uid}
+          displayName={profile.displayName}
+          photoURL={profile.photoURL}
+          showAvatar={false}
+          className="group-hover:text-primary text-sm"
+        />
         <p className="text-muted-foreground mt-0.5 truncate text-xs">
           {profile.gradeLevel} · {profile.subjects.join(", ")}
         </p>
@@ -58,7 +61,7 @@ export function EducatorCard({
             </span>
           </p>
         </div>
-        <p className="text-foreground/70 mt-3 line-clamp-2 min-h-10 text-xs leading-5">
+        <p className="text-muted-foreground mt-3 line-clamp-2 min-h-10 text-xs leading-5">
           {profile.bio || "This educator has not added a bio yet."}
         </p>
         <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
@@ -84,6 +87,7 @@ export function EducatorCard({
             <FollowButton
               targetUid={profile.uid}
               connectionStatus={connectionStatus}
+              connectionDirection={connectionDirection}
               mode="connect"
             />
           )}

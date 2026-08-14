@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { OnboardingForm } from "@/features/onboarding/onboarding-form";
+import { safeReturnTo } from "@/lib/auth/return-to";
 import { requireCurrentAccount } from "@/lib/auth/session";
 import { parsePlanIntent, planIntentHref } from "@/lib/billing/plan-intent";
 
@@ -10,13 +11,21 @@ export const metadata: Metadata = { title: "Set up your profile" };
 export default async function OnboardingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ plan?: string | string[] }>;
+  searchParams: Promise<{
+    plan?: string | string[];
+    returnTo?: string | string[];
+  }>;
 }) {
-  const planIntent = parsePlanIntent((await searchParams).plan);
+  const params = await searchParams;
+  const planIntent = parsePlanIntent(params.plan);
+  const returnTo = safeReturnTo(
+    Array.isArray(params.returnTo) ? params.returnTo[0] : params.returnTo,
+  );
   const account = await requireCurrentAccount();
   if (account.onboarded)
     redirect(
-      planIntent ? planIntentHref("/settings/billing", planIntent) : "/app",
+      returnTo ??
+        (planIntent ? planIntentHref("/settings/billing", planIntent) : "/app"),
     );
 
   return (
@@ -37,6 +46,7 @@ export default async function OnboardingPage({
         <OnboardingForm
           displayName={account.displayName ?? ""}
           planIntent={planIntent}
+          returnTo={returnTo}
         />
       </div>
     </div>

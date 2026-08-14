@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, LoaderCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import type { z } from "zod";
 
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChoiceFieldset, Choice } from "@/components/ui/choice-field";
+import { safeReturnTo } from "@/lib/auth/return-to";
 import { planIntentHref, type PlanIntent } from "@/lib/billing/plan-intent";
 import {
   educationStages,
@@ -16,7 +18,6 @@ import {
   subjectAreas,
   taughtLanguages,
 } from "@/lib/profiles/options";
-import { cn } from "@/lib/utils";
 import { onboardingSchema } from "@/schemas/auth";
 
 type OnboardingInput = z.input<typeof onboardingSchema>;
@@ -25,10 +26,13 @@ type OnboardingValues = z.output<typeof onboardingSchema>;
 export function OnboardingForm({
   displayName,
   planIntent = null,
+  returnTo = null,
 }: {
   displayName: string;
   planIntent?: PlanIntent | null;
+  returnTo?: string | null;
 }) {
+  const router = useRouter();
   const form = useForm<OnboardingInput, unknown, OnboardingValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
@@ -106,11 +110,13 @@ export function OnboardingForm({
         });
         return;
       }
-      window.location.assign(
-        planIntent
-          ? planIntentHref("/settings/billing", planIntent)
-          : result.next,
+      router.push(
+        safeReturnTo(returnTo) ??
+          (planIntent
+            ? planIntentHref("/settings/billing", planIntent)
+            : result.next),
       );
+      router.refresh();
     } catch {
       form.setError("root", {
         message:

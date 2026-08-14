@@ -17,6 +17,14 @@ import type {
 export interface EducatorDiscoveryResult {
   profile: ProfileDocument;
   connectionStatus: "none" | "pending" | "accepted";
+  connectionDirection: "incoming" | "outgoing" | null;
+  relationshipId: string | null;
+}
+
+export interface ConnectionRelationship {
+  status: "none" | "pending" | "accepted";
+  direction: "incoming" | "outgoing" | null;
+  relationshipId: string | null;
 }
 
 export class NetworkActionError extends Error {
@@ -30,6 +38,72 @@ export class NetworkActionError extends Error {
 
 export function getFollowId(followerUid: string, followingUid: string): string {
   return `${followerUid}_${followingUid}`;
+}
+
+function relationshipFromDocuments(
+  viewerUid: string,
+  documents: FirebaseFirestore.DocumentSnapshot[],
+): ConnectionRelationship {
+  const existing = documents.filter((document) => document.exists);
+  if (!existing.length)
+    return { status: "none", direction: null, relationshipId: null };
+  const document =
+    existing.find((item) => item.data()?.status === "accepted") ?? existing[0]!;
+  const data = document.data()!;
+  return {
+    status: data.status === "pending" ? "pending" : "accepted",
+    direction: data.followerUid === viewerUid ? "outgoing" : "incoming",
+    relationshipId: document.id,
+  };
+}
+
+export async function resolveConnectionRelationship(
+  viewerUid: string,
+  targetUid: string,
+): Promise<ConnectionRelationship> {
+  if (viewerUid === targetUid)
+    return { status: "none", direction: null, relationshipId: null };
+  const db = adminDb();
+  const documents = await db.getAll(
+    db.doc(`follows/${getFollowId(viewerUid, targetUid)}`),
+    db.doc(`follows/${getFollowId(targetUid, viewerUid)}`),
+  );
+  return relationshipFromDocuments(viewerUid, documents);
+}
+
+async function relationshipsForUser(
+  uid: string,
+): Promise<Map<string, ConnectionRelationship>> {
+  const db = adminDb();
+  const [outgoing, incoming] = await Promise.all([
+    db.collection("follows").where("followerUid", "==", uid).limit(100).get(),
+    db.collection("follows").where("followingUid", "==", uid).limit(100).get(),
+  ]);
+  const grouped = new Map<string, FirebaseFirestore.DocumentSnapshot[]>();
+  for (const document of [...outgoing.docs, ...incoming.docs]) {
+    const data = document.data();
+    const otherUid = String(
+      data.followerUid === uid ? data.followingUid : data.followerUid,
+    );
+    grouped.set(otherUid, [...(grouped.get(otherUid) ?? []), document]);
+  }
+  return new Map(
+    [...grouped].map(([otherUid, documents]) => [
+      otherUid,
+      relationshipFromDocuments(uid, documents),
+    ]),
+  );
+}
+
+export async function getAcceptedConnectionUids(
+  uid: string,
+): Promise<Set<string>> {
+  const relationships = await relationshipsForUser(uid);
+  return new Set(
+    [...relationships]
+      .filter(([, relationship]) => relationship.status === "accepted")
+      .map(([otherUid]) => otherUid),
+  );
 }
 
 function subscriptionRecord(
@@ -67,22 +141,10 @@ export async function discoverEducators(
   filters: DiscoveryFilters,
 ): Promise<EducatorDiscoveryResult[]> {
   const db = adminDb();
-  const [profilesSnapshot, followsSnapshot] = await Promise.all([
+  const [profilesSnapshot, relationships] = await Promise.all([
     db.collection("users").where("status", "==", "active").limit(100).get(),
-    db
-      .collection("follows")
-      .where("followerUid", "==", viewerUid)
-      .limit(100)
-      .get(),
+    relationshipsForUser(viewerUid),
   ]);
-  const followStatuses = new Map<string, string>();
-  followsSnapshot.docs.forEach((document) => {
-    const data = document.data() as Record<string, unknown>;
-    followStatuses.set(
-      String(data.followingUid),
-      data.status === "pending" ? "pending" : "accepted",
-    );
-  });
 
   return profilesSnapshot.docs
     .map((document) => profileDocumentSchema.safeParse(document.data()))
@@ -94,10 +156,19 @@ export async function discoverEducators(
     )
     .sort((left, right) => left.displayName.localeCompare(right.displayName))
     .slice(0, 30)
-    .map((profile) => ({
-      profile,
-      connectionStatus: (followStatuses.get(profile.uid) ?? "none") as "none" | "pending" | "accepted",
-    }));
+    .map((profile) => {
+      const relationship = relationships.get(profile.uid) ?? {
+        status: "none" as const,
+        direction: null,
+        relationshipId: null,
+      };
+      return {
+        profile,
+        connectionStatus: relationship.status,
+        connectionDirection: relationship.direction,
+        relationshipId: relationship.relationshipId,
+      };
+    });
 }
 
 export async function getNetworkList(
@@ -137,35 +208,46 @@ export async function getNetworkList(
   }
 
   // connections view - get accepted connections with the profile
-  const relationships = await adminDb()
-    .collection("follows")
-    .where("followerUid", "==", profileUid)
-    .where("status", "==", "accepted")
-    .limit(100)
-    .get();
-  const uids = relationships.docs.map((document) =>
-    String(document.data().followingUid),
-  );
-  const viewerFollows = await adminDb()
-    .collection("follows")
-    .where("followerUid", "==", viewerUid)
-    .where("status", "==", "accepted")
-    .limit(100)
-    .get();
-  const following = new Set(
-    viewerFollows.docs.map((document) => String(document.data().followingUid)),
-  );
+  const db = adminDb();
+  const [outgoing, incoming, viewerRelationships] = await Promise.all([
+    db
+      .collection("follows")
+      .where("followerUid", "==", profileUid)
+      .where("status", "==", "accepted")
+      .limit(100)
+      .get(),
+    db
+      .collection("follows")
+      .where("followingUid", "==", profileUid)
+      .where("status", "==", "accepted")
+      .limit(100)
+      .get(),
+    relationshipsForUser(viewerUid),
+  ]);
+  const uids = [
+    ...new Set([
+      ...outgoing.docs.map((document) => String(document.data().followingUid)),
+      ...incoming.docs.map((document) => String(document.data().followerUid)),
+    ]),
+  ];
   const profiles = await Promise.all(
-    uids.map((uid) => adminDb().doc(`users/${uid}`).get()),
+    uids.map((uid) => db.doc(`users/${uid}`).get()),
   );
 
   return profiles.flatMap((snapshot) => {
     const result = profileDocumentSchema.safeParse(snapshot.data());
     if (!result.success || result.data.status !== "active") return [];
+    const relationship = viewerRelationships.get(result.data.uid) ?? {
+      status: "none" as const,
+      direction: null,
+      relationshipId: null,
+    };
     return [
       {
         profile: result.data,
-        connectionStatus: following.has(result.data.uid) ? "accepted" : "none",
+        connectionStatus: relationship.status,
+        connectionDirection: relationship.direction,
+        relationshipId: relationship.relationshipId,
       },
     ];
   });
@@ -182,18 +264,23 @@ export async function followEducator(
     const followRef = db.doc(
       `follows/${getFollowId(followerUid, followingUid)}`,
     );
+    const reverseFollowRef = db.doc(
+      `follows/${getFollowId(followingUid, followerUid)}`,
+    );
     const subscriptionRef = db.doc(`subscriptions/${followerUid}`);
     const [
       followerSnapshot,
       followingSnapshot,
       followSnapshot,
+      reverseFollowSnapshot,
       subscriptionSnapshot,
-    ] = await Promise.all([
-      transaction.get(followerRef),
-      transaction.get(followingRef),
-      transaction.get(followRef),
-      transaction.get(subscriptionRef),
-    ]);
+    ] = await transaction.getAll(
+      followerRef,
+      followingRef,
+      followRef,
+      reverseFollowRef,
+      subscriptionRef,
+    );
     if (!followerSnapshot.exists || !followingSnapshot.exists)
       throw new NetworkActionError("not-found");
 
@@ -207,7 +294,7 @@ export async function followEducator(
       followingUid,
       followerStatus: follower.status,
       followingStatus: following.status,
-      alreadyFollowing: followSnapshot.exists,
+      alreadyFollowing: followSnapshot.exists || reverseFollowSnapshot.exists,
       followingCount: follower.connectionCount,
       plan,
     });
@@ -221,9 +308,7 @@ export async function followEducator(
       createdAt: now,
     });
     transaction.set(
-      db.doc(
-        `users/${followingUid}/notifications/follow_${followerUid}`,
-      ),
+      db.doc(`users/${followingUid}/notifications/follow_${followerUid}`),
       {
         type: "follow",
         actorId: followerUid,
@@ -250,24 +335,35 @@ export async function unfollowEducator(
     const followRef = db.doc(
       `follows/${getFollowId(followerUid, followingUid)}`,
     );
-    const [followerSnapshot, followingSnapshot, followSnapshot] =
-      await Promise.all([
-        transaction.get(followerRef),
-        transaction.get(followingRef),
-        transaction.get(followRef),
-      ]);
-    if (!followSnapshot.exists) return;
+    const reverseFollowRef = db.doc(
+      `follows/${getFollowId(followingUid, followerUid)}`,
+    );
+    const [
+      followerSnapshot,
+      followingSnapshot,
+      followSnapshot,
+      reverseFollowSnapshot,
+    ] = await transaction.getAll(
+      followerRef,
+      followingRef,
+      followRef,
+      reverseFollowRef,
+    );
+    if (!followSnapshot.exists && !reverseFollowSnapshot.exists) return;
     if (!followerSnapshot.exists || !followingSnapshot.exists)
       throw new NetworkActionError("not-found");
 
     const follower = profileDocumentSchema.parse(followerSnapshot.data());
     const following = profileDocumentSchema.parse(followingSnapshot.data());
-    const followData = followSnapshot.data() as FirebaseFirestore.DocumentData;
+    const accepted = [followSnapshot, reverseFollowSnapshot].some(
+      (snapshot) => snapshot.exists && snapshot.data()?.status === "accepted",
+    );
     const now = FieldValue.serverTimestamp();
-    transaction.delete(followRef);
-    
+    if (followSnapshot.exists) transaction.delete(followRef);
+    if (reverseFollowSnapshot.exists) transaction.delete(reverseFollowRef);
+
     // Only decrement counts if the relationship was accepted
-    if (followData.status === "accepted") {
+    if (accepted) {
       transaction.update(followerRef, {
         connectionCount: Math.max(0, follower.connectionCount - 1),
         updatedAt: now,
@@ -277,11 +373,12 @@ export async function unfollowEducator(
         updatedAt: now,
       });
     }
-    
+
     transaction.delete(
-      db.doc(
-        `users/${followingUid}/notifications/follow_${followerUid}`,
-      ),
+      db.doc(`users/${followingUid}/notifications/follow_${followerUid}`),
+    );
+    transaction.delete(
+      db.doc(`users/${followerUid}/notifications/follow_${followingUid}`),
     );
   });
 }
@@ -297,18 +394,34 @@ export async function acceptConnectionRequest(
     const followRef = db.doc(
       `follows/${getFollowId(followerUid, followingUid)}`,
     );
-    const [followerSnapshot, followingSnapshot, followSnapshot] =
-      await Promise.all([
-        transaction.get(followerRef),
-        transaction.get(followingRef),
-        transaction.get(followRef),
-      ]);
+    const reverseFollowRef = db.doc(
+      `follows/${getFollowId(followingUid, followerUid)}`,
+    );
+    const [
+      followerSnapshot,
+      followingSnapshot,
+      followSnapshot,
+      reverseFollowSnapshot,
+    ] = await transaction.getAll(
+      followerRef,
+      followingRef,
+      followRef,
+      reverseFollowRef,
+    );
     if (!followSnapshot.exists) return;
     if (!followerSnapshot.exists || !followingSnapshot.exists)
       throw new NetworkActionError("not-found");
 
     const followData = followSnapshot.data() as Record<string, unknown>;
     if (followData.status !== "pending") return;
+
+    if (reverseFollowSnapshot.exists) {
+      if (reverseFollowSnapshot.data()?.status === "accepted") {
+        transaction.delete(followRef);
+        return;
+      }
+      transaction.delete(reverseFollowRef);
+    }
 
     const follower = profileDocumentSchema.parse(followerSnapshot.data());
     const following = profileDocumentSchema.parse(followingSnapshot.data());
@@ -327,9 +440,7 @@ export async function acceptConnectionRequest(
       updatedAt: now,
     });
     transaction.set(
-      db.doc(
-        `users/${followerUid}/notifications/accept_${followingUid}`,
-      ),
+      db.doc(`users/${followerUid}/notifications/accept_${followingUid}`),
       {
         type: "accept",
         actorId: followingUid,

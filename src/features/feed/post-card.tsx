@@ -15,16 +15,17 @@ import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { UserAvatar } from "@/components/ui/user-avatar";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import type { FeedComment, FeedPost } from "@/lib/feed/server";
 import { cn } from "@/lib/utils";
 
 interface PostCardProps {
   initialPost: FeedPost;
-  viewer: { displayName: string; photoURL: string | null };
-  onDelete: (postId: string, restore?: FeedPost) => void;
-  onBookmarkRemoved: (postId: string) => void;
+  initialComments?: FeedComment[];
+  viewer: { uid: string; displayName: string; photoURL: string | null };
+  onDelete?: (postId: string, restore?: FeedPost) => void;
+  onBookmarkRemoved?: (postId: string) => void;
 }
 
 const typeStyle = {
@@ -49,14 +50,19 @@ async function mutation(url: string, method: string, body?: unknown) {
 
 export function PostCard({
   initialPost,
+  initialComments,
   viewer,
   onDelete,
   onBookmarkRemoved,
 }: PostCardProps) {
   const [post, setPost] = useState(initialPost);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [commentsOpen, setCommentsOpen] = useState(false);
-  const [comments, setComments] = useState<FeedComment[] | null>(null);
+  const [commentsOpen, setCommentsOpen] = useState(
+    initialComments !== undefined,
+  );
+  const [comments, setComments] = useState<FeedComment[] | null>(
+    initialComments ?? null,
+  );
   const [comment, setComment] = useState("");
   const [commenting, setCommenting] = useState(false);
   const [editingPost, setEditingPost] = useState(false);
@@ -93,7 +99,7 @@ export function PostCard({
     if (!response.ok) {
       setPost(previous);
       toast.error("We couldn't update that saved post.");
-    } else if (!bookmarked) onBookmarkRemoved(post.id);
+    } else if (!bookmarked) onBookmarkRemoved?.(post.id);
   }
 
   async function openComments() {
@@ -118,7 +124,7 @@ export function PostCard({
     const optimistic: FeedComment = {
       id: temporaryId,
       author: {
-        uid: "viewer",
+        uid: viewer.uid,
         displayName: viewer.displayName,
         photoURL: viewer.photoURL,
         gradeLevel: "",
@@ -165,10 +171,10 @@ export function PostCard({
 
   async function removePost(): Promise<void> {
     setMenuOpen(false);
-    onDelete(post.id);
+    onDelete?.(post.id);
     const response = await mutation(`/api/feed/${post.id}`, "DELETE");
     if (!response.ok) {
-      onDelete(post.id, post);
+      onDelete?.(post.id, post);
       toast.error("We couldn't delete that post.");
       return;
     }
@@ -258,26 +264,39 @@ export function PostCard({
   }
 
   async function share() {
-    const url = `${window.location.origin}/app?post=${post.id}`;
-    if (navigator.share)
-      await navigator.share({ title: "VistaTeacher post", url });
-    else {
-      await navigator.clipboard.writeText(url);
-      toast.success("Post link copied.");
+    const url = `${window.location.origin}/post/${encodeURIComponent(post.id)}`;
+    try {
+      if (navigator.share)
+        await navigator.share({ title: "VistaTeacher post", url });
+      else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Post link copied.");
+      }
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError"))
+        toast.error("We couldn't share this post.");
     }
   }
 
   return (
     <article className="surface-card surface-card-interactive overflow-hidden">
       <header className="flex items-start gap-3 p-4 pb-3">
-        <UserAvatar
-          name={post.author.displayName}
+        <ProfileIdentityLink
+          uid={post.author.uid}
+          displayName={post.author.displayName}
           photoURL={post.author.photoURL}
-          className="size-10 shrink-0 rounded-full text-xs"
+          avatarClassName="size-10 rounded-full text-xs"
+          showName={false}
         />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-bold">{post.author.displayName}</span>
+            <ProfileIdentityLink
+              uid={post.author.uid}
+              displayName={post.author.displayName}
+              photoURL={post.author.photoURL}
+              showAvatar={false}
+              className="text-sm"
+            />
             <span
               className={cn(
                 "rounded-full px-2 py-0.5 text-[10px] font-bold",
@@ -340,10 +359,7 @@ export function PostCard({
                 </button>
               )}
               {post.ownedByViewer && (
-                <DeleteConfirmDialog
-                  itemName="post"
-                  onConfirm={removePost}
-                >
+                <DeleteConfirmDialog itemName="post" onConfirm={removePost}>
                   <button
                     type="button"
                     className="text-destructive hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
@@ -409,13 +425,31 @@ export function PostCard({
           />
         </div>
       )}
-      <div className="text-muted-foreground mx-4 flex items-center justify-between border-b pb-2 text-xs">
-        <button type="button" onClick={() => void toggleLike()}>
+      <div className="text-muted-foreground mx-4 flex flex-wrap items-center justify-between gap-2 border-b pb-2 text-xs">
+        <button
+          type="button"
+          onClick={() => void toggleLike()}
+          className="hover:bg-muted focus-visible:text-foreground min-h-11 rounded-lg px-2 transition-colors"
+        >
           {post.likeCount} {post.likeCount === 1 ? "like" : "likes"}
         </button>
-        <button type="button" onClick={() => void openComments()}>
-          {post.commentCount} comments · {post.shareCount} shares
-        </button>
+        <span className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => void openComments()}
+            className="hover:bg-muted focus-visible:text-foreground min-h-11 rounded-lg px-2 transition-colors"
+          >
+            {post.commentCount}{" "}
+            {post.commentCount === 1 ? "comment" : "comments"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void share()}
+            className="hover:bg-muted focus-visible:text-foreground min-h-11 rounded-lg px-2 transition-colors"
+          >
+            {post.shareCount} {post.shareCount === 1 ? "share" : "shares"}
+          </button>
+        </span>
       </div>
       <div className="flex px-2 py-1">
         <button
@@ -476,16 +510,22 @@ export function PostCard({
           ) : (
             comments.map((item) => (
               <div key={item.id} className="flex items-start gap-2.5">
-                <UserAvatar
-                  name={item.author.displayName}
+                <ProfileIdentityLink
+                  uid={item.author.uid}
+                  displayName={item.author.displayName}
                   photoURL={item.author.photoURL}
-                  className="size-8 shrink-0 rounded-full text-[10px]"
+                  avatarClassName="size-8 rounded-full text-[10px]"
+                  showName={false}
                 />
                 <div className="bg-muted min-w-0 flex-1 rounded-lg px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-bold">
-                      {item.author.displayName}
-                    </p>
+                    <ProfileIdentityLink
+                      uid={item.author.uid}
+                      displayName={item.author.displayName}
+                      photoURL={item.author.photoURL}
+                      showAvatar={false}
+                      className="text-xs"
+                    />
                     <p className="text-muted-foreground text-[10px]">
                       {formatDistanceToNow(new Date(item.createdAt), {
                         addSuffix: true,
@@ -558,10 +598,12 @@ export function PostCard({
             ))
           )}
           <div className="flex items-center gap-2.5 pt-1">
-            <UserAvatar
-              name={viewer.displayName}
+            <ProfileIdentityLink
+              uid={viewer.uid}
+              displayName={viewer.displayName}
               photoURL={viewer.photoURL}
-              className="size-8 shrink-0 rounded-full text-[10px]"
+              avatarClassName="size-8 rounded-full text-[10px]"
+              showName={false}
             />
             <div className="bg-muted flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2">
               <input
@@ -572,7 +614,7 @@ export function PostCard({
                   if (event.key === "Enter") void addComment();
                 }}
                 placeholder="Write a comment..."
-                className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-xs outline-none"
+                className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none md:text-sm"
               />
               <button
                 type="button"

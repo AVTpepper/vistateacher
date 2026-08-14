@@ -35,6 +35,16 @@ const contentSecurityPolicy = [
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
+  async redirects() {
+    return [
+      { source: "/forums", destination: "/forum", permanent: true },
+      {
+        source: "/forums/:path*",
+        destination: "/forum/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

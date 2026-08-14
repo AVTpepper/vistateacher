@@ -259,6 +259,7 @@ export async function finalizeResourceUpload(
       .file(String(data.filePath))
       .getMetadata();
   } catch {
+    await cancelResourceUpload(uid, resourceId);
     throw new ResourceActionError("invalid-upload");
   }
   if (
@@ -270,6 +271,7 @@ export async function finalizeResourceUpload(
       .bucket()
       .file(String(data.filePath))
       .delete({ ignoreNotFound: true });
+    await cancelResourceUpload(uid, resourceId);
     throw new ResourceActionError("invalid-upload");
   }
 
@@ -569,7 +571,9 @@ export async function updateResource(
       subject: input.subject,
       subjectLower: input.subject.toLocaleLowerCase("en-US"),
       gradeLevel: input.gradeLevel,
-      tags: [...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US")))],
+      tags: [
+        ...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US"))),
+      ],
       accessTier: input.accessTier,
       editedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -667,9 +671,7 @@ export async function downloadResource(
         {
           type: "resource-download",
           actorId: uid,
-          actorName: String(
-            currentUser.data()?.displayName ?? "An educator",
-          ),
+          actorName: String(currentUser.data()?.displayName ?? "An educator"),
           entityId: resourceId,
           message: `${String(currentUser.data()?.displayName ?? "An educator")} downloaded your resource.`,
           href: `/resources/${resourceId}`,

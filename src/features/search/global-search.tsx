@@ -5,7 +5,7 @@ import { BookOpen, FileQuestion, LoaderCircle, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useDeferredValue, useEffect, useState } from "react";
 
-import { UserAvatar } from "@/components/ui/user-avatar";
+import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import type { GroupedSearchResults } from "@/lib/search/server";
 
 const emptyResults: GroupedSearchResults = {
@@ -151,18 +151,15 @@ export function GlobalSearch({
               <>
                 <ResultGroup title="Educators">
                   {results.educators.map((educator) => (
-                    <ResultButton
+                    <ProfileIdentityLink
                       key={educator.uid}
-                      onClick={() => navigate(`/profile/${educator.uid}`)}
-                      icon={
-                        <UserAvatar
-                          name={educator.displayName}
-                          photoURL={educator.photoURL}
-                          className="size-9 rounded-full text-xs"
-                        />
-                      }
-                      title={educator.displayName}
+                      uid={educator.uid}
+                      displayName={educator.displayName}
+                      photoURL={educator.photoURL}
+                      avatarClassName="size-9 rounded-full text-xs"
                       detail={`${educator.gradeLevel} · ${educator.subjects.join(", ")}`}
+                      onClick={() => setOpen(false)}
+                      className="hover:bg-muted flex w-full px-3 py-2.5 text-left"
                     />
                   ))}
                 </ResultGroup>

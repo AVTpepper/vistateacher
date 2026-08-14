@@ -8,13 +8,16 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { hrefWithReturnTo, safeReturnTo } from "@/lib/auth/return-to";
 import { planIntentHref, type PlanIntent } from "@/lib/billing/plan-intent";
 import { getFirebaseClient } from "@/lib/firebase/client";
 
 export function VerifyEmailPanel({
   planIntent = null,
+  returnTo = null,
 }: {
   planIntent?: PlanIntent | null;
+  returnTo?: string | null;
 }) {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(false);
@@ -78,10 +81,17 @@ export function VerifyEmailPanel({
         }
         throw new Error(result.error);
       }
+      const destination = safeReturnTo(returnTo);
       router.push(
-        planIntent && result.next === "/app"
-          ? planIntentHref("/settings/billing", planIntent)
-          : planIntentHref(result.next, planIntent),
+        result.next === "/onboarding"
+          ? hrefWithReturnTo(
+              planIntentHref("/onboarding", planIntent),
+              destination,
+            )
+          : (destination ??
+              (planIntent && result.next === "/app"
+                ? planIntentHref("/settings/billing", planIntent)
+                : planIntentHref(result.next, planIntent))),
       );
       router.refresh();
     } catch (caught) {
@@ -135,7 +145,7 @@ export function VerifyEmailPanel({
       return;
     }
     await sendEmailVerification(user, {
-      url: `${window.location.origin}${planIntentHref("/verify-email", planIntent)}`,
+      url: `${window.location.origin}${hrefWithReturnTo(planIntentHref("/verify-email", planIntent), returnTo)}`,
     });
     toast.success("Verification email sent.");
   }
@@ -171,7 +181,13 @@ export function VerifyEmailPanel({
         size="lg"
         onClick={
           requiresSignIn
-            ? () => router.push(planIntentHref("/sign-in", planIntent))
+            ? () =>
+                router.push(
+                  hrefWithReturnTo(
+                    planIntentHref("/sign-in", planIntent),
+                    returnTo,
+                  ),
+                )
             : () => void checkVerification()
         }
         disabled={isChecking}
@@ -193,7 +209,10 @@ export function VerifyEmailPanel({
         </button>
         <Link
           className="text-primary hover:underline"
-          href={planIntentHref("/sign-in", planIntent)}
+          href={hrefWithReturnTo(
+            planIntentHref("/sign-in", planIntent),
+            returnTo,
+          )}
         >
           Back to sign in
         </Link>

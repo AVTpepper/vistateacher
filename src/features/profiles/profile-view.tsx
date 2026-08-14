@@ -116,11 +116,13 @@ export function ProfileView({
                     <FollowButton
                       targetUid={profile.uid}
                       connectionStatus={data.connectionStatus}
-                      incomingRequest={data.incomingRequestFrom}
+                      connectionDirection={data.connectionDirection}
                       mode="connect"
                     />
                     <Button asChild size="sm" variant="outline">
-                      <Link href={`/messages?compose=${encodeURIComponent(profile.uid)}`}>
+                      <Link
+                        href={`/messages?compose=${encodeURIComponent(profile.uid)}`}
+                      >
                         <MessageCircle aria-hidden="true" />
                         Message
                       </Link>
@@ -158,7 +160,7 @@ export function ProfileView({
             </div>
           </div>
         </div>
-        <p className="text-foreground/80 mt-4 max-w-2xl text-sm leading-6">
+        <p className="text-foreground mt-4 max-w-2xl text-sm leading-6">
           {profile.bio || "This educator has not added a bio yet."}
         </p>
         {data.contactDetails &&

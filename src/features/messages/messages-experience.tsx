@@ -26,6 +26,7 @@ import { ref, uploadBytes } from "firebase/storage";
 import { toast } from "sonner";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { NewConversationDialog } from "@/features/messages/new-conversation-dialog";
 import { ReportMessageDialog } from "@/features/messages/report-message-dialog";
@@ -300,11 +301,11 @@ export function MessagesExperience({
         <section
           aria-label="Conversations"
           className={cn(
-            "w-full shrink-0 flex-col border-r border-border/70 bg-card/40 lg:flex lg:w-[22rem] xl:w-96",
+            "border-border/70 bg-card/40 w-full shrink-0 flex-col border-r lg:flex lg:w-[22rem] xl:w-96",
             mobileChat ? "hidden" : "flex",
           )}
         >
-          <div className="border-b border-border/70 p-4 sm:p-5">
+          <div className="border-border/70 border-b p-4 sm:p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-primary text-[11px] font-bold tracking-[0.14em] uppercase">
@@ -334,7 +335,7 @@ export function MessagesExperience({
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search educators..."
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/80"
+                className="placeholder:text-muted-foreground/80 min-w-0 flex-1 bg-transparent text-sm outline-none"
               />
             </label>
           </div>
@@ -448,7 +449,7 @@ export function MessagesExperience({
           />
           {active ? (
             <>
-              <header className="relative z-10 flex h-16 shrink-0 items-center gap-3 border-b border-border/70 bg-card/70 px-3 backdrop-blur-md sm:px-5">
+              <header className="border-border/70 bg-card/70 relative z-10 flex h-16 shrink-0 items-center gap-3 border-b px-3 backdrop-blur-md sm:px-5">
                 <button
                   type="button"
                   aria-label="Back to conversations"
@@ -457,15 +458,21 @@ export function MessagesExperience({
                 >
                   <ArrowLeft aria-hidden="true" className="size-5" />
                 </button>
-                <UserAvatar
-                  name={active.participant.displayName}
+                <ProfileIdentityLink
+                  uid={active.participant.uid}
+                  displayName={active.participant.displayName}
                   photoURL={active.participant.photoURL}
-                  className="size-10 rounded-2xl text-xs"
+                  avatarClassName="size-10 rounded-2xl text-xs"
+                  showName={false}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold">
-                    {active.participant.displayName}
-                  </p>
+                  <ProfileIdentityLink
+                    uid={active.participant.uid}
+                    displayName={active.participant.displayName}
+                    photoURL={active.participant.photoURL}
+                    showAvatar={false}
+                    className="text-sm"
+                  />
                   <p className="text-muted-foreground truncate text-xs">
                     {active.participant.gradeLevel}
                     {active.participant.school
@@ -523,7 +530,7 @@ export function MessagesExperience({
                 </div>
               </div>
 
-              <footer className="relative z-10 shrink-0 border-t border-border/70 bg-card/80 p-3 backdrop-blur-md sm:p-4">
+              <footer className="border-border/70 bg-card/80 relative z-10 shrink-0 border-t p-3 backdrop-blur-md sm:p-4">
                 {active.blockedByViewer || active.blockedViewer ? (
                   <div className="surface-inset mx-auto max-w-3xl px-4 py-3 text-center">
                     <p className="text-muted-foreground text-sm">
@@ -584,7 +591,7 @@ export function MessagesExperience({
                         rows={1}
                         maxLength={5_000}
                         placeholder="Write a message..."
-                        className="max-h-28 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm outline-none placeholder:text-muted-foreground/80"
+                        className="placeholder:text-muted-foreground/80 max-h-28 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm outline-none"
                       />
                       <button
                         type="button"
@@ -645,10 +652,13 @@ function MessageBubble({
   return (
     <div className={cn("flex items-end gap-2", mine && "flex-row-reverse")}>
       {!mine && (
-        <UserAvatar
-          name={participant.displayName}
+        <ProfileIdentityLink
+          uid={participant.uid}
+          displayName={participant.displayName}
           photoURL={participant.photoURL}
-          className="mb-5 size-8 shrink-0 rounded-xl text-[9px]"
+          avatarClassName="size-8 rounded-xl text-[9px]"
+          className="mb-5"
+          showName={false}
         />
       )}
       <div
@@ -667,7 +677,9 @@ function MessageBubble({
           )}
         >
           {message.content && (
-            <p className="wrap-anywhere whitespace-pre-wrap">{message.content}</p>
+            <p className="wrap-anywhere whitespace-pre-wrap">
+              {message.content}
+            </p>
           )}
           {message.attachment && (
             <a
@@ -675,7 +687,7 @@ function MessageBubble({
               className={cn(
                 "mt-2 flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold underline-offset-2 hover:underline",
                 mine
-                  ? "bg-white/12 text-primary-foreground"
+                  ? "text-primary-foreground bg-white/12"
                   : "bg-primary/8 text-primary",
               )}
             >
@@ -709,13 +721,10 @@ function MessageBubble({
               >
                 Edit
               </button>
-              <DeleteConfirmDialog
-                itemName="message"
-                onConfirm={onDelete}
-              >
+              <DeleteConfirmDialog itemName="message" onConfirm={onDelete}>
                 <button
                   type="button"
-                  className="text-destructive min-h-11 px-1 font-semibold hover:text-destructive/80"
+                  className="text-destructive hover:text-destructive/80 min-h-11 px-1 font-semibold"
                 >
                   Delete
                 </button>

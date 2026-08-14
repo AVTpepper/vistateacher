@@ -5,12 +5,14 @@ import {
   FieldValue,
   Timestamp,
   type DocumentData,
+  type DocumentSnapshot,
   type Query,
   type QueryDocumentSnapshot,
 } from "firebase-admin/firestore";
 
 import { decodeFeedCursor, encodeFeedCursor } from "@/lib/feed/cursor";
 import { adminDb } from "@/lib/firebase/admin";
+import { getAcceptedConnectionUids } from "@/lib/network/server";
 import type {
   CreateCommentInput,
   CreatePostInput,
@@ -106,8 +108,8 @@ function authorFromData(
   };
 }
 
-function postTimestamp(document: QueryDocumentSnapshot): Timestamp {
-  const value = document.data().createdAt;
+function postTimestamp(document: DocumentSnapshot): Timestamp {
+  const value = document.data()!.createdAt;
   return value instanceof Timestamp ? value : Timestamp.fromMillis(0);
 }
 
@@ -117,12 +119,12 @@ function timestamp(value: unknown): Timestamp {
 
 async function hydratePosts(
   viewerUid: string,
-  documents: QueryDocumentSnapshot[],
+  documents: DocumentSnapshot[],
 ): Promise<FeedPost[]> {
   if (!documents.length) return [];
   const db = adminDb();
   const authorIds = [
-    ...new Set(documents.map((document) => String(document.data().authorId))),
+    ...new Set(documents.map((document) => String(document.data()!.authorId))),
   ];
   const [authorSnapshots, likeSnapshots, bookmarkSnapshots] = await Promise.all(
     [
@@ -147,7 +149,7 @@ async function hydratePosts(
   );
 
   return documents.map((document, index) => {
-    const data = document.data();
+    const data = document.data()!;
     const authorId = String(data.authorId);
     const createdAt = postTimestamp(document);
     return {
@@ -175,6 +177,20 @@ async function hydratePosts(
       ownedByViewer: authorId === viewerUid,
     };
   });
+}
+
+export async function getPost(
+  viewerUid: string,
+  postId: string,
+): Promise<FeedPost | null> {
+  const snapshot = await adminDb().doc(`posts/${postId}`).get();
+  if (!snapshot.exists) return null;
+  if (
+    snapshot.data()?.moderationStatus !== "approved" &&
+    snapshot.data()?.authorId !== viewerUid
+  )
+    return null;
+  return (await hydratePosts(viewerUid, [snapshot]))[0] ?? null;
 }
 
 function applyCursor(query: Query, encodedCursor: string | undefined): Query {
@@ -238,14 +254,7 @@ export async function getFeedPage(
 
   let followingIds: Set<string> | null = null;
   if (view === "following") {
-    const follows = await db
-      .collection("follows")
-      .where("followerUid", "==", viewerUid)
-      .limit(100)
-      .get();
-    followingIds = new Set(
-      follows.docs.map((document) => String(document.data().followingUid)),
-    );
+    followingIds = await getAcceptedConnectionUids(viewerUid);
   }
 
   const snapshot = await postsQuery
@@ -451,9 +460,7 @@ export async function addPostComment(
     const ownerId = String(post.data()?.authorId ?? "");
     if (ownerId && ownerId !== uid) {
       transaction.create(
-        db.doc(
-          `users/${ownerId}/notifications/post-comment_${commentRef.id}`,
-        ),
+        db.doc(`users/${ownerId}/notifications/post-comment_${commentRef.id}`),
         {
           type: "post-comment",
           actorId: uid,
@@ -536,7 +543,8 @@ export async function updatePostComment(
       transaction.get(commentRef),
     ]);
     if (!post.exists || !comment.exists) throw new FeedActionError("not-found");
-    if (comment.data()?.authorId !== uid) throw new FeedActionError("not-owner");
+    if (comment.data()?.authorId !== uid)
+      throw new FeedActionError("not-owner");
     transaction.update(commentRef, {
       content: input.content,
       editedAt: FieldValue.serverTimestamp(),
@@ -559,10 +567,14 @@ export async function deletePostComment(
       transaction.get(commentRef),
     ]);
     if (!post.exists || !comment.exists) throw new FeedActionError("not-found");
-    if (comment.data()?.authorId !== uid) throw new FeedActionError("not-owner");
+    if (comment.data()?.authorId !== uid)
+      throw new FeedActionError("not-owner");
     transaction.delete(commentRef);
     transaction.update(postRef, {
-      commentCount: Math.max(0, nonnegativeCount(post.data()?.commentCount) - 1),
+      commentCount: Math.max(
+        0,
+        nonnegativeCount(post.data()?.commentCount) - 1,
+      ),
       updatedAt: FieldValue.serverTimestamp(),
     });
   });

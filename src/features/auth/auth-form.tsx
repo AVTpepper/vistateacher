@@ -15,13 +15,14 @@ import { ArrowRight, Check, LoaderCircle, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm, type FieldErrors } from "react-hook-form";
+import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { hrefWithReturnTo, safeReturnTo } from "@/lib/auth/return-to";
 import { planIntentHref, type PlanIntent } from "@/lib/billing/plan-intent";
 import { getFirebaseClient } from "@/lib/firebase/client";
 import {
@@ -40,7 +41,8 @@ function authErrorMessage(error: unknown): string {
     typeof error === "object" && error && "code" in error
       ? String(error.code)
       : "";
-  const message = error instanceof Error ? `${error.name}: ${error.message}` : "";
+  const message =
+    error instanceof Error ? `${error.name}: ${error.message}` : "";
 
   if (code.includes("invalid-credential"))
     return "Email or password is incorrect.";
@@ -79,9 +81,11 @@ async function establishSession(user: User): Promise<string> {
 export function AuthForm({
   mode,
   planIntent = null,
+  returnTo = null,
 }: {
   mode: AuthMode;
   planIntent?: PlanIntent | null;
+  returnTo?: string | null;
 }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
@@ -99,8 +103,12 @@ export function AuthForm({
   });
   const isPending = form.formState.isSubmitting;
   const fieldErrors = form.formState.errors as FieldErrors<SignUpValues>;
-  const passwordValue =
-    mode === "sign-up" ? String(form.watch("password" as const) ?? "") : "";
+  const watchedPassword = useWatch({
+    control: form.control,
+    name: "password",
+    disabled: mode !== "sign-up",
+  });
+  const passwordValue = mode === "sign-up" ? String(watchedPassword ?? "") : "";
   const showPasswordRequirements =
     mode === "sign-up" && (isPasswordFocused || passwordValue.length > 0);
   const passwordRequirements = [
@@ -124,6 +132,13 @@ export function AuthForm({
   const passwordRegistration = form.register("password");
 
   function destinationFor(next: string): string {
+    const safeDestination = safeReturnTo(returnTo);
+    if (next === "/onboarding")
+      return hrefWithReturnTo(
+        planIntentHref("/onboarding", planIntent),
+        safeDestination,
+      );
+    if (safeDestination) return safeDestination;
     return planIntent && next === "/app"
       ? planIntentHref("/settings/billing", planIntent)
       : planIntentHref(next, planIntent);
@@ -131,7 +146,9 @@ export function AuthForm({
 
   async function completeProviderSignIn(user: User) {
     if (!user.emailVerified) {
-      router.push(planIntentHref("/verify-email", planIntent));
+      router.push(
+        hrefWithReturnTo(planIntentHref("/verify-email", planIntent), returnTo),
+      );
       return;
     }
     router.push(destinationFor(await establishSession(user)));
@@ -145,7 +162,7 @@ export function AuthForm({
     try {
       if (mode === "reset") {
         await sendPasswordResetEmail(auth, values.email, {
-          url: `${window.location.origin}${planIntentHref("/sign-in", planIntent)}`,
+          url: `${window.location.origin}${hrefWithReturnTo(planIntentHref("/sign-in", planIntent), returnTo)}`,
         });
         toast.success("Password reset email sent.");
         return;
@@ -162,9 +179,14 @@ export function AuthForm({
           displayName: signUpValues.displayName,
         });
         await sendEmailVerification(credential.user, {
-          url: `${window.location.origin}${planIntentHref("/verify-email", planIntent)}`,
+          url: `${window.location.origin}${hrefWithReturnTo(planIntentHref("/verify-email", planIntent), returnTo)}`,
         });
-        router.push(planIntentHref("/verify-email", planIntent));
+        router.push(
+          hrefWithReturnTo(
+            planIntentHref("/verify-email", planIntent),
+            returnTo,
+          ),
+        );
         return;
       }
 
@@ -235,7 +257,10 @@ export function AuthForm({
             mode === "sign-in" ? (
               <Link
                 className="text-primary text-xs font-bold hover:underline"
-                href={planIntentHref("/forgot-password", planIntent)}
+                href={hrefWithReturnTo(
+                  planIntentHref("/forgot-password", planIntent),
+                  returnTo,
+                )}
               >
                 Forgot password?
               </Link>

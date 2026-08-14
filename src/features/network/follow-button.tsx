@@ -10,26 +10,26 @@ import { cn } from "@/lib/utils";
 export function FollowButton({
   targetUid,
   connectionStatus,
-  incomingRequest = false,
+  connectionDirection = null,
   mode = "follow",
   className,
 }: {
   targetUid: string;
   connectionStatus: "none" | "pending" | "accepted" | null;
-  incomingRequest?: boolean;
+  connectionDirection?: "incoming" | "outgoing" | null;
   mode?: "follow" | "connect";
   className?: string;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState(connectionStatus ?? "none");
-  const [hasIncomingRequest, setHasIncomingRequest] = useState(incomingRequest);
+  const [direction, setDirection] = useState(connectionDirection);
   const [pending, setPending] = useState(false);
 
   async function handleConnect() {
-    if (hasIncomingRequest) {
+    if (status === "pending" && direction === "incoming") {
       // Accept incoming request
       setStatus("accepted");
-      setHasIncomingRequest(false);
+      setDirection(null);
       setPending(true);
       const response = await fetch("/api/network/accept", {
         method: "POST",
@@ -39,7 +39,7 @@ export function FollowButton({
       setPending(false);
       if (!response.ok) {
         setStatus("none");
-        setHasIncomingRequest(true);
+        setDirection("incoming");
         const result = (await response.json().catch(() => null)) as {
           error?: string;
         } | null;
@@ -51,6 +51,7 @@ export function FollowButton({
       // Unfollow/disconnect
       const next = "none";
       setStatus(next);
+      setDirection(null);
       setPending(true);
       const response = await fetch("/api/network/follow", {
         method: "DELETE",
@@ -60,6 +61,7 @@ export function FollowButton({
       setPending(false);
       if (!response.ok) {
         setStatus(status);
+        setDirection(connectionDirection);
         const result = (await response.json().catch(() => null)) as {
           error?: string;
         } | null;
@@ -71,6 +73,7 @@ export function FollowButton({
       // Send connection request
       const next = "pending";
       setStatus(next);
+      setDirection("outgoing");
       setPending(true);
       const response = await fetch("/api/network/follow", {
         method: "POST",
@@ -80,6 +83,7 @@ export function FollowButton({
       setPending(false);
       if (!response.ok) {
         setStatus("none");
+        setDirection(null);
         const result = (await response.json().catch(() => null)) as {
           error?: string;
         } | null;
@@ -91,7 +95,8 @@ export function FollowButton({
   }
 
   const isConnected = status === "accepted";
-  const isRequestSent = status === "pending";
+  const isRequestSent = status === "pending" && direction === "outgoing";
+  const hasIncomingRequest = status === "pending" && direction === "incoming";
 
   return (
     <button

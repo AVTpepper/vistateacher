@@ -54,10 +54,18 @@ test("signs in a seeded educator and protects platform workflows", async ({
     await expect(
       navigation.getByRole("link", { name: "Dashboard" }),
     ).toBeVisible();
-    await expect(navigation.getByRole("link", { name: "Help & feedback" })).toHaveCount(0);
-    await expect(navigation.getByRole("link", { name: "About & policies" })).toHaveCount(0);
-    await expect(navigation.getByRole("link", { name: "Settings" })).toHaveCount(0);
-    await expect(navigation.getByRole("button", { name: "Log out" })).toHaveCount(0);
+    await expect(
+      navigation.getByRole("link", { name: "Help & feedback" }),
+    ).toHaveCount(0);
+    await expect(
+      navigation.getByRole("link", { name: "About & policies" }),
+    ).toHaveCount(0);
+    await expect(
+      navigation.getByRole("link", { name: "Settings" }),
+    ).toHaveCount(0);
+    await expect(
+      navigation.getByRole("button", { name: "Log out" }),
+    ).toHaveCount(0);
   } else {
     const footerNavigation = page.getByLabel("Platform footer navigation");
     await expect(
@@ -208,7 +216,9 @@ test("previews and manages contextual notifications", async ({
   await expect(notification).toHaveCount(0);
 });
 
-test("keeps administration routes responsive and accessible", async ({ page }) => {
+test("keeps administration routes responsive and accessible", async ({
+  page,
+}) => {
   test.setTimeout(90_000);
   await signIn(page, "admin@vista.local");
 
@@ -261,13 +271,15 @@ test("keeps desktop platform navigation complete and within the viewport", async
 
   await page.getByRole("button", { name: "Open profile menu" }).click();
   const profileNavigation = page.getByLabel("Profile navigation");
-  await expect(profileNavigation.getByRole("link", { name: "Settings" })).toBeVisible();
-  await expect(profileNavigation.getByRole("button", { name: "Log out" })).toBeVisible();
+  await expect(
+    profileNavigation.getByRole("link", { name: "Settings" }),
+  ).toBeVisible();
+  await expect(
+    profileNavigation.getByRole("button", { name: "Log out" }),
+  ).toBeVisible();
 
   await page.keyboard.press("Escape");
-  const footerNavigation = page.getByRole("navigation", {
-    name: "Platform footer navigation",
-  });
+  const footerNavigation = page.getByLabel("Platform footer navigation");
   await footerNavigation.scrollIntoViewIfNeeded();
   await expect(
     footerNavigation.getByRole("link", { name: "About & policies" }),

@@ -69,7 +69,9 @@ export async function POST(request: NextRequest) {
     });
     response.cookies.set(SESSION_COOKIE_NAME, sessionCookie, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure:
+        process.env.NODE_ENV === "production" &&
+        process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS !== "true",
       sameSite: "lax",
       maxAge: Math.floor(SESSION_MAX_AGE_MS / 1000),
       path: "/",

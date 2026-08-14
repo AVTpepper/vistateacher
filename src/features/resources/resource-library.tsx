@@ -16,7 +16,7 @@ import {
 import Link from "next/link";
 import { useDeferredValue, useState } from "react";
 
-import { UserAvatar } from "@/components/ui/user-avatar";
+import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import { ResourceUploadDialog } from "@/features/resources/resource-upload-dialog";
 import type { ResourceSummary } from "@/lib/resources/server";
 import { cn } from "@/lib/utils";
@@ -89,8 +89,8 @@ export function ResourceLibrary({
         </div>
         <ResourceUploadDialog />
       </header>
-      <div className="mb-4 flex gap-3 items-center">
-        <label className="surface-card relative flex-1 max-w-md">
+      <div className="mb-4 flex items-center gap-3">
+        <label className="surface-card relative max-w-md flex-1">
           <Search
             aria-hidden="true"
             className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2"
@@ -109,14 +109,14 @@ export function ResourceLibrary({
           aria-label={filters ? "Hide filters" : "Show filters"}
           aria-expanded={filters}
           className={cn(
-            "surface-card text-muted-foreground flex h-11 items-center gap-2 px-3 text-sm font-semibold shrink-0",
+            "surface-card text-muted-foreground flex h-11 shrink-0 items-center gap-2 px-3 text-sm font-semibold",
             filters && "border-primary text-primary",
           )}
         >
           <Filter aria-hidden="true" className="size-4" />
           <span className="hidden sm:inline">Filters</span>
         </button>
-        <div className="surface-card flex p-1 shrink-0">
+        <div className="surface-card flex shrink-0 p-1">
           <ViewButton
             label="Grid view"
             active={view === "grid"}
@@ -303,14 +303,13 @@ function ResourceCard({
           {resource.title}
         </Link>
         <div className="mt-2 flex items-center gap-2">
-          <UserAvatar
-            name={resource.author.displayName}
+          <ProfileIdentityLink
+            uid={resource.author.uid}
+            displayName={resource.author.displayName}
             photoURL={resource.author.photoURL}
-            className="size-5 rounded-full text-[8px]"
+            avatarClassName="size-5 rounded-full text-[8px]"
+            className="text-muted-foreground text-xs"
           />
-          <span className="text-muted-foreground truncate text-xs">
-            {resource.author.displayName}
-          </span>
         </div>
         <div className="text-muted-foreground mt-3 flex flex-wrap gap-2 text-xs">
           <span className="bg-muted rounded-full px-2 py-1">

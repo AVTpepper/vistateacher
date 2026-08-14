@@ -1,10 +1,11 @@
 import "server-only";
 
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { SESSION_COOKIE_NAME } from "@/lib/auth/policy";
+import { hrefWithReturnTo, safeReturnTo } from "@/lib/auth/return-to";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import type { UserRole, UserStatus } from "@/types/models";
 
@@ -60,7 +61,12 @@ export const getCurrentAccount = cache(async () => {
 
 export async function requireCurrentAccount(): Promise<SessionAccount> {
   const account = await getCurrentAccount();
-  if (!account) redirect("/sign-in");
+  if (!account) {
+    const returnTo = safeReturnTo(
+      (await headers()).get("x-vistateacher-return-to"),
+    );
+    redirect(hrefWithReturnTo("/sign-in", returnTo));
+  }
   if (account.status === "suspended" || account.status === "deleted") {
     redirect("/sign-in?error=account-unavailable");
   }

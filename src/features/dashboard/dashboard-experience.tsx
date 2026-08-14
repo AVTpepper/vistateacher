@@ -239,10 +239,7 @@ export function DashboardExperience({
           {metrics.map((metric) => {
             const Icon = metric.icon;
             return (
-              <div
-                key={metric.label}
-                className="surface-card min-w-0 p-4"
-              >
+              <div key={metric.label} className="surface-card min-w-0 p-4">
                 <span
                   className={`grid size-8 place-items-center rounded-lg ${metric.tone}`}
                 >
@@ -269,7 +266,7 @@ export function DashboardExperience({
         <div className="divide-y">
           {dashboard.recommendations.educators.length ? (
             dashboard.recommendations.educators.map(
-              ({ profile, connectionStatus }) => (
+              ({ profile, connectionStatus, connectionDirection }) => (
                 <div
                   key={profile.uid}
                   className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
@@ -295,6 +292,7 @@ export function DashboardExperience({
                   <FollowButton
                     targetUid={profile.uid}
                     connectionStatus={connectionStatus}
+                    connectionDirection={connectionDirection}
                     mode="connect"
                   />
                 </div>
@@ -464,10 +462,7 @@ export function DashboardExperience({
         </section>
       )}
 
-      <section
-        className="surface-card p-5"
-        aria-label="Analytics trends"
-      >
+      <section className="surface-card p-5" aria-label="Analytics trends">
         <div className="mb-5 flex items-center gap-2">
           <BarChart3 className="text-primary size-4" />
           <h2 className="font-serif text-lg">Performance trends</h2>

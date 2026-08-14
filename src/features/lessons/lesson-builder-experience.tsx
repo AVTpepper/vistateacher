@@ -156,7 +156,7 @@ function AIEnhancedTextarea({
               type="button"
               onClick={() => onGetInsights(value)}
               disabled={insightsLoading || value.trim().length < 3}
-              className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold text-primary hover:bg-primary/5 disabled:opacity-50"
+              className="text-primary hover:bg-primary/5 flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold disabled:opacity-50"
               title="Get AI insights to improve this field"
             >
               <Lightbulb className="size-3" />
@@ -168,7 +168,7 @@ function AIEnhancedTextarea({
               type="button"
               onClick={onRegenerate}
               disabled={regenerateLoading}
-              className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold text-accent hover:bg-accent/5 disabled:opacity-50"
+              className="text-accent hover:bg-accent/5 flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold disabled:opacity-50"
               title="AI regenerate this field"
             >
               {regenerateLoading ? (
@@ -557,13 +557,13 @@ function LessonDisplay({
       );
     return (
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-primary/20 p-4">
+        <div className="border-primary/20 rounded-lg border p-4">
           <p className="text-primary mb-2 text-xs font-bold uppercase">
             Supports
           </p>
           {list(content.differentiation.supports)}
         </div>
-        <div className="rounded-lg border border-accent/20 p-4">
+        <div className="border-accent/20 rounded-lg border p-4">
           <p className="text-accent mb-2 text-xs font-bold uppercase">
             Extensions
           </p>
@@ -574,7 +574,10 @@ function LessonDisplay({
   };
   return (
     <div className="surface-card overflow-hidden">
-      <div className="p-5 text-white sm:p-6" style={{ backgroundColor: "#673048" }}>
+      <div
+        className="p-5 text-white sm:p-6"
+        style={{ backgroundColor: "#673048" }}
+      >
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
             <h2 className="font-serif text-2xl leading-tight">
@@ -599,19 +602,16 @@ function LessonDisplay({
             <button
               type="button"
               onClick={onEdit}
-              className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold hover:bg-muted/50"
+              className="hover:bg-muted/50 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold"
             >
               <Pencil className="size-3" />
               Edit
             </button>
-            <DeleteConfirmDialog
-              itemName="lesson"
-              onConfirm={onDelete}
-            >
+            <DeleteConfirmDialog itemName="lesson" onConfirm={onDelete}>
               <button
                 type="button"
                 disabled={working}
-                className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold hover:bg-muted/50 disabled:opacity-50"
+                className="hover:bg-muted/50 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
               >
                 <Trash2 className="size-3" />
                 Delete
@@ -621,7 +621,7 @@ function LessonDisplay({
               type="button"
               onClick={onDuplicate}
               disabled={working}
-              className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold hover:bg-muted/50 disabled:opacity-50"
+              className="hover:bg-muted/50 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
             >
               <Copy className="size-3" />
               Duplicate
@@ -630,7 +630,7 @@ function LessonDisplay({
               type="button"
               onClick={onPreviewPdf}
               disabled={working}
-              className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold hover:bg-muted/50 disabled:opacity-50"
+              className="hover:bg-muted/50 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
             >
               <Eye className="size-3" />
               Preview PDF
@@ -639,7 +639,7 @@ function LessonDisplay({
               type="button"
               onClick={() => onExport("pdf")}
               disabled={working || !canExport}
-              className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold hover:bg-muted/50 disabled:opacity-50"
+              className="hover:bg-muted/50 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
             >
               <Download className="size-3" />
               PDF
@@ -648,7 +648,7 @@ function LessonDisplay({
               type="button"
               onClick={() => onExport("docx")}
               disabled={working || !canExport}
-              className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold hover:bg-muted/50 disabled:opacity-50"
+              className="hover:bg-muted/50 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
             >
               <Download className="size-3" />
               DOCX
@@ -658,7 +658,7 @@ function LessonDisplay({
                 type="button"
                 onClick={onPublish}
                 disabled={working}
-                className="flex h-8 items-center gap-1.5 rounded-lg border border-accent bg-accent/10 px-3 text-xs font-bold text-accent hover:bg-accent/20 disabled:opacity-50"
+                className="border-accent bg-accent/10 text-accent hover:bg-accent/20 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
               >
                 <Sparkles className="size-3" />
                 Publish
@@ -780,7 +780,9 @@ export function LessonBuilderExperience({
   const [editing, setEditing] = useState(false);
   const [attemptedGenerate, setAttemptedGenerate] = useState(false);
   const [aiEnhancingField, setAiEnhancingField] = useState<string | null>(null);
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
+  const [expandedCategories, setExpandedCategories] = useState<
+    Record<string, boolean>
+  >({
     published: true,
     draft: true,
   });
@@ -873,7 +875,9 @@ export function LessonBuilderExperience({
     setAttemptedGenerate(true);
     const missing = missingGenerateFields(source);
     if (missing.length > 0) {
-      toast.error(`Fill out ${formatMissingFields(missing)} before generating.`);
+      toast.error(
+        `Fill out ${formatMissingFields(missing)} before generating.`,
+      );
       return;
     }
     setWorking(true);
@@ -1060,7 +1064,7 @@ export function LessonBuilderExperience({
         description: `Consider adding more specific details, examples, or measurable outcomes to improve "${field}". You can also use "Regenerate" to create fresh content based on all your parameters.`,
         duration: 5000,
       });
-    } catch (error) {
+    } catch {
       toast.error("Could not get insights.");
     } finally {
       setAiEnhancingField(null);
@@ -1076,7 +1080,7 @@ export function LessonBuilderExperience({
         description: `Use the "Regenerate" button at the bottom of the lesson or edit individual content to refine the ${field}.`,
         duration: 4000,
       });
-    } catch (error) {
+    } catch {
       toast.error("Regeneration failed.");
     } finally {
       setAiEnhancingField(null);
@@ -1185,7 +1189,7 @@ export function LessonBuilderExperience({
                     [category.key]: !prev[category.key],
                   }))
                 }
-                className="mb-2 flex items-center gap-2 text-xs font-bold text-primary"
+                className="text-primary mb-2 flex items-center gap-2 text-xs font-bold"
               >
                 {isExpanded ? (
                   <ChevronDown className="size-4" />
@@ -1220,218 +1224,221 @@ export function LessonBuilderExperience({
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.6fr)]">
         {!lesson && (
-        <section className="surface-card p-5 lg:sticky lg:top-5">
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-bold">
-            <WandSparkles className="text-accent size-4" />
-            Lesson parameters
-          </h2>
-          <p className="text-muted-foreground mb-3 text-xs leading-5">
-            {requiredHelper}
-          </p>
-          {showGenerateErrors && (
-            <p
-              role="alert"
-              className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
-            >
-              <AlertTriangle className="mr-1 inline size-3.5" aria-hidden="true" />
-              Fill out {formatMissingFields(missingFields)} to generate a lesson.
+          <section className="surface-card p-5 lg:sticky lg:top-5">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-bold">
+              <WandSparkles className="text-accent size-4" />
+              Lesson parameters
+            </h2>
+            <p className="text-muted-foreground mb-3 text-xs leading-5">
+              {requiredHelper}
             </p>
-          )}
-          <div className="space-y-4">
-            <label className="grid gap-1.5 text-xs font-bold">
-              <span>
-                Subject
-                {showGenerateErrors && missingFields.includes("Subject") ? (
-                  <span className="text-red-600"> *</span>
-                ) : null}
-              </span>
-              <select
-                value={source.subject}
-                onChange={(event) =>
-                  setSource({ ...source, subject: event.target.value })
-                }
-                className={fieldClass}
-                aria-invalid={
-                  showGenerateErrors && missingFields.includes("Subject")
-                }
+            {showGenerateErrors && (
+              <p
+                role="alert"
+                className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
               >
-                {SUBJECTS.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1.5 text-xs font-bold">
-              <span>
-                Grade level
-                {showGenerateErrors &&
-                missingFields.includes("Grade level") ? (
-                  <span className="text-red-600"> *</span>
-                ) : null}
-              </span>
-              <select
-                value={source.gradeLevel}
-                onChange={(event) =>
-                  setSource({ ...source, gradeLevel: event.target.value })
-                }
-                className={fieldClass}
-                aria-invalid={
-                  showGenerateErrors && missingFields.includes("Grade level")
-                }
-              >
-                {GRADES.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1.5 text-xs font-bold">
-              <span>
-                Topic / unit
-                {showGenerateErrors &&
-                missingFields.includes("Topic / unit") ? (
-                  <span className="text-red-600"> *</span>
-                ) : null}
-              </span>
-              <input
-                value={source.topic}
-                maxLength={240}
-                onChange={(event) =>
-                  setSource({ ...source, topic: event.target.value })
-                }
-                placeholder="Dividing fractions with visual models"
-                className={fieldClass}
-                aria-invalid={
-                  showGenerateErrors && missingFields.includes("Topic / unit")
-                }
-              />
-            </label>
-            <label className="grid gap-1.5 text-xs font-bold">
-              <span>
-                Duration
-                {showGenerateErrors && missingFields.includes("Duration") ? (
-                  <span className="text-red-600"> *</span>
-                ) : null}
-              </span>
-              <select
-                value={source.durationMinutes}
-                onChange={(event) =>
-                  setSource({
-                    ...source,
-                    durationMinutes: Number(event.target.value),
-                  })
-                }
-                className={fieldClass}
-                aria-invalid={
-                  showGenerateErrors && missingFields.includes("Duration")
-                }
-              >
-                {[30, 45, 60, 75, 90].map((minutes) => (
-                  <option key={minutes} value={minutes}>
-                    {minutes} minutes
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1.5 text-xs font-bold">
-              Lessons to generate
-              <select
-                value={lessonCount}
-                onChange={(event) => setLessonCount(Number(event.target.value))}
-                className={fieldClass}
-              >
-                {Array.from({ length: 5 }, (_, index) => index + 1).map(
-                  (count) => (
-                    <option key={count} value={count}>
-                      {count} lesson{count === 1 ? "" : "s"}
+                <AlertTriangle
+                  className="mr-1 inline size-3.5"
+                  aria-hidden="true"
+                />
+                Fill out {formatMissingFields(missingFields)} to generate a
+                lesson.
+              </p>
+            )}
+            <div className="space-y-4">
+              <label className="grid gap-1.5 text-xs font-bold">
+                <span>
+                  Subject
+                  {showGenerateErrors && missingFields.includes("Subject") ? (
+                    <span className="text-red-600"> *</span>
+                  ) : null}
+                </span>
+                <select
+                  value={source.subject}
+                  onChange={(event) =>
+                    setSource({ ...source, subject: event.target.value })
+                  }
+                  className={fieldClass}
+                  aria-invalid={
+                    showGenerateErrors && missingFields.includes("Subject")
+                  }
+                >
+                  {SUBJECTS.map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-xs font-bold">
+                <span>
+                  Grade level
+                  {showGenerateErrors &&
+                  missingFields.includes("Grade level") ? (
+                    <span className="text-red-600"> *</span>
+                  ) : null}
+                </span>
+                <select
+                  value={source.gradeLevel}
+                  onChange={(event) =>
+                    setSource({ ...source, gradeLevel: event.target.value })
+                  }
+                  className={fieldClass}
+                  aria-invalid={
+                    showGenerateErrors && missingFields.includes("Grade level")
+                  }
+                >
+                  {GRADES.map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-xs font-bold">
+                <span>
+                  Topic / unit
+                  {showGenerateErrors &&
+                  missingFields.includes("Topic / unit") ? (
+                    <span className="text-red-600"> *</span>
+                  ) : null}
+                </span>
+                <input
+                  value={source.topic}
+                  maxLength={240}
+                  onChange={(event) =>
+                    setSource({ ...source, topic: event.target.value })
+                  }
+                  placeholder="Dividing fractions with visual models"
+                  className={fieldClass}
+                  aria-invalid={
+                    showGenerateErrors && missingFields.includes("Topic / unit")
+                  }
+                />
+              </label>
+              <label className="grid gap-1.5 text-xs font-bold">
+                <span>
+                  Duration
+                  {showGenerateErrors && missingFields.includes("Duration") ? (
+                    <span className="text-red-600"> *</span>
+                  ) : null}
+                </span>
+                <select
+                  value={source.durationMinutes}
+                  onChange={(event) =>
+                    setSource({
+                      ...source,
+                      durationMinutes: Number(event.target.value),
+                    })
+                  }
+                  className={fieldClass}
+                  aria-invalid={
+                    showGenerateErrors && missingFields.includes("Duration")
+                  }
+                >
+                  {[30, 45, 60, 75, 90].map((minutes) => (
+                    <option key={minutes} value={minutes}>
+                      {minutes} minutes
                     </option>
-                  ),
-                )}
-              </select>
-            </label>
-            <AIEnhancedTextarea
-              label="Learning objectives"
-              value={source.objectives}
-              onChange={(objectives) =>
-                setSource({ ...source, objectives })
-              }
-              onGetInsights={() =>
-                void getFieldInsights("Learning objectives", source.objectives)
-              }
-              onRegenerate={() =>
-                void regenerateField("Learning objectives")
-              }
-              insightsLoading={aiEnhancingField === "Learning objectives"}
-              regenerateLoading={aiEnhancingField === "Learning objectives"}
-              placeholder="Example: Students will be able to divide fractions using visual models"
-              rows={3}
-            />
-            <label className="grid gap-1.5 text-xs font-bold">
-              Standards
-              <input
-                value={source.standards}
-                maxLength={1000}
-                onChange={(event) =>
-                  setSource({ ...source, standards: event.target.value })
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-xs font-bold">
+                Lessons to generate
+                <select
+                  value={lessonCount}
+                  onChange={(event) =>
+                    setLessonCount(Number(event.target.value))
+                  }
+                  className={fieldClass}
+                >
+                  {Array.from({ length: 5 }, (_, index) => index + 1).map(
+                    (count) => (
+                      <option key={count} value={count}>
+                        {count} lesson{count === 1 ? "" : "s"}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </label>
+              <AIEnhancedTextarea
+                label="Learning objectives"
+                value={source.objectives}
+                onChange={(objectives) => setSource({ ...source, objectives })}
+                onGetInsights={() =>
+                  void getFieldInsights(
+                    "Learning objectives",
+                    source.objectives,
+                  )
                 }
-                placeholder="CCSS.MATH.5.NF.B.7"
-                className={fieldClass}
+                onRegenerate={() => void regenerateField("Learning objectives")}
+                insightsLoading={aiEnhancingField === "Learning objectives"}
+                regenerateLoading={aiEnhancingField === "Learning objectives"}
+                placeholder="Example: Students will be able to divide fractions using visual models"
+                rows={3}
               />
-            </label>
-            <AIEnhancedTextarea
-              label="Student needs"
-              value={source.studentNeeds}
-              onChange={(studentNeeds) =>
-                setSource({ ...source, studentNeeds })
-              }
-              onGetInsights={() =>
-                void getFieldInsights("Student needs", source.studentNeeds)
-              }
-              onRegenerate={() =>
-                void regenerateField("Student needs")
-              }
-              insightsLoading={aiEnhancingField === "Student needs"}
-              regenerateLoading={aiEnhancingField === "Student needs"}
-              placeholder="Example: Struggling readers, English language learners, gifted learners"
-              rows={2}
-            />
-            <fieldset>
-              <legend className="mb-1.5 text-xs font-bold">
-                Teaching style
-              </legend>
-              <div className="grid grid-cols-3 gap-2">
-                {(["inquiry", "balanced", "direct"] as const).map((style) => (
-                  <button
-                    key={style}
-                    type="button"
-                    onClick={() =>
-                      setSource({ ...source, teachingStyle: style })
-                    }
-                    className={`h-9 rounded-lg text-xs font-bold capitalize ${source.teachingStyle === style ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
-                  >
-                    {style}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-            <button
-              type="button"
-              onClick={() => void generate()}
-              disabled={
-                working ||
-                workspace.usage.remaining < lessonCount ||
-                (workspace.usage.creations.remaining ?? 0) < lessonCount ||
-                source.topic.trim().length < 3
-              }
-              className="bg-accent text-accent-foreground flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold disabled:opacity-50"
-            >
-              {working ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : (
-                <Sparkles className="size-4" />
-              )}
-              Generate {lessonCount > 1 ? `${lessonCount} lessons` : "lesson"}
-            </button>
-          </div>
-        </section>
+              <label className="grid gap-1.5 text-xs font-bold">
+                Standards
+                <input
+                  value={source.standards}
+                  maxLength={1000}
+                  onChange={(event) =>
+                    setSource({ ...source, standards: event.target.value })
+                  }
+                  placeholder="CCSS.MATH.5.NF.B.7"
+                  className={fieldClass}
+                />
+              </label>
+              <AIEnhancedTextarea
+                label="Student needs"
+                value={source.studentNeeds}
+                onChange={(studentNeeds) =>
+                  setSource({ ...source, studentNeeds })
+                }
+                onGetInsights={() =>
+                  void getFieldInsights("Student needs", source.studentNeeds)
+                }
+                onRegenerate={() => void regenerateField("Student needs")}
+                insightsLoading={aiEnhancingField === "Student needs"}
+                regenerateLoading={aiEnhancingField === "Student needs"}
+                placeholder="Example: Struggling readers, English language learners, gifted learners"
+                rows={2}
+              />
+              <fieldset>
+                <legend className="mb-1.5 text-xs font-bold">
+                  Teaching style
+                </legend>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["inquiry", "balanced", "direct"] as const).map((style) => (
+                    <button
+                      key={style}
+                      type="button"
+                      onClick={() =>
+                        setSource({ ...source, teachingStyle: style })
+                      }
+                      className={`h-9 rounded-lg text-xs font-bold capitalize ${source.teachingStyle === style ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+                    >
+                      {style}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+              <button
+                type="button"
+                onClick={() => void generate()}
+                disabled={
+                  working ||
+                  workspace.usage.remaining < lessonCount ||
+                  (workspace.usage.creations.remaining ?? 0) < lessonCount ||
+                  source.topic.trim().length < 3
+                }
+                className="bg-accent text-accent-foreground flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold disabled:opacity-50"
+              >
+                {working ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <Sparkles className="size-4" />
+                )}
+                Generate {lessonCount > 1 ? `${lessonCount} lessons` : "lesson"}
+              </button>
+            </div>
+          </section>
         )}
 
         <section className="min-w-0">
