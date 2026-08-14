@@ -61,7 +61,9 @@ export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
         ? {
             ...current,
             notifications: current.notifications.map((item) =>
-              notificationIds.includes(item.id) ? { ...item, read: true } : item,
+              notificationIds.includes(item.id)
+                ? { ...item, read: true }
+                : item,
             ),
           }
         : current,
@@ -80,7 +82,9 @@ export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
     <div ref={menuRef} className="relative">
       <button
         type="button"
-        aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+        aria-label={
+          unread ? `Notifications, ${unread} unread` : "Notifications"
+        }
         aria-controls="notification-menu"
         aria-expanded={open}
         aria-haspopup="true"
@@ -109,81 +113,86 @@ export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
             aria-label="Recent notifications"
             className="bg-card text-card-foreground border-border fixed inset-x-3 top-16 z-50 overflow-hidden rounded-b-xl border-2 shadow-xl sm:absolute sm:inset-x-auto sm:top-12 sm:right-0 sm:w-96 sm:rounded-xl"
           >
-          <div className="border-border flex min-h-12 items-center justify-between border-b px-4">
-            <p className="font-serif text-lg">Notifications</p>
-            {unread > 0 && (
-              <span className="text-muted-foreground text-xs font-semibold">
-                {unread} unread
-              </span>
-            )}
-          </div>
-          <div className="max-h-[min(28rem,calc(100dvh-9rem))] overflow-y-auto">
-            {loading ? (
-              <div className="text-muted-foreground flex min-h-28 items-center justify-center gap-2 text-sm">
-                <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-                Loading notifications
-              </div>
-            ) : recent.length ? (
-              recent.map((notification) => (
-                <div
-                  key={notification.key}
-                  className={cn(
-                    "border-border flex gap-2 border-b p-3",
-                    !notification.read && "bg-secondary/20",
-                  )}
-                >
-                  <Link
-                    href={notification.href}
-                    onClick={() => {
-                      if (!notification.read) markRead(notification.ids);
-                      setOpen(false);
-                    }}
-                    className="hover:text-primary min-w-0 flex-1 py-1"
-                  >
-                    <span
-                      className={cn(
-                        "block text-sm leading-5",
-                        !notification.read && "font-bold",
-                      )}
-                    >
-                      {notification.message}
-                    </span>
-                    <span className="text-muted-foreground mt-1 block text-xs">
-                      {formatDistanceToNow(new Date(notification.createdAt), {
-                        addSuffix: true,
-                      })}
-                    </span>
-                  </Link>
-                  {!notification.read && (
-                    <button
-                      type="button"
-                      aria-label={`Mark as read: ${notification.message}`}
-                      title="Mark as read"
-                      onClick={() => markRead(notification.ids)}
-                      className="text-muted-foreground hover:bg-muted hover:text-foreground grid size-11 shrink-0 place-items-center rounded-lg"
-                    >
-                      <Check aria-hidden="true" className="size-4" />
-                    </button>
-                  )}
+            <div className="border-border flex min-h-12 items-center justify-between border-b px-4">
+              <p className="font-serif text-lg">Notifications</p>
+              {unread > 0 && (
+                <span className="text-muted-foreground text-xs font-semibold">
+                  {unread} unread
+                </span>
+              )}
+            </div>
+            <div className="max-h-[min(28rem,calc(100dvh-9rem))] overflow-y-auto">
+              {loading ? (
+                <div className="text-muted-foreground flex min-h-28 items-center justify-center gap-2 text-sm">
+                  <LoaderCircle
+                    aria-hidden="true"
+                    className="size-4 animate-spin"
+                  />
+                  Loading notifications
                 </div>
-              ))
-            ) : (
-              <div className="px-5 py-10 text-center">
-                <Bell
-                  aria-hidden="true"
-                  className="text-muted-foreground/40 mx-auto size-7"
-                />
-                <p className="mt-2 text-sm font-semibold">You&apos;re all caught up</p>
-              </div>
-            )}
-          </div>
-          <Link
-            href="/notifications"
-            onClick={() => setOpen(false)}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 m-3 flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-bold"
-          >
-            View all notifications
-          </Link>
+              ) : recent.length ? (
+                recent.map((notification) => (
+                  <div
+                    key={notification.key}
+                    className={cn(
+                      "border-border flex gap-2 border-b p-3",
+                      !notification.read && "bg-secondary/20",
+                    )}
+                  >
+                    <Link
+                      href={notification.href}
+                      onClick={() => {
+                        if (!notification.read) markRead(notification.ids);
+                        setOpen(false);
+                      }}
+                      className="hover:text-primary min-w-0 flex-1 py-1"
+                    >
+                      <span
+                        className={cn(
+                          "block text-sm leading-5",
+                          !notification.read && "font-bold",
+                        )}
+                      >
+                        {notification.message}
+                      </span>
+                      <span className="text-muted-foreground mt-1 block text-xs">
+                        {formatDistanceToNow(new Date(notification.createdAt), {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </Link>
+                    {!notification.read && (
+                      <button
+                        type="button"
+                        aria-label={`Mark as read: ${notification.message}`}
+                        title="Mark as read"
+                        onClick={() => markRead(notification.ids)}
+                        className="text-muted-foreground hover:bg-muted hover:text-foreground grid size-11 shrink-0 place-items-center rounded-lg"
+                      >
+                        <Check aria-hidden="true" className="size-4" />
+                      </button>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="px-5 py-10 text-center">
+                  <Bell
+                    aria-hidden="true"
+                    className="text-muted-foreground/40 mx-auto size-7"
+                  />
+                  <p className="mt-2 text-sm font-semibold">
+                    You&apos;re all caught up
+                  </p>
+                </div>
+              )}
+            </div>
+            <Link
+              href="/notifications"
+              onClick={() => setOpen(false)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 m-3 flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-bold"
+            >
+              View all notifications
+            </Link>
           </div>
         </>
       )}

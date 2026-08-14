@@ -59,7 +59,8 @@ export async function POST(request: NextRequest) {
     );
     let profileExists = false;
     try {
-      profileExists = (await adminDb().doc(`users/${decoded.uid}`).get()).exists;
+      profileExists = (await adminDb().doc(`users/${decoded.uid}`).get())
+        .exists;
     } catch (error) {
       console.error("Firestore profile lookup failed during sign-in", error);
     }

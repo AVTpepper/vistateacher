@@ -38,9 +38,10 @@ export function DeleteConfirmDialog({
             Delete {itemName}?
           </Dialog.Title>
           <Dialog.Description className="text-muted-foreground mt-2 text-sm">
-            This action cannot be undone. Please confirm you want to permanently delete this {itemName.toLowerCase()}.
+            This action cannot be undone. Please confirm you want to permanently
+            delete this {itemName.toLowerCase()}.
           </Dialog.Description>
-          <div className="mt-6 flex gap-3 justify-end">
+          <div className="mt-6 flex justify-end gap-3">
             <Dialog.Close asChild>
               <Button variant="outline">Cancel</Button>
             </Dialog.Close>

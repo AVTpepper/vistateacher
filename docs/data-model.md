@@ -35,7 +35,7 @@ Firestore writes use server timestamps. Public documents contain no payment secr
 | `conversations/{sortedUid_sortedUid}`     | Participant-readable/server-write | participant IDs, last preview/sender/time, per-user unread counts, timestamps           |
 | `conversations/{id}/messages/{messageId}` | Participant-readable/server-write | sender, bounded text, consumed attachment metadata, read members, moderation, timestamp |
 | `messageAttachments/{attachmentId}`       | Server-owned upload reservation   | owner/conversation, generated path, exact file metadata, reservation status, timestamp  |
-| `users/{uid}/notifications/{id}`          | Recipient-readable/server-write   | type, actor name/ID, entity, safe message/link, read/archive state, timestamp            |
+| `users/{uid}/notifications/{id}`          | Recipient-readable/server-write   | type, actor name/ID, entity, safe message/link, read/archive state, timestamp           |
 | `blocks/{blockerUid_blockedUid}`          | Private blocker/server            | blocker, blocked user, timestamp                                                        |
 | `lessons/{lessonId}`                      | Owner-only by default             | structured lesson, source parameters, current version, timestamps                       |
 | `lessons/{lessonId}/versions/{versionId}` | Owner-only immutable snapshot     | structured content, source, timestamp                                                   |

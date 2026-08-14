@@ -26,7 +26,9 @@ export function hasTrustedOrigin(request: NextRequest): boolean {
   const requestOriginHost = originHost(origin);
   if (!requestOriginHost) return false;
 
-  const forwardedHost = firstHeaderValue(request.headers.get("x-forwarded-host"));
+  const forwardedHost = firstHeaderValue(
+    request.headers.get("x-forwarded-host"),
+  );
   if (forwardedHost && requestOriginHost === forwardedHost) {
     return true;
   }

@@ -12,7 +12,11 @@ import { ChoiceFieldset, Choice } from "@/components/ui/choice-field";
 import { ProfileCoverEditor } from "@/features/profiles/profile-cover-editor";
 import { ProfilePhotoEditor } from "@/features/profiles/profile-photo-editor";
 import type { CoverThemeId } from "@/lib/profiles/cover-themes";
-import { educationStages, subjectAreas, taughtLanguages } from "@/lib/profiles/options";
+import {
+  educationStages,
+  subjectAreas,
+  taughtLanguages,
+} from "@/lib/profiles/options";
 import { profileUpdateSchema, type ProfileUpdate } from "@/schemas/profile";
 import type { Plan } from "@/types/models";
 
@@ -30,8 +34,12 @@ export function ProfileEditForm({
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(initial.subjects);
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(initial.languages);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(
+    initial.subjects,
+  );
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(
+    initial.languages,
+  );
 
   function toggleSubject(subject: string) {
     const next = selectedSubjects.includes(subject)

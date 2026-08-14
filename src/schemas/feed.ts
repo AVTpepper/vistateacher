@@ -18,12 +18,14 @@ export const createPostSchema = z.object({
   resourceId: z.string().trim().min(1).max(128).nullable().default(null),
 });
 
-export const updatePostSchema = createPostSchema.omit({
-  resourceId: true,
-}).extend({
-  postId: z.string().trim().min(1).max(128),
-  resourceId: z.string().trim().min(1).max(128).nullable().default(null),
-});
+export const updatePostSchema = createPostSchema
+  .omit({
+    resourceId: true,
+  })
+  .extend({
+    postId: z.string().trim().min(1).max(128),
+    resourceId: z.string().trim().min(1).max(128).nullable().default(null),
+  });
 
 export const feedQuerySchema = z.object({
   view: feedViewSchema.default("all"),

@@ -17,10 +17,7 @@ export async function DELETE(request: NextRequest) {
 
   const account = await getRouteAccount(request);
   if (!account) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 },
-    );
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { targetUid } = (await request.json().catch(() => ({}))) as {

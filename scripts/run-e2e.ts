@@ -18,6 +18,8 @@ const env = {
   NEXT_PUBLIC_USE_FIREBASE_EMULATORS: "true",
   NEXT_DIST_DIR: ".next-e2e",
   PLAYWRIGHT_E2E_PRODUCTION: "true",
+  STRIPE_MODE: "TEST",
+  STRIPE_SECRET_KEY: "sk_test_e2e",
 };
 
 function run(args: string[]): void {

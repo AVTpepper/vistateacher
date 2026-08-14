@@ -147,10 +147,9 @@ function summary(
     gradeLevel: content.gradeLevel,
     durationMinutes: content.durationMinutes,
     currentVersion: number(data.currentVersion),
-    visibility:
-      lessonVisibilitySchema.safeParse(data.visibility).success
-        ? data.visibility
-        : "published",
+    visibility: lessonVisibilitySchema.safeParse(data.visibility).success
+      ? data.visibility
+      : "published",
     generationStatus:
       data.generationStatus === "generating" ? "generating" : "idle",
     createdAt: iso(data.createdAt),
@@ -389,10 +388,10 @@ async function completeGeneration(
     transaction.update(lessonRef, {
       source,
       content,
-      visibility:
-        lessonVisibilitySchema.safeParse(lesson.data()?.visibility).success
-          ? lesson.data()?.visibility
-          : "published",
+      visibility: lessonVisibilitySchema.safeParse(lesson.data()?.visibility)
+        .success
+        ? lesson.data()?.visibility
+        : "published",
       status: "ready",
       generationStatus: "idle",
       pendingSource: FieldValue.delete(),
@@ -447,7 +446,10 @@ async function assertBatchCreationCapacity(uid: string, count: number) {
     db.doc(`usage/${uid}_${period}`).get(),
   ]);
   if (user.data()?.status !== "active") throw new LessonActionError("inactive");
-  const plan = resolveEffectivePlan(subscriptionRecord(subscription.data()), now);
+  const plan = resolveEffectivePlan(
+    subscriptionRecord(subscription.data()),
+    now,
+  );
   const entitlements = PLAN_ENTITLEMENTS[plan];
   const used = number(usage.data()?.aiLessons);
   const creations = number(usage.data()?.aiLessonCreations);
@@ -552,10 +554,10 @@ export async function duplicateLesson(
       ownerId: uid,
       source: lessonSourceSchema.parse(source.data()?.source),
       content: duplicatedContent,
-      visibility:
-        lessonVisibilitySchema.safeParse(source.data()?.visibility).success
-          ? source.data()?.visibility
-          : "published",
+      visibility: lessonVisibilitySchema.safeParse(source.data()?.visibility)
+        .success
+        ? source.data()?.visibility
+        : "published",
       status: "ready",
       generationStatus: "idle",
       currentVersion: 1,
@@ -572,7 +574,10 @@ export async function duplicateLesson(
   return getLesson(uid, duplicateRef.id);
 }
 
-export async function deleteLesson(uid: string, lessonId: string): Promise<void> {
+export async function deleteLesson(
+  uid: string,
+  lessonId: string,
+): Promise<void> {
   const parsed = lessonActionSchema.safeParse({ lessonId });
   if (!parsed.success) throw new LessonActionError("not-found");
   const db = adminDb();

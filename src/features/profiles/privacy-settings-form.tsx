@@ -133,7 +133,7 @@ export function PrivacySettingsForm({
           Save settings
         </Button>
       </form>
-        <DeletionPanel requested={deletionRequested} billing={billing} />
+      <DeletionPanel requested={deletionRequested} billing={billing} />
     </div>
   );
 }
@@ -213,11 +213,15 @@ function DeletionPanel({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ cancelAtPeriodEnd: true }),
         });
-        const billingResult = (await billingResponse.json().catch(() => null)) as {
+        const billingResult = (await billingResponse
+          .json()
+          .catch(() => null)) as {
           error?: string;
         } | null;
         if (!billingResponse.ok) {
-          throw new Error(billingResult?.error ?? "We couldn't cancel billing.");
+          throw new Error(
+            billingResult?.error ?? "We couldn't cancel billing.",
+          );
         }
       }
 
@@ -276,9 +280,7 @@ function DeletionPanel({
               className="fixed inset-0 z-50 bg-black/50"
               onClick={() => setOpen(false)}
             />
-            <AlertDialog.Content
-              className="bg-card fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto overscroll-contain rounded-xl border p-4 shadow-xl sm:max-h-[calc(100dvh-2rem)] sm:p-6"
-            >
+            <AlertDialog.Content className="bg-card fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto overscroll-contain rounded-xl border p-4 shadow-xl sm:max-h-[calc(100dvh-2rem)] sm:p-6">
               <AlertDialog.Title className="font-serif text-xl sm:text-2xl">
                 Delete your account?
               </AlertDialog.Title>
@@ -293,8 +295,14 @@ function DeletionPanel({
               )}
               <ul className="text-muted-foreground mt-4 space-y-2 text-sm leading-6">
                 <li>â€¢ Your account will be marked for deletion.</li>
-                <li>â€¢ Your profile, settings, and private access will be removed from normal use.</li>
-                <li>â€¢ If you are on Plus, billing will end at the current billing boundary.</li>
+                <li>
+                  â€¢ Your profile, settings, and private access will be removed
+                  from normal use.
+                </li>
+                <li>
+                  â€¢ If you are on Plus, billing will end at the current
+                  billing boundary.
+                </li>
               </ul>
               <Input
                 className="mt-5"

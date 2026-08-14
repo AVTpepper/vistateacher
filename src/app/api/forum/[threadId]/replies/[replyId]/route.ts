@@ -5,7 +5,10 @@ import { hasTrustedOrigin } from "@/lib/auth/request";
 import { getRouteAccount } from "@/lib/auth/route-account";
 import { forumErrorResponse } from "@/lib/forum/route-response";
 import { deleteForumReply, updateForumReply } from "@/lib/forum/server";
-import { forumReplyActionSchema, updateForumReplySchema } from "@/schemas/forum";
+import {
+  forumReplyActionSchema,
+  updateForumReplySchema,
+} from "@/schemas/forum";
 
 export async function PATCH(
   request: NextRequest,

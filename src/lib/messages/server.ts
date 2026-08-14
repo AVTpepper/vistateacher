@@ -100,7 +100,7 @@ export class MessageActionError extends Error {
       | "limit-reached"
       | "invalid-cursor"
       | "invalid-attachment"
-        | "not-owner"
+      | "not-owner"
       | "already-reported",
   ) {
     super(code);
@@ -205,8 +205,7 @@ async function requireActiveUser(
   const snapshot = await transaction.get(reference);
   if (!snapshot.exists) throw new MessageActionError("not-found");
   const status = snapshot.data()?.status;
-  if (status && status !== "active")
-    throw new MessageActionError("inactive");
+  if (status && status !== "active") throw new MessageActionError("inactive");
   return snapshot;
 }
 
@@ -481,8 +480,10 @@ export async function editMessage(
       throw new MessageActionError("not-found");
     if (!strings(conversation.data()?.participantIds).includes(uid))
       throw new MessageActionError("not-member");
-    if (message.data()?.senderId !== uid) throw new MessageActionError("not-owner");
-    if (user.data()?.status !== "active") throw new MessageActionError("inactive");
+    if (message.data()?.senderId !== uid)
+      throw new MessageActionError("not-owner");
+    if (user.data()?.status !== "active")
+      throw new MessageActionError("inactive");
     if (message.data()?.deletedAt instanceof Timestamp)
       throw new MessageActionError("not-found");
     transaction.update(messageRef, {
@@ -495,7 +496,10 @@ export async function editMessage(
       timestamp(message.data()?.createdAt).toMillis()
     ) {
       transaction.update(conversationRef, {
-        lastMessagePreview: preview(content, Boolean(message.data()?.attachment)),
+        lastMessagePreview: preview(
+          content,
+          Boolean(message.data()?.attachment),
+        ),
         updatedAt: FieldValue.serverTimestamp(),
       });
     }
@@ -520,8 +524,10 @@ export async function deleteMessage(
       throw new MessageActionError("not-found");
     if (!strings(conversation.data()?.participantIds).includes(uid))
       throw new MessageActionError("not-member");
-    if (message.data()?.senderId !== uid) throw new MessageActionError("not-owner");
-    if (user.data()?.status !== "active") throw new MessageActionError("inactive");
+    if (message.data()?.senderId !== uid)
+      throw new MessageActionError("not-owner");
+    if (user.data()?.status !== "active")
+      throw new MessageActionError("inactive");
     const deletedContent = "This message was deleted.";
     transaction.update(messageRef, {
       content: deletedContent,
@@ -765,11 +771,7 @@ export async function getNotifications(
 }
 
 export type NotificationAction =
-  | "mark-read"
-  | "mark-unread"
-  | "archive"
-  | "restore"
-  | "delete";
+  "mark-read" | "mark-unread" | "archive" | "restore" | "delete";
 
 export async function updateNotification(
   uid: string,

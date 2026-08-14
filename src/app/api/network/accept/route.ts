@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 
 import { hasTrustedOrigin } from "@/lib/auth/request";
 import { getRouteAccount } from "@/lib/auth/route-account";
-import { acceptConnectionRequest, NetworkActionError } from "@/lib/network/server";
+import {
+  acceptConnectionRequest,
+  NetworkActionError,
+} from "@/lib/network/server";
 
 export const runtime = "nodejs";
 
@@ -17,10 +20,7 @@ export async function POST(request: NextRequest) {
 
   const account = await getRouteAccount(request);
   if (!account) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 },
-    );
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { targetUid } = (await request.json().catch(() => ({}))) as {

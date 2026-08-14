@@ -37,7 +37,7 @@ export function ReportMessageDialog({ message }: { message: DirectMessage }) {
           type="button"
           aria-label="Report message"
           title="Report message"
-          className="grid size-11 place-items-center rounded-lg hover:text-destructive"
+          className="hover:text-destructive grid size-11 place-items-center rounded-lg"
         >
           <Flag aria-hidden="true" className="size-3" />
         </button>

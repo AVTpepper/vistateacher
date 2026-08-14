@@ -55,13 +55,19 @@ export function ResourceDetailActions({
   async function editResourceMetadata() {
     const title = window.prompt("Resource title", resource.title);
     if (!title) return;
-    const description = window.prompt("Resource description", resource.description);
+    const description = window.prompt(
+      "Resource description",
+      resource.description,
+    );
     if (!description) return;
     const subject = window.prompt("Subject", resource.subject);
     if (!subject) return;
     const gradeLevel = window.prompt("Grade level", resource.gradeLevel);
     if (!gradeLevel) return;
-    const tags = window.prompt("Tags (comma-separated)", resource.tags.join(", "));
+    const tags = window.prompt(
+      "Tags (comma-separated)",
+      resource.tags.join(", "),
+    );
     const response = await fetch(`/api/resources/${resource.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -170,10 +176,7 @@ export function ResourceDetailActions({
           </button>
         )}
         {resource.ownedByViewer && (
-          <DeleteConfirmDialog
-            itemName="resource"
-            onConfirm={remove}
-          >
+          <DeleteConfirmDialog itemName="resource" onConfirm={remove}>
             <button
               type="button"
               className="text-destructive hover:bg-muted grid size-11 place-items-center rounded-lg border"
@@ -220,10 +223,7 @@ export function ResourceDetailActions({
           >
             {submitting ? "Saving..." : "Save review"}
           </button>
-          <DeleteConfirmDialog
-            itemName="review"
-            onConfirm={deleteMyReview}
-          >
+          <DeleteConfirmDialog itemName="review" onConfirm={deleteMyReview}>
             <button
               type="button"
               className="text-destructive mt-2 block text-xs font-semibold"

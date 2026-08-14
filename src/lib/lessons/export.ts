@@ -10,10 +10,7 @@ import {
 } from "docx";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
-import {
-  releaseLessonExport,
-  reserveLessonExport,
-} from "@/lib/lessons/server";
+import { releaseLessonExport, reserveLessonExport } from "@/lib/lessons/server";
 import type { LessonPlanInput } from "@/schemas/lesson";
 
 export interface LessonExport {
@@ -166,7 +163,9 @@ async function createDocx(content: LessonPlanInput): Promise<Uint8Array> {
   const children: Paragraph[] = [
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: "VistaTeacher", bold: true, color: "0B8C95" })],
+      children: [
+        new TextRun({ text: "VistaTeacher", bold: true, color: "0B8C95" }),
+      ],
     }),
     new Paragraph({
       text: content.title,

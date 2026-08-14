@@ -21,30 +21,30 @@ export async function searchCommunity(
   const token = query.split(" ")[0];
   const queryTokens = query.split(" ").filter(Boolean);
   const db = adminDb();
-  const [educators, educatorFallback, resources, discussions] = await Promise.all([
-    db
-      .collection("users")
-      .where("searchKeywords", "array-contains", token)
-      .limit(20)
-      .get(),
-    db
-      .collection("users")
-      .limit(80)
-      .get(),
-    db
-      .collection("resources")
-      .where("tags", "array-contains", token)
-      .limit(5)
-      .get(),
-    db
-      .collection("forumThreads")
-      .where("tags", "array-contains", token)
-      .limit(5)
-      .get(),
-  ]);
+  const [educators, educatorFallback, resources, discussions] =
+    await Promise.all([
+      db
+        .collection("users")
+        .where("searchKeywords", "array-contains", token)
+        .limit(20)
+        .get(),
+      db.collection("users").limit(80).get(),
+      db
+        .collection("resources")
+        .where("tags", "array-contains", token)
+        .limit(5)
+        .get(),
+      db
+        .collection("forumThreads")
+        .where("tags", "array-contains", token)
+        .limit(5)
+        .get(),
+    ]);
 
   const educatorByUid = new Map<string, ProfileSearchResult>();
-  const upsertEducator = (document: FirebaseFirestore.QueryDocumentSnapshot) => {
+  const upsertEducator = (
+    document: FirebaseFirestore.QueryDocumentSnapshot,
+  ) => {
     const data = document.data();
     const status = String(data.status ?? "active");
     if (status === "suspended" || status === "deleted") return;
@@ -53,15 +53,11 @@ export async function searchCommunity(
     const displayName = String(data.displayName ?? "").trim();
     if (!uid || !displayName) return;
 
-    const subjects = Array.isArray(data.subjects) ? data.subjects.map(String) : [];
+    const subjects = Array.isArray(data.subjects)
+      ? data.subjects.map(String)
+      : [];
     const haystack = normalizeSearchText(
-      [
-        displayName,
-        data.school,
-        data.city,
-        data.gradeLevel,
-        ...subjects,
-      ]
+      [displayName, data.school, data.city, data.gradeLevel, ...subjects]
         .filter((value) => typeof value === "string" || Array.isArray(value))
         .join(" "),
     );

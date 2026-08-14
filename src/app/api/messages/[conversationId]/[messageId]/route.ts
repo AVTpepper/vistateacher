@@ -9,7 +9,9 @@ import { editMessageSchema, messageActionSchema } from "@/schemas/messages";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ conversationId: string; messageId: string }> },
+  {
+    params,
+  }: { params: Promise<{ conversationId: string; messageId: string }> },
 ) {
   if (!hasTrustedOrigin(request))
     return NextResponse.json(
@@ -48,7 +50,9 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ conversationId: string; messageId: string }> },
+  {
+    params,
+  }: { params: Promise<{ conversationId: string; messageId: string }> },
 ) {
   if (!hasTrustedOrigin(request))
     return NextResponse.json(

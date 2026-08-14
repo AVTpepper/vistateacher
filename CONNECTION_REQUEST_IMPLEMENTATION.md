@@ -1,7 +1,9 @@
 # Connection Request System - Implementation Complete ✅
 
 ## Summary
+
 Implemented a proper connection request flow where:
+
 1. Users send connection requests (status: "pending") instead of immediate connections
 2. Connection counts only increment when requests are accepted
 3. Users see "Connection request sent" state while awaiting response
@@ -11,6 +13,7 @@ Implemented a proper connection request flow where:
 ## Files Modified
 
 ### Database & Server Logic
+
 - **src/lib/network/server.ts**
   - Updated `EducatorDiscoveryResult` interface: `isFollowing` → `connectionStatus: "none" | "pending" | "accepted"`
   - Updated `followEducator()`: Creates with `status: "pending"`, no count increment, message updated to "sent you a connection request"
@@ -24,6 +27,7 @@ Implemented a proper connection request flow where:
   - Updated `getProfileView()`: Determines proper `connectionStatus` based on follow document status
 
 ### UI Components
+
 - **src/features/network/follow-button.tsx** (Complete Rewrite)
   - Changed from `initialFollowing: boolean` → `connectionStatus: "none" | "pending" | "accepted" | null`
   - Displays "Connect" when no relationship
@@ -47,6 +51,7 @@ Implemented a proper connection request flow where:
   - Updated FollowButton prop to use `connectionStatus`
 
 ### API Endpoints
+
 - **src/app/api/network/accept/route.ts** (New)
   - POST endpoint to accept pending connection request
   - Updates follow status from "pending" to "accepted"
@@ -60,6 +65,7 @@ Implemented a proper connection request flow where:
 ## Data Model Behavior
 
 ### Follow Document States
+
 - `status: "pending"` - Connection request awaiting acceptance
   - connectionCount: Not incremented
   - Visible as "Connection request sent" to sender
@@ -71,6 +77,7 @@ Implemented a proper connection request flow where:
   - Can be unfollowed to decrement count
 
 ### Connection Count Lifecycle
+
 1. **Initial**: User A sends request to User B → A's connectionCount unchanged, B's connectionCount unchanged
 2. **After Acceptance**: User B accepts → A's +1, B's +1
 3. **After Disconnect**: Either user unfollows → both -1
@@ -78,6 +85,7 @@ Implemented a proper connection request flow where:
 ## User Experience Flow
 
 ### Scenario 1: User A connecting to User B
+
 1. User A visits User B's profile
 2. User A clicks "Connect"
 3. Button changes to "Connection request sent" (amber)
@@ -87,6 +95,7 @@ Implemented a proper connection request flow where:
 7. Button changes to "Connected"
 
 ### Scenario 2: Canceling a request
+
 1. User A clicks "Connection request sent" button
 2. Request is deleted
 3. Button reverts to "Connect"
@@ -105,7 +114,7 @@ Implemented a proper connection request flow where:
 
 ## What's Ready for Future Implementation
 
-1. **Accept/Decline UI**: 
+1. **Accept/Decline UI**:
    - Needs separate query for incoming requests (where current user is "following")
    - Could be in notifications inbox or network page
    - Button logic ready: POST `/api/network/accept` or DELETE `/api/network/decline`

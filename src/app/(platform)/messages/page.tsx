@@ -28,7 +28,7 @@ export default async function MessagesPage({
       ? requestedId
       : composeConversationId
         ? composeConversationId
-      : (conversations[0]?.id ?? null);
+        : (conversations[0]?.id ?? null);
   const initialMessages = activeId
     ? await getMessagePage(account.uid, { conversationId: activeId })
     : null;
@@ -41,7 +41,9 @@ export default async function MessagesPage({
       }}
       initialConversations={conversations}
       initialConversationId={activeId}
-      initialComposeUid={composeUid && !composeConversationId ? composeUid : null}
+      initialComposeUid={
+        composeUid && !composeConversationId ? composeUid : null
+      }
       initialMessages={initialMessages}
     />
   );

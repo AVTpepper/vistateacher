@@ -35,8 +35,8 @@ export default function SettingsLayout({
             aria-current={isActive("/settings/profile") ? "page" : undefined}
             className={cn(
               "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
-              isActive("/settings/profile") 
-                ? "bg-primary text-primary-foreground hover:opacity-90" 
+              isActive("/settings/profile")
+                ? "bg-primary text-primary-foreground hover:opacity-90"
                 : "hover:bg-muted",
             )}
           >
@@ -48,8 +48,8 @@ export default function SettingsLayout({
             aria-current={isActive("/settings") ? "page" : undefined}
             className={cn(
               "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
-              isActive("/settings") 
-                ? "bg-primary text-primary-foreground hover:opacity-90" 
+              isActive("/settings")
+                ? "bg-primary text-primary-foreground hover:opacity-90"
                 : "hover:bg-muted",
             )}
           >
@@ -61,8 +61,8 @@ export default function SettingsLayout({
             aria-current={isActive("/settings/billing") ? "page" : undefined}
             className={cn(
               "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
-              isActive("/settings/billing") 
-                ? "bg-primary text-primary-foreground hover:opacity-90" 
+              isActive("/settings/billing")
+                ? "bg-primary text-primary-foreground hover:opacity-90"
                 : "hover:bg-muted",
             )}
           >
