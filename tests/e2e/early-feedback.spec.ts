@@ -16,6 +16,7 @@ test("forum category URLs, validation, API errors, and creation remain stable", 
   test.skip(testInfo.project.name !== "chromium");
   await signIn(page);
   await page.goto("/forum");
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await page.getByRole("link", { name: /Student Engagement/ }).click();
   await expect(page).toHaveURL(/\/forum\?category=student-engagement$/);
   const heading = page.getByRole("heading", {
@@ -23,6 +24,9 @@ test("forum category URLs, validation, API errors, and creation remain stable", 
     exact: true,
   });
   await expect(heading).toBeVisible();
+  expect(
+    await heading.evaluate((element) => element.getBoundingClientRect().top),
+  ).toBeGreaterThanOrEqual(0);
   expect(
     await heading.evaluate((element) => element.getBoundingClientRect().top),
   ).toBeLessThan(500);

@@ -74,8 +74,13 @@ export function ForumExperience({
   const contentHeadingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    if (showThreads) contentHeadingRef.current?.focus({ preventScroll: true });
-  }, [showThreads]);
+    if (!showThreads) return;
+    contentHeadingRef.current?.focus({ preventScroll: true });
+    contentHeadingRef.current?.scrollIntoView({
+      behavior: "instant",
+      block: "start",
+    });
+  }, [selectedCategory?.id, showThreads]);
 
   async function loadMore() {
     if (!page.nextCursor || loading) return;
