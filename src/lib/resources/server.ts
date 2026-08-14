@@ -32,6 +32,7 @@ export interface ResourceSummary {
   ratingAverage: number;
   ratingCount: number;
   createdAt: string;
+  sourceLessonId: string | null;
 }
 
 export interface ResourceDetail extends ResourceSummary {
@@ -130,6 +131,8 @@ function summary(
     ratingAverage: number(data.ratingAverage),
     ratingCount: number(data.ratingCount),
     createdAt: timestamp(data.createdAt),
+    sourceLessonId:
+      typeof data.sourceLessonId === "string" ? data.sourceLessonId : null,
   };
 }
 
@@ -411,8 +414,8 @@ export async function getResourceDetail(
         data,
         authorMap.get(String(data.authorId)),
       ),
-      fileName: String(data.fileName),
-      fileType: String(data.fileType),
+      fileName: typeof data.fileName === "string" ? data.fileName : "",
+      fileType: typeof data.fileType === "string" ? data.fileType : "",
       fileSize: number(data.fileSize),
       ownedByViewer: ownsResource,
       canDownload: access.allowed,
@@ -568,6 +571,8 @@ export async function downloadResource(
   if (!resource.exists || resource.data()?.status !== "active")
     throw new ResourceActionError("not-found");
   const data = resource.data()!;
+  if (typeof data.sourceLessonId === "string")
+    throw new ResourceActionError("not-ready");
   const decision = canDownloadResource({
     status: user.data()?.status ?? "deleted",
   });

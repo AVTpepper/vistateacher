@@ -35,7 +35,11 @@ const typeColor = {
   activity: "bg-amber",
 };
 
-export function ResourceLibrary({ resources }: { resources: ResourceSummary[] }) {
+export function ResourceLibrary({
+  resources,
+}: {
+  resources: ResourceSummary[];
+}) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query.toLocaleLowerCase("en-US"));
   const [type, setType] = useState("");
@@ -195,11 +199,7 @@ export function ResourceLibrary({ resources }: { resources: ResourceSummary[] })
           }
         >
           {filtered.map((resource) => (
-            <ResourceCard
-              key={resource.id}
-              resource={resource}
-              view={view}
-            />
+            <ResourceCard key={resource.id} resource={resource} view={view} />
           ))}
         </div>
       ) : (
@@ -324,6 +324,19 @@ function DownloadLink({
   resource: ResourceSummary;
   compact: boolean;
 }) {
+  if (resource.sourceLessonId)
+    return (
+      <Link
+        href={`/lessons/${resource.sourceLessonId}`}
+        className={cn(
+          "bg-accent text-accent-foreground shrink-0 rounded-lg px-3 py-2 text-xs font-bold",
+          !compact && "px-4",
+        )}
+        aria-label={`View ${resource.title}`}
+      >
+        View lesson
+      </Link>
+    );
   return (
     <a
       href={`/api/resources/${resource.id}/download`}

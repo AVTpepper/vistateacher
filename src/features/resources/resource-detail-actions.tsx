@@ -1,6 +1,7 @@
 "use client";
 
-import { Download, LoaderCircle, Star, Trash2 } from "lucide-react";
+import { Download, Eye, LoaderCircle, Star, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -129,19 +130,32 @@ export function ResourceDetailActions({
   return (
     <>
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => void download()}
-          disabled={downloading || !resource.canDownload}
-          className="bg-primary text-primary-foreground flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {downloading ? (
-            <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-          ) : (
-            <Download aria-hidden="true" className="size-4" />
-          )}
-          {resource.canDownload ? "Download" : "Download unavailable"}
-        </button>
+        {resource.sourceLessonId ? (
+          <Link
+            href={`/lessons/${resource.sourceLessonId}`}
+            className="bg-primary text-primary-foreground flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-bold"
+          >
+            <Eye aria-hidden="true" className="size-4" />
+            View lesson
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void download()}
+            disabled={downloading || !resource.canDownload}
+            className="bg-primary text-primary-foreground flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {downloading ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-4 animate-spin"
+              />
+            ) : (
+              <Download aria-hidden="true" className="size-4" />
+            )}
+            {resource.canDownload ? "Download" : "Download unavailable"}
+          </button>
+        )}
         {resource.ownedByViewer && (
           <button
             type="button"

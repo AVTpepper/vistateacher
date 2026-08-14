@@ -114,12 +114,18 @@ export default async function ResourcePage({
                   <p className="text-muted-foreground text-xs">downloads</p>
                 </div>
               </div>
-              <div className="text-muted-foreground mt-4 border-t pt-4 text-xs">
-                <p className="truncate">{resource.fileName}</p>
-                <p className="mt-1">
-                  {(resource.fileSize / 1024 / 1024).toFixed(1)} MB
+              {resource.sourceLessonId ? (
+                <p className="text-muted-foreground mt-4 border-t pt-4 text-xs">
+                  Interactive VistaTeacher lesson plan
                 </p>
-              </div>
+              ) : (
+                <div className="text-muted-foreground mt-4 border-t pt-4 text-xs">
+                  <p className="truncate">{resource.fileName}</p>
+                  <p className="mt-1">
+                    {(resource.fileSize / 1024 / 1024).toFixed(1)} MB
+                  </p>
+                </div>
+              )}
               <div className="mt-4">
                 <ResourceDetailActions resource={resource} />
               </div>

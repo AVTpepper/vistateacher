@@ -61,7 +61,9 @@ import {
 } from "@/lib/messages/server";
 import {
   createLesson,
+  deleteLesson,
   duplicateLesson,
+  getSharedLesson,
   LessonActionError,
   regenerateLesson,
   updateLesson,
@@ -630,13 +632,38 @@ describe("Firestore rules", () => {
     });
     expect(created.currentVersion).toBe(1);
     expect(created.versions).toHaveLength(1);
+    expect(created.visibility).toBe("draft");
 
-    const edited = await updateLesson("lesson-owner", created.id, {
-      ...created.content,
-      title: "Revised local food webs",
-    });
+    const edited = await updateLesson(
+      "lesson-owner",
+      created.id,
+      {
+        ...created.content,
+        title: "Revised local food webs",
+      },
+      "published",
+    );
     expect(edited.currentVersion).toBe(2);
     expect(edited.versions[0]?.kind).toBe("edited");
+    expect(edited.visibility).toBe("published");
+    await expect(
+      getSharedLesson(created.id, "lesson-outsider"),
+    ).resolves.toMatchObject({
+      id: created.id,
+      title: "Revised local food webs",
+      ownedByViewer: false,
+    });
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const resource = await getDoc(
+        doc(context.firestore(), "resources", `lesson_${created.id}`),
+      );
+      expect(resource.data()).toMatchObject({
+        sourceLessonId: created.id,
+        type: "lesson-plan",
+        status: "active",
+        moderationStatus: "approved",
+      });
+    });
 
     await testEnv.withSecurityRulesDisabled(async (context) => {
       await setDoc(
@@ -656,6 +683,7 @@ describe("Firestore rules", () => {
     const duplicate = await duplicateLesson("lesson-owner", created.id);
     expect(duplicate.content.title).toContain("(Copy)");
     expect(duplicate.versions[0]?.kind).toBe("duplicated");
+    expect(duplicate.visibility).toBe("draft");
 
     const ownerDb = testEnv.authenticatedContext("lesson-owner").firestore();
     const outsiderDb = testEnv
@@ -680,6 +708,13 @@ describe("Firestore rules", () => {
         version: 999,
       }),
     );
+    await deleteLesson("lesson-owner", created.id);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const resource = await getDoc(
+        doc(context.firestore(), "resources", `lesson_${created.id}`),
+      );
+      expect(resource.exists()).toBe(false);
+    });
   });
 
   it("resolves accepted connections symmetrically and updates counters once", async () => {

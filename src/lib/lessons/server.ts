@@ -51,6 +51,11 @@ export interface LessonDetail extends LessonSummary {
   versions: LessonVersion[];
 }
 
+export interface SharedLesson extends LessonDetail {
+  author: { uid: string; displayName: string; photoURL: string | null };
+  ownedByViewer: boolean;
+}
+
 export interface LessonQuotaUsage {
   used: number;
   limit: number | null;
@@ -157,6 +162,36 @@ function summary(
   };
 }
 
+function lessonResourceData(
+  ownerId: string,
+  lessonId: string,
+  content: LessonPlanInput,
+) {
+  return {
+    authorId: ownerId,
+    sourceLessonId: lessonId,
+    title: content.title,
+    titleLower: content.title.toLocaleLowerCase("en-US"),
+    description:
+      content.objectives.join(" ").slice(0, 2_000) ||
+      `A ${content.durationMinutes}-minute ${content.subject} lesson plan.`,
+    type: "lesson-plan",
+    subject: content.subject,
+    subjectLower: content.subject.toLocaleLowerCase("en-US"),
+    gradeLevel: content.gradeLevel,
+    tags: ["lesson-plan", content.subject.toLocaleLowerCase("en-US")],
+    accessTier: "free",
+    filePath: null,
+    fileName: null,
+    fileType: null,
+    fileSize: 0,
+    thumbnailURL: null,
+    status: "active",
+    moderationStatus: "approved",
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+}
+
 async function currentPlan(uid: string) {
   const snapshot = await adminDb().doc(`subscriptions/${uid}`).get();
   return resolveEffectivePlan(subscriptionRecord(snapshot.data()));
@@ -238,6 +273,54 @@ export async function getLesson(
   };
 }
 
+export async function getSharedLesson(
+  lessonId: string,
+  viewerUid: string,
+): Promise<SharedLesson | null> {
+  const db = adminDb();
+  const lesson = await db.doc(`lessons/${lessonId}`).get();
+  if (!lesson.exists || !lesson.data()?.content) return null;
+  const ownerId = String(lesson.data()?.ownerId ?? "");
+  const ownedByViewer = ownerId === viewerUid;
+  if (!ownedByViewer && lesson.data()?.visibility !== "published") return null;
+  const [owner, versions] = await Promise.all([
+    db.doc(`users/${ownerId}`).get(),
+    ownedByViewer
+      ? lesson.ref
+          .collection("versions")
+          .orderBy("version", "desc")
+          .limit(VERSION_LIMIT)
+          .get()
+      : Promise.resolve(null),
+  ]);
+  const data = lesson.data()!;
+  return {
+    ...summary(lesson.id, data),
+    source: lessonSourceSchema.parse(data.source),
+    content: lessonPlanSchema.parse(data.content),
+    versions:
+      versions?.docs.map((document) => ({
+        id: document.id,
+        version: number(document.data().version),
+        kind:
+          document.data().kind === "edited" ||
+          document.data().kind === "duplicated"
+            ? document.data().kind
+            : "generated",
+        createdAt: iso(document.data().createdAt),
+      })) ?? [],
+    author: {
+      uid: ownerId,
+      displayName: String(owner.data()?.displayName ?? "Educator"),
+      photoURL:
+        typeof owner.data()?.photoURL === "string"
+          ? owner.data()!.photoURL
+          : null,
+    },
+    ownedByViewer,
+  };
+}
+
 async function reserveGeneration(
   uid: string,
   source: LessonSourceInput,
@@ -308,7 +391,7 @@ async function reserveGeneration(
         ownerId: uid,
         source,
         content: null,
-        visibility: "published",
+        visibility: "draft",
         status: "generating",
         generationStatus: "generating",
         currentVersion: 0,
@@ -378,9 +461,14 @@ async function completeGeneration(
 ) {
   const db = adminDb();
   const lessonRef = db.doc(`lessons/${reservation.lessonId}`);
+  const resourceRef = db.doc(`resources/lesson_${reservation.lessonId}`);
   const version = reservation.previousVersion + 1;
   await db.runTransaction(async (transaction) => {
-    const lesson = await transaction.get(lessonRef);
+    const [lesson, resource, user] = await transaction.getAll(
+      lessonRef,
+      resourceRef,
+      db.doc(`users/${uid}`),
+    );
     if (!lesson.exists || lesson.data()?.ownerId !== uid)
       throw new LessonActionError("not-owner");
     if (lesson.data()?.generationStatus !== "generating")
@@ -391,7 +479,7 @@ async function completeGeneration(
       visibility: lessonVisibilitySchema.safeParse(lesson.data()?.visibility)
         .success
         ? lesson.data()?.visibility
-        : "published",
+        : "draft",
       status: "ready",
       generationStatus: "idle",
       pendingSource: FieldValue.delete(),
@@ -406,6 +494,28 @@ async function completeGeneration(
       content,
       createdAt: FieldValue.serverTimestamp(),
     });
+    if (lesson.data()?.visibility === "published") {
+      transaction.set(
+        resourceRef,
+        {
+          ...lessonResourceData(uid, reservation.lessonId, content),
+          ...(resource.exists
+            ? {}
+            : {
+                downloadCount: 0,
+                ratingTotal: 0,
+                ratingAverage: 0,
+                ratingCount: 0,
+                createdAt: FieldValue.serverTimestamp(),
+              }),
+        },
+        { merge: true },
+      );
+      if (!resource.exists || resource.data()?.status !== "active")
+        transaction.update(user.ref, {
+          resourceCount: FieldValue.increment(1),
+        });
+    }
   });
 }
 
@@ -500,10 +610,12 @@ export async function updateLesson(
 ): Promise<LessonDetail> {
   const db = adminDb();
   const lessonRef = db.doc(`lessons/${lessonId}`);
+  const resourceRef = db.doc(`resources/lesson_${lessonId}`);
   await db.runTransaction(async (transaction) => {
-    const [user, lesson] = await transaction.getAll(
+    const [user, lesson, resource] = await transaction.getAll(
       db.doc(`users/${uid}`),
       lessonRef,
+      resourceRef,
     );
     if (user.data()?.status !== "active")
       throw new LessonActionError("inactive");
@@ -513,9 +625,17 @@ export async function updateLesson(
     if (lesson.data()?.generationStatus === "generating")
       throw new LessonActionError("busy");
     const version = number(lesson.data()?.currentVersion) + 1;
+    const nextVisibility =
+      visibility ??
+      (lessonVisibilitySchema.safeParse(lesson.data()?.visibility).success
+        ? lesson.data()?.visibility
+        : "draft");
     transaction.update(lessonRef, {
       content,
-      ...(visibility ? { visibility } : {}),
+      visibility: nextVisibility,
+      ...(nextVisibility === "published"
+        ? { publishedAt: FieldValue.serverTimestamp() }
+        : {}),
       currentVersion: version,
       updatedAt: FieldValue.serverTimestamp(),
     });
@@ -527,6 +647,39 @@ export async function updateLesson(
       content,
       createdAt: FieldValue.serverTimestamp(),
     });
+    const resourceWasActive =
+      resource.exists && resource.data()?.status === "active";
+    if (nextVisibility === "published") {
+      transaction.set(
+        resourceRef,
+        {
+          ...lessonResourceData(uid, lessonId, content),
+          ...(resource.exists
+            ? {}
+            : {
+                downloadCount: 0,
+                ratingTotal: 0,
+                ratingAverage: 0,
+                ratingCount: 0,
+                createdAt: FieldValue.serverTimestamp(),
+              }),
+        },
+        { merge: true },
+      );
+      if (!resourceWasActive)
+        transaction.update(user.ref, {
+          resourceCount: FieldValue.increment(1),
+        });
+    } else if (resourceWasActive) {
+      transaction.update(resourceRef, {
+        status: "draft",
+        moderationStatus: "pending",
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      transaction.update(user.ref, {
+        resourceCount: FieldValue.increment(-1),
+      });
+    }
   });
   return getLesson(uid, lessonId);
 }
@@ -554,10 +707,7 @@ export async function duplicateLesson(
       ownerId: uid,
       source: lessonSourceSchema.parse(source.data()?.source),
       content: duplicatedContent,
-      visibility: lessonVisibilitySchema.safeParse(source.data()?.visibility)
-        .success
-        ? source.data()?.visibility
-        : "published",
+      visibility: "draft",
       status: "ready",
       generationStatus: "idle",
       currentVersion: 1,
@@ -582,10 +732,12 @@ export async function deleteLesson(
   if (!parsed.success) throw new LessonActionError("not-found");
   const db = adminDb();
   const lessonRef = db.doc(`lessons/${lessonId}`);
+  const resourceRef = db.doc(`resources/lesson_${lessonId}`);
   await db.runTransaction(async (transaction) => {
-    const [user, lesson] = await transaction.getAll(
+    const [user, lesson, resource] = await transaction.getAll(
       db.doc(`users/${uid}`),
       lessonRef,
+      resourceRef,
     );
     if (user.data()?.status !== "active")
       throw new LessonActionError("inactive");
@@ -593,6 +745,13 @@ export async function deleteLesson(
     if (lesson.data()?.ownerId !== uid)
       throw new LessonActionError("not-owner");
     transaction.delete(lessonRef);
+    if (resource.exists) {
+      transaction.delete(resourceRef);
+      if (resource.data()?.status === "active")
+        transaction.update(user.ref, {
+          resourceCount: FieldValue.increment(-1),
+        });
+    }
   });
   await db.recursiveDelete(lessonRef);
 }
