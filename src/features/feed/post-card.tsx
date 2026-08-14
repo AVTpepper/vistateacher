@@ -420,7 +420,10 @@ export function PostCard({
         {post.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {post.tags.map((tag) => (
-              <span key={tag} className="text-primary text-xs">
+              <span
+                key={tag}
+                className="bg-accent text-accent-foreground rounded-full px-2.5 py-1 text-xs font-semibold"
+              >
                 #{tag}
               </span>
             ))}

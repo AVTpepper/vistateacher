@@ -47,7 +47,7 @@ export default async function ResourcePage({
             </div>
             <div className="p-5 sm:p-6">
               <div className="flex flex-wrap gap-2 text-xs">
-                <span className="bg-secondary text-primary rounded-full px-2.5 py-1 font-bold capitalize">
+                <span className="bg-accent text-accent-foreground rounded-full px-2.5 py-1 font-bold capitalize">
                   {resource.type.replace("-", " ")}
                 </span>
               </div>
@@ -57,7 +57,10 @@ export default async function ResourcePage({
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {resource.tags.map((tag) => (
-                  <span key={tag} className="text-primary text-xs">
+                  <span
+                    key={tag}
+                    className="bg-accent text-accent-foreground rounded-full px-2.5 py-1 text-xs font-semibold"
+                  >
                     #{tag}
                   </span>
                 ))}

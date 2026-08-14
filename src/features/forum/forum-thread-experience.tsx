@@ -259,7 +259,7 @@ export function ForumThreadExperience({
             {thread.tags.map((tag) => (
               <span
                 key={tag}
-                className="bg-muted text-muted-foreground flex items-center gap-1 rounded-full px-2.5 py-1 text-xs"
+                className="bg-accent text-accent-foreground flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
               >
                 <Tag aria-hidden="true" className="size-3" /> {tag}
               </span>
