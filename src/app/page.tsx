@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import { LandingPage } from "@/features/marketing/landing-page";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "VistaTeacher | Find your people in education",
   description:
