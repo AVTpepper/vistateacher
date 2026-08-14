@@ -99,30 +99,35 @@ export function DashboardExperience({
       value: summary.profileViews,
       icon: Eye,
       tone: "text-primary bg-primary/10",
+      href: "/profile/views",
     },
     {
       label: "Post engagement",
       value: summary.postEngagements,
       icon: Heart,
       tone: "text-destructive bg-destructive/10",
+      href: `/profile/${dashboard.viewer.uid}?tab=posts`,
     },
     {
       label: "Resource downloads",
       value: summary.resourceDownloadsTotal,
       icon: Download,
       tone: "text-accent-readable bg-accent/10",
+      href: `/profile/${dashboard.viewer.uid}?tab=resources`,
     },
     {
       label: "Forum contributions",
       value: summary.forumContributions,
       icon: MessageCircle,
       tone: "text-success bg-success/10",
+      href: "/forum",
     },
     {
       label: "Lessons generated",
       value: summary.lessonsGeneratedTotal,
       icon: Sparkles,
       tone: "text-violet bg-violet/10",
+      href: "/ai-lessons",
     },
   ];
 
@@ -239,7 +244,11 @@ export function DashboardExperience({
           {metrics.map((metric) => {
             const Icon = metric.icon;
             return (
-              <div key={metric.label} className="surface-card min-w-0 p-4">
+              <Link
+                key={metric.label}
+                href={metric.href}
+                className="surface-card surface-card-interactive min-w-0 p-4"
+              >
                 <span
                   className={`grid size-8 place-items-center rounded-lg ${metric.tone}`}
                 >
@@ -251,7 +260,7 @@ export function DashboardExperience({
                 <p className="text-muted-foreground truncate text-xs">
                   {metric.label}
                 </p>
-              </div>
+              </Link>
             );
           })}
         </div>

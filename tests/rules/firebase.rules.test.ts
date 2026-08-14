@@ -73,7 +73,7 @@ import {
   startVistaTrial,
 } from "@/lib/billing/server";
 import { AdminActionError, performAdminAction } from "@/lib/admin/server";
-import { getProfileView } from "@/lib/profiles/server";
+import { getProfileView, getProfileViewers } from "@/lib/profiles/server";
 const projectId = "demo-vista-teacher";
 const storageBucketUrl = `gs://${projectId}.appspot.com`;
 let testEnv: RulesTestEnvironment;
@@ -269,6 +269,7 @@ describe("Firestore rules", () => {
 
     await getProfileView("profile-owner", "profile-viewer");
     await getProfileView("profile-owner", "profile-viewer");
+    const viewers = await getProfileViewers("profile-owner");
 
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const [analytics, view] = await Promise.all([
@@ -283,6 +284,9 @@ describe("Firestore rules", () => {
       ]);
       expect(analytics.data()?.profileViews).toBe(1);
       expect(view.exists()).toBe(true);
+      expect(viewers).toMatchObject([
+        { uid: "profile-viewer", displayName: "Network Educator" },
+      ]);
     });
   });
 

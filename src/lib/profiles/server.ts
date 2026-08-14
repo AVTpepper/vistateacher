@@ -30,6 +30,14 @@ export interface ProfileView {
   connectionDirection: "incoming" | "outgoing" | null;
 }
 
+export interface ProfileViewer {
+  uid: string;
+  displayName: string;
+  photoURL: string | null;
+  professionalRoles: string[];
+  viewedAt: string;
+}
+
 function joinedLabel(value: unknown): string {
   if (!(value instanceof Timestamp)) return "Recently";
   return value.toDate().toLocaleDateString("en-US", {
@@ -68,6 +76,53 @@ async function recordUniqueProfileView(
       { merge: true },
     );
   });
+}
+
+export async function getProfileViewers(uid: string): Promise<ProfileViewer[]> {
+  const db = adminDb();
+  const views = await db
+    .collection("profileViews")
+    .where("profileUid", "==", uid)
+    .limit(250)
+    .get();
+  if (views.empty) return [];
+
+  const viewerIds = [
+    ...new Set(views.docs.map((document) => String(document.data().viewerUid))),
+  ].filter(Boolean);
+  const profiles = viewerIds.length
+    ? await db.getAll(
+        ...viewerIds.map((viewerUid) => db.doc(`users/${viewerUid}`)),
+      )
+    : [];
+  const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
+
+  return views.docs
+    .flatMap((document) => {
+      const data = document.data();
+      const viewerUid = String(data.viewerUid ?? "");
+      const viewer = profileMap.get(viewerUid);
+      if (!viewer?.exists || viewer.data()?.status === "deleted") return [];
+      const viewedAt =
+        data.createdAt instanceof Timestamp
+          ? data.createdAt.toDate().toISOString()
+          : new Date(0).toISOString();
+      return [
+        {
+          uid: viewerUid,
+          displayName: String(viewer.data()?.displayName ?? "Educator"),
+          photoURL:
+            typeof viewer.data()?.photoURL === "string"
+              ? viewer.data()!.photoURL
+              : null,
+          professionalRoles: Array.isArray(viewer.data()?.professionalRoles)
+            ? viewer.data()!.professionalRoles.map(String)
+            : [],
+          viewedAt,
+        },
+      ];
+    })
+    .sort((left, right) => right.viewedAt.localeCompare(left.viewedAt));
 }
 
 export async function getProfileView(
