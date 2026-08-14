@@ -894,8 +894,8 @@ export function LessonBuilderExperience({
       setAttemptedGenerate(false);
       toast.success(
         lessons.length > 1
-          ? `${lessons.length} lessons generated.`
-          : "Lesson generated.",
+          ? `${lessons.length} lessons generated and saved as drafts.`
+          : "Lesson generated and saved as a draft.",
       );
     } catch (error) {
       toast.error(
@@ -964,20 +964,21 @@ export function LessonBuilderExperience({
     }
   }
 
-  async function deleteCurrentLesson(): Promise<void> {
-    if (!lesson) return;
+  async function deleteLessonById(lessonId: string): Promise<void> {
     setWorking(true);
     try {
-      const response = await fetch(`/api/ai-lessons/${lesson.id}`, {
+      const response = await fetch(`/api/ai-lessons/${lessonId}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Delete failed.");
       setWorkspace((current) => ({
         ...current,
-        lessons: current.lessons.filter((item) => item.id !== lesson.id),
+        lessons: current.lessons.filter((item) => item.id !== lessonId),
       }));
-      setLesson(null);
-      setEditing(false);
+      if (lesson?.id === lessonId) {
+        setLesson(null);
+        setEditing(false);
+      }
       toast.success("Lesson deleted.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Delete failed.");
@@ -1171,7 +1172,7 @@ export function LessonBuilderExperience({
         </button>
         {[
           { key: "published", label: "Published Lessons", icon: BookOpen },
-          { key: "draft", label: "Saved Lessons", icon: Save },
+          { key: "draft", label: "Draft Lessons", icon: Save },
         ].map((category) => {
           const items = workspace.lessons.filter(
             (item) => item.visibility === category.key,
@@ -1202,18 +1203,35 @@ export function LessonBuilderExperience({
               {isExpanded && (
                 <div className="flex flex-wrap gap-2">
                   {items.map((item) => (
-                    <button
-                      type="button"
+                    <div
                       key={item.id}
-                      onClick={() => void selectLesson(item.id)}
-                      className={`h-9 max-w-56 truncate rounded-lg border px-3 text-left text-xs font-bold transition-colors ${
+                      className={`flex max-w-72 items-center overflow-hidden rounded-lg border transition-colors ${
                         lesson?.id === item.id
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border bg-card hover:bg-muted"
                       }`}
                     >
-                      {item.title}
-                    </button>
+                      <button
+                        type="button"
+                        aria-label={`Continue refining ${item.title}`}
+                        onClick={() => void selectLesson(item.id)}
+                        className="h-10 min-w-0 flex-1 truncate px-3 text-left text-xs font-bold"
+                      >
+                        {item.title}
+                      </button>
+                      <DeleteConfirmDialog
+                        itemName="lesson"
+                        onConfirm={() => deleteLessonById(item.id)}
+                      >
+                        <button
+                          type="button"
+                          aria-label={`Delete ${item.title}`}
+                          className="hover:bg-destructive/10 hover:text-destructive grid size-10 shrink-0 place-items-center"
+                        >
+                          <Trash2 aria-hidden="true" className="size-3.5" />
+                        </button>
+                      </DeleteConfirmDialog>
+                    </div>
                   ))}
                 </div>
               )}
@@ -1485,7 +1503,7 @@ export function LessonBuilderExperience({
               onRegenerateWithFeedback={(feedback) =>
                 void action("regenerate", { feedback })
               }
-              onDelete={deleteCurrentLesson}
+              onDelete={() => deleteLessonById(lesson.id)}
               onDuplicate={() => void action("duplicate")}
               onPreviewPdf={() => void previewPdf()}
               onExport={(format) => void exportLesson(format)}
