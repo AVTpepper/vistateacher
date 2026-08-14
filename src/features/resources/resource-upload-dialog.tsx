@@ -411,7 +411,7 @@ export function ResourceUploadDialog() {
                   aria-describedby={describedBy}
                   data-invalid={invalid || undefined}
                   onClick={() => inputRef.current?.click()}
-                  className="hover:border-primary/40 focus-visible:border-ring data-[invalid]:border-destructive w-full rounded-xl border-2 border-dashed p-5 text-center transition-colors"
+                  className="hover:border-primary/40 focus-visible:border-ring data-invalid:border-destructive w-full rounded-xl border-2 border-dashed p-5 text-center transition-colors"
                 >
                   {file ? (
                     <FileCheck2

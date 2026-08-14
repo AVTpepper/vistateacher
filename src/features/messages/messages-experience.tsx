@@ -301,7 +301,7 @@ export function MessagesExperience({
         <section
           aria-label="Conversations"
           className={cn(
-            "border-border/70 bg-card/40 w-full shrink-0 flex-col border-r lg:flex lg:w-[22rem] xl:w-96",
+            "border-border/70 bg-card/40 w-full shrink-0 flex-col border-r lg:flex lg:w-88 xl:w-96",
             mobileChat ? "hidden" : "flex",
           )}
         >

@@ -42,7 +42,7 @@ export default async function ResourcePage({
       <div className="mx-auto max-w-4xl">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
           <article className="surface-card overflow-hidden">
-            <div className="bg-primary grid aspect-[16/7] place-items-center text-white">
+            <div className="bg-primary grid aspect-16/7 place-items-center text-white">
               <Icon aria-hidden="true" className="size-16 opacity-80" />
             </div>
             <div className="p-5 sm:p-6">
