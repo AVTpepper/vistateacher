@@ -181,7 +181,9 @@ test("profile stats reveal real content and connection-aware actions", async ({
   await page.getByRole("link", { name: "View Maya Chen's resources" }).click();
   await expect(page).toHaveURL(/\/profile\/plus-educator\?tab=resources/);
   await expect(page.getByText("Ecosystem Notice and Wonder")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Message" })).toBeEnabled();
+  await expect(
+    page.getByRole("link", { name: "Message", exact: true }),
+  ).toBeEnabled();
 
   await page.goto("/profile/platform-admin");
   const disabledMessage = page.getByRole("button", { name: "Message" });
