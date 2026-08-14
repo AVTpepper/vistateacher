@@ -442,13 +442,9 @@ export function PostCard({
             {post.commentCount}{" "}
             {post.commentCount === 1 ? "comment" : "comments"}
           </button>
-          <button
-            type="button"
-            onClick={() => void share()}
-            className="hover:bg-muted focus-visible:text-foreground min-h-11 rounded-lg px-2 transition-colors"
-          >
+          <span className="px-2">
             {post.shareCount} {post.shareCount === 1 ? "share" : "shares"}
-          </button>
+          </span>
         </span>
       </div>
       <div className="flex px-2 py-1">
