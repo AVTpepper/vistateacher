@@ -344,6 +344,28 @@ export async function listResources(
   });
 }
 
+export async function listOwnedResources(
+  uid: string,
+): Promise<ResourceSummary[]> {
+  const db = adminDb();
+  const [snapshot, owner] = await Promise.all([
+    db
+      .collection("resources")
+      .where("authorId", "==", uid)
+      .limit(RESOURCE_LIMIT)
+      .get(),
+    db.doc(`users/${uid}`).get(),
+  ]);
+  return snapshot.docs
+    .filter(
+      (document) =>
+        document.data().status === "active" &&
+        document.data().moderationStatus === "approved",
+    )
+    .map((document) => summary(document.id, document.data(), owner.data()))
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
 export async function getResourceDetail(
   resourceId: string,
   viewerUid: string,
@@ -583,11 +605,11 @@ export async function downloadResource(
         { merge: true },
       );
     }
-    transaction.update(resourceRef, {
-      downloadCount: FieldValue.increment(1),
-    });
     const ownerId = String(currentResource.data()?.authorId ?? "");
     if (!ownsResource && ownerId) {
+      transaction.update(resourceRef, {
+        downloadCount: FieldValue.increment(1),
+      });
       transaction.set(
         db.doc(
           `users/${ownerId}/notifications/resource-download_${resourceId}_${uid}`,

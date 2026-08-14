@@ -17,7 +17,11 @@ import {
   getNetworkList,
   type EducatorDiscoveryResult,
 } from "@/lib/network/server";
-import { listResources, type ResourceSummary } from "@/lib/resources/server";
+import {
+  listOwnedResources,
+  listResources,
+  type ResourceSummary,
+} from "@/lib/resources/server";
 import { userAnalyticsAggregateSchema } from "@/schemas/dashboard";
 import { profileDocumentSchema } from "@/schemas/profile";
 import type {
@@ -188,13 +192,15 @@ export async function getDashboardData(
     analyticsSnapshot.data() ?? {},
   );
 
-  const [aggregate, educators, resources, feed, forum] = await Promise.all([
-    getLiveAnalytics(uid, storedAnalytics),
-    getNetworkList(uid, uid, "suggestions"),
-    listResources({ query: "", type: "", subject: "", sort: "rating" }),
-    getFeedPage(uid, "all"),
-    getForumPage(uid, role, { categoryId: "", cursor: undefined }),
-  ]);
+  const [aggregate, educators, resources, ownedResources, feed, forum] =
+    await Promise.all([
+      getLiveAnalytics(uid, storedAnalytics),
+      getNetworkList(uid, uid, "suggestions"),
+      listResources({ query: "", type: "", subject: "", sort: "rating" }),
+      listOwnedResources(uid),
+      getFeedPage(uid, "all"),
+      getForumPage(uid, role, { categoryId: "", cursor: undefined }),
+    ]);
   const recommendedResources = resources
     .filter((resource) => resource.author.uid !== uid)
     .sort(
@@ -284,8 +290,7 @@ export async function getDashboardData(
       posts,
       discussions: forum.threads.slice(0, 3),
     },
-    topResources: resources
-      .filter((resource) => resource.author.uid === uid)
+    topResources: ownedResources
       .sort((left, right) => right.downloadCount - left.downloadCount)
       .slice(0, 4),
   };

@@ -74,6 +74,7 @@ import {
 } from "@/lib/billing/server";
 import { AdminActionError, performAdminAction } from "@/lib/admin/server";
 import { getProfileView, getProfileViewers } from "@/lib/profiles/server";
+import { getDashboardData } from "@/lib/dashboard/server";
 const projectId = "demo-vista-teacher";
 const storageBucketUrl = `gs://${projectId}.appspot.com`;
 let testEnv: RulesTestEnvironment;
@@ -1199,6 +1200,51 @@ describe("Firestore rules", () => {
       downloadResource("author", "download-test"),
     ).resolves.toMatchObject({
       fileName: "resource.pdf",
+    });
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const resource = await getDoc(
+        doc(context.firestore(), "resources", "download-test"),
+      );
+      expect(resource.data()?.downloadCount).toBe(1);
+    });
+  });
+
+  it("projects live resource and lesson counters onto the dashboard", async () => {
+    await seedNetworkUser("analytics-owner");
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await Promise.all([
+        setDoc(doc(db, "resources", "analytics-resource"), {
+          authorId: "analytics-owner",
+          title: "Dashboard resource",
+          description: "A resource used to validate live dashboard totals.",
+          type: "lesson-plan",
+          subject: "Science",
+          gradeLevel: "Grade 5",
+          tags: ["science"],
+          accessTier: "free",
+          downloadCount: 7,
+          ratingAverage: 0,
+          ratingCount: 0,
+          status: "active",
+          moderationStatus: "approved",
+          createdAt: serverTimestamp(),
+        }),
+        setDoc(doc(db, "lessons", "analytics-lesson-one"), {
+          ownerId: "analytics-owner",
+        }),
+        setDoc(doc(db, "lessons", "analytics-lesson-two"), {
+          ownerId: "analytics-owner",
+        }),
+      ]);
+    });
+
+    const dashboard = await getDashboardData("analytics-owner", "educator");
+    expect(dashboard.analytics.summary.resourceDownloadsTotal).toBe(7);
+    expect(dashboard.analytics.summary.lessonsGeneratedTotal).toBe(2);
+    expect(dashboard.topResources[0]).toMatchObject({
+      id: "analytics-resource",
+      downloadCount: 7,
     });
   });
 
