@@ -223,7 +223,7 @@ async function getDashboardActionItems(
       title: `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`,
       detail:
         "Check the notification bell so you do not miss community activity.",
-      href: "/app",
+      href: "/notifications",
     });
   const quietResource = ownedResources.find(
     (resource) => resource.downloadCount === 0,
