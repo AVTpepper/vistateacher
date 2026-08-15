@@ -37,6 +37,135 @@ async function expectNoPageOverflow(page: Page) {
   ).toBe(true);
 }
 
+test("keeps every dashboard card inside narrow and wide viewports", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium");
+  test.setTimeout(120_000);
+  await signIn(page, "community@vista.local");
+
+  for (const width of [320, 360, 375, 390, 412, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/dashboard");
+    await expect(
+      page.getByRole("heading", { name: "Welcome back, Alex." }),
+    ).toBeVisible();
+    await expectNoPageOverflow(page);
+
+    const dashboard = page.getByTestId("dashboard");
+    expect(
+      await dashboard.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth,
+      ),
+      `${width}px dashboard overflow`,
+    ).toBe(true);
+    expect(
+      await dashboard
+        .locator(".surface-card, section.bg-sidebar")
+        .evaluateAll(
+          (elements) =>
+            elements
+              .map((element) => element.getBoundingClientRect())
+              .filter(
+                (rect) =>
+                  rect.left < -0.5 || rect.right > window.innerWidth + 0.5,
+              ).length,
+        ),
+      `${width}px clipped dashboard cards`,
+    ).toBe(0);
+  }
+});
+
+test("keeps message avatars fixed and focuses the rounded composer", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, "community@vista.local");
+  await page.goto("/messages");
+
+  const activeConversation = page.getByLabel("Active conversation");
+  const avatars = activeConversation.locator(
+    'img[alt="Maya Chen"], span[aria-label="Maya Chen"]',
+  );
+  await expect(avatars).toHaveCount(2);
+  const sizes = await avatars.evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return [rect.width, rect.height];
+    }),
+  );
+  expect(sizes).toEqual([
+    [40, 40],
+    [32, 32],
+  ]);
+
+  const message = page.getByLabel("Message", { exact: true });
+  await message.click();
+  await expect(message).toHaveAttribute("autocomplete", "off");
+  await expect(message).toHaveAttribute("inputmode", "text");
+  await expect(message).toHaveAttribute("enterkeyhint", "send");
+  expect(
+    await message.evaluate((element) =>
+      Number.parseFloat(getComputedStyle(element).fontSize),
+    ),
+  ).toBeGreaterThanOrEqual(16);
+  expect(
+    await message.evaluate((element) => getComputedStyle(element).outlineStyle),
+  ).toBe("none");
+  const messageShell = message.locator(
+    "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' input-shell ')][1]",
+  );
+  await expect(messageShell).toHaveCount(1);
+  expect(
+    await messageShell.evaluate((element) => element.matches(":focus-within")),
+  ).toBe(true);
+  await expect
+    .poll(() =>
+      messageShell.evaluate((element) => getComputedStyle(element).boxShadow),
+    )
+    .not.toBe("none");
+
+  await page.getByRole("button", { name: "Back to conversations" }).click();
+  const conversation = page
+    .getByRole("button")
+    .filter({ hasText: "Maya Chen" })
+    .first();
+  const inboxAvatar = conversation.locator(
+    'img[alt="Maya Chen"], span[aria-label="Maya Chen"]',
+  );
+  await expect(inboxAvatar).toBeVisible();
+  await expect(inboxAvatar).toHaveCSS("width", "48px");
+  await expect(inboxAvatar).toHaveCSS("height", "48px");
+
+  await page.goto("/post/demo-post");
+  const comment = page.getByPlaceholder("Write a comment...");
+  await comment.click();
+  await expect(comment).toHaveAttribute("autocomplete", "off");
+  await expect(comment).toHaveAttribute("inputmode", "text");
+  await expect(comment).toHaveAttribute("enterkeyhint", "send");
+  expect(
+    await comment.evaluate((element) =>
+      Number.parseFloat(getComputedStyle(element).fontSize),
+    ),
+  ).toBeGreaterThanOrEqual(16);
+  expect(
+    await comment.evaluate((element) => getComputedStyle(element).outlineStyle),
+  ).toBe("none");
+  const commentShell = comment.locator(
+    "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' input-shell ')][1]",
+  );
+  await expect(commentShell).toHaveCount(1);
+  expect(
+    await commentShell.evaluate((element) => element.matches(":focus-within")),
+  ).toBe(true);
+  await expect
+    .poll(() =>
+      commentShell.evaluate((element) => getComputedStyle(element).boxShadow),
+    )
+    .not.toBe("none");
+});
+
 test("signs in a seeded educator and protects platform workflows", async ({
   page,
 }) => {

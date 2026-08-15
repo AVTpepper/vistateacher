@@ -430,6 +430,11 @@ export function PostCard({
         ) : editingPost ? (
           <div className="space-y-2">
             <textarea
+              name="post-edit"
+              autoComplete="off"
+              autoCapitalize="sentences"
+              spellCheck
+              inputMode="text"
               value={postDraft}
               onChange={(event) => setPostDraft(event.target.value)}
               maxLength={5000}
@@ -642,6 +647,11 @@ export function PostCard({
                   {editingCommentId === item.id ? (
                     <div className="mt-1 space-y-1">
                       <textarea
+                        name="comment-edit"
+                        autoComplete="off"
+                        autoCapitalize="sentences"
+                        spellCheck
+                        inputMode="text"
                         value={commentDraft}
                         onChange={(event) =>
                           setCommentDraft(event.target.value)
@@ -712,8 +722,14 @@ export function PostCard({
               avatarClassName="size-8 rounded-full text-[10px]"
               showName={false}
             />
-            <div className="bg-muted flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2">
+            <div className="input-shell bg-muted flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-transparent px-3 py-2">
               <MentionTextarea
+                name="comment"
+                autoComplete="off"
+                autoCapitalize="sentences"
+                spellCheck
+                inputMode="text"
+                enterKeyHint="send"
                 value={comment}
                 mentions={commentMentions}
                 onMentionsChange={setCommentMentions}
@@ -728,7 +744,7 @@ export function PostCard({
                 }}
                 placeholder="Write a comment..."
                 rows={1}
-                className="placeholder:text-muted-foreground min-h-6 resize-none bg-transparent text-base outline-none md:text-sm"
+                className="placeholder:text-muted-foreground min-h-6 resize-none border-0 bg-transparent text-base shadow-none outline-none md:text-sm"
               />
               <button
                 type="button"

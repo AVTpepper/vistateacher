@@ -295,6 +295,23 @@ input[type="file"] {
   border-radius: calc(var(--radius) - 4px);
 }
 
+.input-shell {
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.input-shell:focus-within {
+  border-color: color-mix(in srgb, var(--ring) 70%, var(--border));
+  background: var(--card);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 16%, transparent);
+}
+
+.input-shell :where(input, textarea):focus-visible {
+  outline: none;
+}
+
 .icon-well {
   display: grid;
   place-items: center;

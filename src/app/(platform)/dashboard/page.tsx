@@ -10,7 +10,7 @@ export default async function DashboardPage() {
   const account = await requireCurrentAccount();
   const dashboard = await getDashboardData(account.uid, account.role);
   return (
-    <div className="px-4 py-5 lg:px-6">
+    <div className="w-full max-w-full min-w-0">
       <DashboardExperience dashboard={dashboard} />
     </div>
   );

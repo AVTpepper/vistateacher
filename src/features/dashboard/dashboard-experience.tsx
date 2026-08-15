@@ -66,8 +66,8 @@ function SectionHeading({
   action: string;
 }) {
   return (
-    <div className="mb-4 flex items-center justify-between gap-3">
-      <h2 className="font-serif text-lg">{title}</h2>
+    <div className="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+      <h2 className="min-w-0 font-serif text-lg break-words">{title}</h2>
       <Link
         href={href}
         className="text-primary flex shrink-0 items-center gap-1 text-xs font-bold hover:underline"
@@ -134,8 +134,11 @@ export function DashboardExperience({
   ];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 px-4 py-6 lg:px-6">
-      <section className="bg-sidebar relative overflow-hidden rounded-xl px-5 py-6 text-white sm:px-6">
+    <div
+      data-testid="dashboard"
+      className="mx-auto w-full max-w-6xl min-w-0 space-y-5 px-4 py-6 lg:px-6"
+    >
+      <section className="bg-sidebar relative max-w-full min-w-0 overflow-hidden rounded-xl px-4 py-6 text-white sm:px-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <UserAvatar
             name={dashboard.viewer.displayName}
@@ -150,7 +153,7 @@ export function DashboardExperience({
               {insight}
             </p>
           </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
+          <div className="flex max-w-full flex-wrap gap-2 sm:shrink-0">
             <Link
               href="/ai-lessons"
               className="flex h-9 items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 text-xs font-bold hover:bg-white/20"
@@ -208,17 +211,17 @@ export function DashboardExperience({
             <Link
               key={action.href}
               href={action.href}
-              className="surface-card surface-card-interactive group p-4"
+              className="surface-card surface-card-interactive group max-w-full min-w-0 p-3 sm:p-4"
             >
               <span
                 className={`grid size-9 place-items-center rounded-lg transition-transform duration-200 group-hover:scale-110 ${action.tone}`}
               >
                 <Icon className="size-4" />
               </span>
-              <span className="mt-3 block text-sm font-bold">
+              <span className="mt-3 block text-sm font-bold break-words">
                 {action.label}
               </span>
-              <span className="text-muted-foreground mt-0.5 block text-xs">
+              <span className="text-muted-foreground mt-0.5 block text-xs break-words">
                 {action.detail}
               </span>
             </Link>
@@ -228,7 +231,7 @@ export function DashboardExperience({
 
       {dashboard.actionItems.length > 0 && (
         <section
-          className="surface-card p-5"
+          className="surface-card max-w-full min-w-0 p-4 sm:p-5"
           aria-labelledby="action-center-heading"
         >
           <div className="mb-4">
@@ -268,8 +271,8 @@ export function DashboardExperience({
       )}
 
       <section aria-labelledby="analytics-heading">
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
+        <div className="mb-3 flex min-w-0 items-end justify-between gap-3">
+          <div className="min-w-0">
             <h2 id="analytics-heading" className="font-serif text-xl">
               Your analytics
             </h2>
@@ -290,7 +293,7 @@ export function DashboardExperience({
               <Link
                 key={metric.label}
                 href={metric.href}
-                className="surface-card surface-card-interactive min-w-0 p-4"
+                className="surface-card surface-card-interactive max-w-full min-w-0 p-3 sm:p-4"
               >
                 <span
                   className={`grid size-8 place-items-center rounded-lg ${metric.tone}`}
@@ -309,7 +312,7 @@ export function DashboardExperience({
         </div>
       </section>
 
-      <section className="surface-card p-5">
+      <section className="surface-card max-w-full min-w-0 p-4 sm:p-5">
         <SectionHeading
           title="Teachers you might know"
           href="/network?view=suggestions"
@@ -321,7 +324,7 @@ export function DashboardExperience({
               ({ profile, connectionStatus, connectionDirection }) => (
                 <div
                   key={profile.uid}
-                  className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                  className="flex max-w-full min-w-0 items-center gap-3 py-3 first:pt-0 last:pb-0"
                 >
                   <Link href={`/profile/${profile.uid}`}>
                     <UserAvatar
@@ -346,6 +349,7 @@ export function DashboardExperience({
                     connectionStatus={connectionStatus}
                     connectionDirection={connectionDirection}
                     mode="connect"
+                    className="shrink-0 whitespace-nowrap"
                   />
                 </div>
               ),
@@ -358,8 +362,8 @@ export function DashboardExperience({
         </div>
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <section className="surface-card p-5">
+      <div className="grid max-w-full min-w-0 gap-5 lg:grid-cols-2">
+        <section className="surface-card max-w-full min-w-0 p-4 sm:p-5">
           <SectionHeading
             title="Recommended resources"
             href="/resources"
@@ -371,7 +375,7 @@ export function DashboardExperience({
                 <Link
                   key={resource.id}
                   href={`/resources/${resource.id}`}
-                  className="group flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                  className="group flex max-w-full min-w-0 items-center gap-3 py-3 first:pt-0 last:pb-0"
                 >
                   <span className="bg-primary/10 grid size-10 shrink-0 place-items-center rounded-lg">
                     <BookOpen className="text-primary size-4" />
@@ -396,7 +400,7 @@ export function DashboardExperience({
           </div>
         </section>
 
-        <section className="surface-card p-5">
+        <section className="surface-card max-w-full min-w-0 p-4 sm:p-5">
           <SectionHeading
             title="Hot in the forum"
             href="/forum"
@@ -413,7 +417,7 @@ export function DashboardExperience({
                   <span className="group-hover:text-primary line-clamp-2 text-sm font-bold">
                     {thread.title}
                   </span>
-                  <span className="text-muted-foreground mt-1.5 flex items-center gap-3 text-xs">
+                  <span className="text-muted-foreground mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                     <span className="flex items-center gap-1">
                       <MessageCircle className="size-3" />
                       {thread.replyCount}
@@ -422,7 +426,7 @@ export function DashboardExperience({
                       <Heart className="size-3" />
                       {thread.likeCount}
                     </span>
-                    <span className="bg-muted rounded px-1.5 py-0.5 text-[10px]">
+                    <span className="bg-muted max-w-full min-w-0 truncate rounded px-1.5 py-0.5 text-[10px]">
                       {thread.category.name}
                     </span>
                   </span>
@@ -435,7 +439,7 @@ export function DashboardExperience({
         </section>
       </div>
 
-      <section className="surface-card p-5">
+      <section className="surface-card max-w-full min-w-0 p-4 sm:p-5">
         <SectionHeading
           title="Posts you might like"
           href="/app"
@@ -447,9 +451,9 @@ export function DashboardExperience({
               <Link
                 key={post.id}
                 href={`/post/${post.id}`}
-                className="bg-muted/35 hover:border-primary/20 rounded-lg border p-4"
+                className="bg-muted/35 hover:border-primary/20 max-w-full min-w-0 rounded-lg border p-4"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                   <UserAvatar
                     name={post.author.displayName}
                     photoURL={post.author.photoURL}
@@ -481,7 +485,7 @@ export function DashboardExperience({
       </section>
 
       {dashboard.topResources.length > 0 && (
-        <section className="surface-card p-5">
+        <section className="surface-card max-w-full min-w-0 p-4 sm:p-5">
           <SectionHeading
             title="Your top resources"
             href="/resources"
@@ -514,7 +518,10 @@ export function DashboardExperience({
         </section>
       )}
 
-      <section className="surface-card p-5" aria-label="Analytics trends">
+      <section
+        className="surface-card max-w-full min-w-0 p-4 sm:p-5"
+        aria-label="Analytics trends"
+      >
         <div className="mb-5 flex items-center gap-2">
           <BarChart3 className="text-primary size-4" />
           <h2 className="font-serif text-lg">Performance trends</h2>

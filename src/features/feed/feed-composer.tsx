@@ -205,6 +205,11 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
           </div>
           <MentionTextarea
             autoFocus
+            name="post-content"
+            autoComplete="off"
+            autoCapitalize="sentences"
+            spellCheck
+            inputMode="text"
             value={content}
             mentions={mentions}
             onMentionsChange={setMentions}
@@ -218,7 +223,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
                   ? "Describe the resource you're sharing..."
                   : "Share a classroom win, challenge, or useful insight..."
             }
-            className="text-foreground placeholder:text-muted-foreground min-h-24 w-full resize-none bg-transparent text-sm leading-6 outline-none"
+            className="text-foreground placeholder:text-muted-foreground min-h-24 w-full resize-none bg-transparent text-base leading-6 outline-none md:text-sm"
           />
           <p className="text-muted-foreground mt-1 text-[11px]">
             Type @ and an educator&apos;s name to tag them.

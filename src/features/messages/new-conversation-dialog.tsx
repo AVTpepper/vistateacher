@@ -119,6 +119,11 @@ export function NewConversationDialog({
           {!recipient ? (
             <>
               <input
+                type="search"
+                name="educator-search"
+                autoComplete="off"
+                inputMode="search"
+                enterKeyHint="search"
                 aria-label="Search educators"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
@@ -168,12 +173,18 @@ export function NewConversationDialog({
               </button>
               <textarea
                 aria-label="Message"
+                name="new-message"
+                autoComplete="off"
+                autoCapitalize="sentences"
+                spellCheck
+                inputMode="text"
+                enterKeyHint="send"
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
                 maxLength={5_000}
                 rows={4}
                 placeholder="Write your message..."
-                className="bg-background mt-3 w-full rounded-lg border px-3 py-2 text-sm"
+                className="bg-background mt-3 w-full rounded-lg border px-3 py-2 text-base md:text-sm"
               />
             </>
           )}

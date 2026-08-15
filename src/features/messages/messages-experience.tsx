@@ -325,13 +325,18 @@ export function MessagesExperience({
                 />
               </div>
             </div>
-            <label className="surface-inset flex min-h-11 items-center gap-2 px-3">
+            <label className="surface-inset input-shell flex min-h-11 items-center gap-2 px-3">
               <Search
                 aria-hidden="true"
                 className="text-muted-foreground size-4 shrink-0"
               />
               <span className="sr-only">Search messages</span>
               <input
+                type="search"
+                name="conversation-search"
+                autoComplete="off"
+                inputMode="search"
+                enterKeyHint="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search educators..."
@@ -362,7 +367,7 @@ export function MessagesExperience({
                           name={conversation.participant.displayName}
                           photoURL={conversation.participant.photoURL}
                           className={cn(
-                            "size-12 rounded-2xl text-xs",
+                            "size-12 max-h-12 min-h-12 max-w-12 min-w-12 rounded-full text-xs",
                             selected && "ring-2 ring-white/30",
                           )}
                         />
@@ -462,7 +467,7 @@ export function MessagesExperience({
                   uid={active.participant.uid}
                   displayName={active.participant.displayName}
                   photoURL={active.participant.photoURL}
-                  avatarClassName="size-10 rounded-2xl text-xs"
+                  avatarClassName="size-10 min-h-10 max-h-10 min-w-10 max-w-10 rounded-full text-xs"
                   showName={false}
                 />
                 <div className="min-w-0 flex-1">
@@ -558,7 +563,7 @@ export function MessagesExperience({
                         </button>
                       </div>
                     )}
-                    <div className="surface-inset flex items-end gap-1.5 p-1.5 sm:gap-2 sm:p-2">
+                    <div className="surface-inset input-shell flex min-w-0 items-end gap-1.5 p-1.5 sm:gap-2 sm:p-2">
                       <input
                         ref={fileInput}
                         type="file"
@@ -580,6 +585,12 @@ export function MessagesExperience({
                       <textarea
                         ref={textarea}
                         aria-label="Message"
+                        name="message"
+                        autoComplete="off"
+                        autoCapitalize="sentences"
+                        spellCheck
+                        inputMode="text"
+                        enterKeyHint="send"
                         value={content}
                         onChange={(event) => setContent(event.target.value)}
                         onKeyDown={(event) => {
@@ -591,7 +602,7 @@ export function MessagesExperience({
                         rows={1}
                         maxLength={5_000}
                         placeholder="Write a message..."
-                        className="placeholder:text-muted-foreground/80 max-h-28 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm outline-none"
+                        className="placeholder:text-muted-foreground/80 max-h-28 min-h-11 min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-2.5 text-base shadow-none outline-none md:text-sm"
                       />
                       <button
                         type="button"
@@ -650,20 +661,22 @@ function MessageBubble({
   onDelete: () => Promise<void>;
 }) {
   return (
-    <div className={cn("flex items-end gap-2", mine && "flex-row-reverse")}>
+    <div
+      className={cn("flex min-w-0 items-end gap-2", mine && "flex-row-reverse")}
+    >
       {!mine && (
         <ProfileIdentityLink
           uid={participant.uid}
           displayName={participant.displayName}
           photoURL={participant.photoURL}
-          avatarClassName="size-8 rounded-xl text-[9px]"
-          className="mb-5"
+          avatarClassName="size-8 min-h-8 max-h-8 min-w-8 max-w-8 rounded-full text-[9px]"
+          className="mb-5 shrink-0"
           showName={false}
         />
       )}
       <div
         className={cn(
-          "flex max-w-[min(100%,28rem)] flex-col gap-1",
+          "flex max-w-[min(100%,28rem)] min-w-0 flex-col gap-1",
           mine ? "items-end" : "items-start",
         )}
       >

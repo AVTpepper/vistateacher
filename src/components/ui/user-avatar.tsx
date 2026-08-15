@@ -18,7 +18,7 @@ export function UserAvatar({
       <img
         src={photoURL}
         alt={name}
-        className={cn("object-cover", className)}
+        className={cn("block aspect-square shrink-0 object-cover", className)}
       />
     );
   }
@@ -27,7 +27,7 @@ export function UserAvatar({
     <span
       aria-label={name}
       className={cn(
-        "bg-secondary text-primary grid place-items-center font-bold",
+        "bg-secondary text-primary grid aspect-square shrink-0 place-items-center overflow-hidden font-bold",
         className,
       )}
     >

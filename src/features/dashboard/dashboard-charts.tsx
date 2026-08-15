@@ -46,8 +46,8 @@ export function DashboardCharts({
   }));
 
   return (
-    <div className="grid gap-5 xl:grid-cols-2">
-      <div className="min-w-0">
+    <div className="grid max-w-full min-w-0 gap-5 xl:grid-cols-2">
+      <div className="max-w-full min-w-0">
         <div className="mb-3">
           <h3 className="text-sm font-bold">Audience growth</h3>
           <p className="text-muted-foreground text-xs">
@@ -55,7 +55,7 @@ export function DashboardCharts({
           </p>
         </div>
         {growth.length ? (
-          <div className="h-56" data-chart="audience-growth">
+          <div className="h-56 max-w-full min-w-0" data-chart="audience-growth">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={growth} margin={{ left: -20, right: 10 }}>
                 <CartesianGrid stroke="var(--border)" vertical={false} />
@@ -91,7 +91,7 @@ export function DashboardCharts({
           <EmptyChart label="Audience trends will appear as your profile grows." />
         )}
       </div>
-      <div className="min-w-0">
+      <div className="max-w-full min-w-0">
         <div className="mb-3">
           <h3 className="text-sm font-bold">Content activity</h3>
           <p className="text-muted-foreground text-xs">
@@ -99,7 +99,10 @@ export function DashboardCharts({
           </p>
         </div>
         {activity.length ? (
-          <div className="h-56" data-chart="content-activity">
+          <div
+            className="h-56 max-w-full min-w-0"
+            data-chart="content-activity"
+          >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={activity} margin={{ left: -20, right: 10 }}>
                 <CartesianGrid stroke="var(--border)" vertical={false} />
