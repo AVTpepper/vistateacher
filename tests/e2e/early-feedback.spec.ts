@@ -123,6 +123,75 @@ test("common and phone image resource uploads complete and the mobile dialog sta
   }
 });
 
+test("post images fit without cropping and image, file, and web link attachments remain usable", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium");
+  test.setTimeout(90_000);
+  await signIn(page);
+
+  await page.getByRole("button", { name: /What's on your mind/ }).click();
+  await page
+    .getByPlaceholder("Share a classroom win, challenge, or useful insight...")
+    .fill("Post attachment regression check");
+  await page.getByLabel("Choose an image to attach").setInputFiles({
+    name: "portrait.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
+  await expect(page.getByText("Image ready to share")).toBeVisible();
+
+  await page.getByLabel("Choose a file to attach").setInputFiles({
+    name: "lesson-notes.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n%%EOF"),
+  });
+  await expect(page.getByText(/lesson-notes\.pdf/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Add web link" }).click();
+  await page.getByLabel("Web link", { exact: true }).fill("example.com/lesson");
+  await page.getByRole("button", { name: "Attach link" }).click();
+  await expect(page.getByText("https://example.com/lesson")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Post", exact: true })
+    .last()
+    .click();
+
+  const post = page
+    .getByRole("article")
+    .filter({ hasText: "Post attachment regression check" })
+    .first();
+  await expect(post).toBeVisible({ timeout: 30_000 });
+  await expect(
+    post.getByRole("link", { name: "Open attached file lesson-notes.pdf" }),
+  ).toBeVisible();
+  await expect(
+    post.getByRole("link", {
+      name: "Open shared web link to example.com",
+    }),
+  ).toHaveAttribute("href", "https://example.com/lesson");
+
+  const image = post.getByAltText("Shared post image");
+  await expect(image).toBeVisible();
+  expect(
+    await image.evaluate((element) => getComputedStyle(element).objectFit),
+  ).toBe("contain");
+  await post
+    .getByRole("button", { name: "View shared image full screen" })
+    .click();
+  const viewer = page.getByRole("dialog", { name: "Shared post image" });
+  await expect(viewer).toBeVisible();
+  const viewport = page.viewportSize();
+  const viewerBox = await viewer.boundingBox();
+  expect(viewerBox?.width).toBeGreaterThanOrEqual((viewport?.width ?? 1) - 2);
+  expect(viewerBox?.height).toBeGreaterThanOrEqual((viewport?.height ?? 1) - 2);
+  await page.getByRole("button", { name: "Close full-screen image" }).click();
+  await expect(viewer).toBeHidden();
+});
+
 test("post permalinks preserve authentication destinations and expose profile links", async ({
   page,
   context,

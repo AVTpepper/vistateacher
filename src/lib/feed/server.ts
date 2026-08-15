@@ -23,10 +23,12 @@ import type {
   CreateCommentInput,
   CreatePostInput,
   FeedView,
+  PostFileAttachment,
   ReportPostInput,
   UpdateCommentInput,
   UpdatePostInput,
 } from "@/schemas/feed";
+import { postFileAttachmentSchema } from "@/schemas/feed";
 
 const PAGE_SIZE = 10;
 const FOLLOWING_SCAN_LIMIT = 100;
@@ -45,6 +47,8 @@ export interface FeedPost {
   type: CreatePostInput["type"] | "activity";
   content: string;
   imageURLs: string[];
+  fileAttachments: PostFileAttachment[];
+  linkURLs: string[];
   tags: string[];
   mentions: MentionTarget[];
   resourceId: string | null;
@@ -88,6 +92,8 @@ export function writePublicActivity(
     type: "activity",
     content: "",
     imageURLs: [],
+    fileAttachments: [],
+    linkURLs: [],
     tags: [...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US")))],
     mentions: [],
     resourceId: null,
@@ -148,6 +154,14 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
     : [];
+}
+
+function fileAttachmentArray(value: unknown): PostFileAttachment[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const parsed = postFileAttachmentSchema.safeParse(item);
+    return parsed.success ? [parsed.data] : [];
+  });
 }
 
 function nonnegativeCount(value: unknown): number {
@@ -226,6 +240,8 @@ async function hydratePosts(
           : "post",
       content: String(data.content ?? ""),
       imageURLs: stringArray(data.imageURLs),
+      fileAttachments: fileAttachmentArray(data.fileAttachments),
+      linkURLs: stringArray(data.linkURLs),
       tags: stringArray(data.tags),
       mentions: mentionsFromData(data.mentions),
       resourceId: typeof data.resourceId === "string" ? data.resourceId : null,
@@ -416,6 +432,8 @@ export async function createPost(
       type: input.type,
       content: input.content,
       imageURLs: input.imageURLs,
+      fileAttachments: input.fileAttachments,
+      linkURLs: input.linkURLs,
       tags,
       mentions,
       resourceId: input.type === "resource" ? input.resourceId : null,
@@ -495,6 +513,8 @@ export async function updatePost(
       type: input.type,
       content: input.content,
       imageURLs: input.imageURLs,
+      fileAttachments: input.fileAttachments,
+      linkURLs: input.linkURLs,
       tags: [...new Set(input.tags.map((tag) => tag.toLowerCase()))],
       resourceId: input.type === "resource" ? input.resourceId : null,
       editedAt: FieldValue.serverTimestamp(),

@@ -87,6 +87,8 @@ export function FeedExperience({ initialPage, account }: FeedExperienceProps) {
       type: input.type,
       content: input.content,
       imageURLs: input.imageURLs,
+      fileAttachments: input.fileAttachments,
+      linkURLs: input.linkURLs,
       tags: input.tags,
       mentions: [],
       resourceId: input.resourceId,

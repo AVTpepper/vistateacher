@@ -3,9 +3,12 @@
 import { formatDistanceToNow } from "date-fns";
 import {
   Bookmark,
+  ExternalLink,
+  FileText,
   Heart,
   MessageCircle,
   MoreHorizontal,
+  Paperclip,
   Pencil,
   Send,
   Share2,
@@ -16,10 +19,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
-import { PostImageViewer } from "@/features/feed/post-image-viewer";
 import { MentionText } from "@/features/mentions/mention-text";
 import { MentionTextarea } from "@/features/mentions/mention-textarea";
+import { PostImageViewer } from "@/features/feed/post-image-viewer";
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
+import { formatPostFileSize } from "@/lib/feed/attachments";
 import type { FeedComment, FeedPost } from "@/lib/feed/server";
 import type { MentionTarget } from "@/lib/mentions/types";
 import { cn } from "@/lib/utils";
@@ -45,6 +49,14 @@ const typeLabel = {
   question: "Question",
   activity: "Activity",
 };
+
+function linkHost(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./u, "");
+  } catch {
+    return url;
+  }
+}
 
 async function mutation(url: string, method: string, body?: unknown) {
   return fetch(url, {
@@ -204,6 +216,8 @@ export function PostCard({
       type: post.type,
       content,
       imageURLs: post.imageURLs,
+      fileAttachments: post.fileAttachments,
+      linkURLs: post.linkURLs,
       tags: post.tags,
       resourceId: post.resourceId,
     });
@@ -458,6 +472,62 @@ export function PostCard({
         )}
       </div>
       {post.imageURLs[0] && <PostImageViewer src={post.imageURLs[0]} />}
+      {(post.fileAttachments.length > 0 || post.linkURLs.length > 0) && (
+        <div className="mx-4 mb-3 space-y-2">
+          {post.fileAttachments.map((attachment) => (
+            <a
+              key={attachment.url}
+              href={attachment.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Open attached file ${attachment.name}`}
+              className="bg-muted/50 hover:border-primary/30 flex min-h-14 items-center gap-3 rounded-lg border px-3 py-2 transition-colors"
+            >
+              <span className="bg-background text-primary grid size-9 shrink-0 place-items-center rounded-lg border">
+                <FileText aria-hidden="true" className="size-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold">
+                  {attachment.name}
+                </span>
+                <span className="text-muted-foreground block text-xs">
+                  {formatPostFileSize(attachment.size)}
+                </span>
+              </span>
+              <ExternalLink
+                aria-hidden="true"
+                className="text-muted-foreground size-4 shrink-0"
+              />
+            </a>
+          ))}
+          {post.linkURLs.map((url) => (
+            <a
+              key={url}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Open shared web link to ${linkHost(url)}`}
+              className="bg-muted/50 hover:border-primary/30 flex min-h-14 items-center gap-3 rounded-lg border px-3 py-2 transition-colors"
+            >
+              <span className="bg-background text-primary grid size-9 shrink-0 place-items-center rounded-lg border">
+                <Paperclip aria-hidden="true" className="size-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold">
+                  {linkHost(url)}
+                </span>
+                <span className="text-muted-foreground block truncate text-xs">
+                  {url}
+                </span>
+              </span>
+              <ExternalLink
+                aria-hidden="true"
+                className="text-muted-foreground size-4 shrink-0"
+              />
+            </a>
+          ))}
+        </div>
+      )}
       <div className="text-muted-foreground mx-4 flex flex-wrap items-center justify-between gap-2 border-b pb-2 text-xs">
         <button
           type="button"

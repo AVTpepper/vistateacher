@@ -19,6 +19,11 @@ service firebase.storage {
       return image() && request.resource.size <= limit;
     }
 
+    function postFileWithin(limit) {
+      return request.resource.size <= limit
+        && request.resource.contentType.matches('(application/pdf|application/msword|application/vnd.ms-(powerpoint|excel)|application/vnd.openxmlformats-officedocument.(wordprocessingml.document|presentationml.presentation|spreadsheetml.sheet)|text/(plain|csv))');
+    }
+
     match /users/{uid}/avatar/{fileName} {
       allow read: if true;
       allow write: if active() && request.auth.uid == uid && imageWithin(5 * 1024 * 1024);
@@ -31,7 +36,9 @@ service firebase.storage {
 
     match /posts/{uid}/{postId}/{fileName} {
       allow read: if signedIn();
-      allow write: if active() && request.auth.uid == uid && imageWithin(10 * 1024 * 1024);
+      allow create, update: if active()
+        && request.auth.uid == uid
+        && (imageWithin(10 * 1024 * 1024) || postFileWithin(25 * 1024 * 1024));
     }
 
     match /resources/{uid}/{resourceId}/{fileName} {

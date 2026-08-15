@@ -1,16 +1,31 @@
 "use client";
 
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { FileText, HelpCircle, ImagePlus, Tag, X } from "lucide-react";
+import {
+  FileText,
+  FileUp,
+  HelpCircle,
+  ImagePlus,
+  Link2,
+  Tag,
+  X,
+} from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { MentionTextarea } from "@/features/mentions/mention-textarea";
+import {
+  formatPostFileSize,
+  normalizedHttpURL,
+  POST_FILE_ACCEPT,
+  postFileContentType,
+  postFileError,
+} from "@/lib/feed/attachments";
 import { getFirebaseClient } from "@/lib/firebase/client";
 import type { MentionTarget } from "@/lib/mentions/types";
 import { cn } from "@/lib/utils";
-import type { CreatePostInput } from "@/schemas/feed";
+import type { CreatePostInput, PostFileAttachment } from "@/schemas/feed";
 
 interface ComposerAccount {
   uid: string;
@@ -46,9 +61,15 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
   const [mentions, setMentions] = useState<MentionTarget[]>([]);
   const [tags, setTags] = useState("");
   const [imageURL, setImageURL] = useState<string | null>(null);
+  const [fileAttachment, setFileAttachment] =
+    useState<PostFileAttachment | null>(null);
+  const [linkURL, setLinkURL] = useState<string | null>(null);
+  const [linkDraft, setLinkDraft] = useState("");
+  const [linkEditorOpen, setLinkEditorOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const firstName = account.displayName.split(" ")[0] || "Educator";
 
   async function uploadImage(file: File) {
@@ -74,6 +95,44 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
     }
   }
 
+  async function uploadFile(file: File) {
+    const error = postFileError(file);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    const contentType = postFileContentType(file.name);
+    if (!contentType) return;
+    setUploading(true);
+    try {
+      const extension = file.name.split(".").at(-1)!.toLocaleLowerCase("en-US");
+      const path = `posts/${account.uid}/${crypto.randomUUID()}/${crypto.randomUUID()}.${extension}`;
+      const object = ref(getFirebaseClient().storage, path);
+      await uploadBytes(object, file, { contentType });
+      setFileAttachment({
+        name: file.name,
+        url: await getDownloadURL(object),
+        contentType,
+        size: file.size,
+      });
+    } catch {
+      toast.error("We couldn't upload that file.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function attachWebLink() {
+    const normalized = normalizedHttpURL(linkDraft);
+    if (!normalized) {
+      toast.error("Enter a valid web link.");
+      return;
+    }
+    setLinkURL(normalized);
+    setLinkDraft("");
+    setLinkEditorOpen(false);
+  }
+
   async function submit() {
     if (!content.trim() || submitting || uploading) return;
     setSubmitting(true);
@@ -81,6 +140,8 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
       type,
       content: content.trim(),
       imageURLs: imageURL ? [imageURL] : [],
+      fileAttachments: fileAttachment ? [fileAttachment] : [],
+      linkURLs: linkURL ? [linkURL] : [],
       tags: tags
         .split(",")
         .map((tag) => tag.trim())
@@ -95,6 +156,10 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
     setMentions([]);
     setTags("");
     setImageURL(null);
+    setFileAttachment(null);
+    setLinkURL(null);
+    setLinkDraft("");
+    setLinkEditorOpen(false);
     setType("post");
     setExpanded(false);
   }
@@ -163,7 +228,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
             maxLength={160}
             onChange={(event) => setTags(event.target.value)}
             placeholder="Tags, separated by commas"
-            className="bg-muted text-foreground placeholder:text-muted-foreground mt-2 h-9 w-full rounded-lg px-3 text-xs outline-none"
+            className="bg-muted text-foreground placeholder:text-muted-foreground mt-2 h-10 w-full rounded-lg px-3 text-base outline-none md:text-xs"
           />
           {imageURL && (
             <div className="bg-muted mt-3 flex items-center justify-between rounded-lg px-3 py-2 text-xs">
@@ -178,25 +243,131 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
               </button>
             </div>
           )}
-          <div className="mt-3 flex items-center justify-between border-t pt-3">
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              disabled={uploading || Boolean(imageURL)}
-              title="Add image"
-              aria-label="Add image"
-              className="text-muted-foreground hover:bg-muted hover:text-foreground grid size-9 place-items-center rounded-lg disabled:opacity-50"
-            >
-              <ImagePlus aria-hidden="true" className="size-4" />
-            </button>
+          {fileAttachment && (
+            <div className="bg-muted mt-2 flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs">
+              <span className="min-w-0 truncate">
+                {fileAttachment.name} ·{" "}
+                {formatPostFileSize(fileAttachment.size)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setFileAttachment(null)}
+                aria-label="Remove attached file"
+                className="text-muted-foreground hover:text-foreground grid size-7 shrink-0 place-items-center rounded-md"
+              >
+                <X aria-hidden="true" className="size-4" />
+              </button>
+            </div>
+          )}
+          {linkURL && (
+            <div className="bg-muted mt-2 flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs">
+              <span className="min-w-0 truncate">{linkURL}</span>
+              <button
+                type="button"
+                onClick={() => setLinkURL(null)}
+                aria-label="Remove web link"
+                className="text-muted-foreground hover:text-foreground grid size-7 shrink-0 place-items-center rounded-md"
+              >
+                <X aria-hidden="true" className="size-4" />
+              </button>
+            </div>
+          )}
+          {linkEditorOpen && !linkURL && (
+            <div className="bg-muted mt-2 rounded-lg p-2">
+              <label htmlFor="post-web-link" className="sr-only">
+                Web link
+              </label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  id="post-web-link"
+                  type="url"
+                  inputMode="url"
+                  autoFocus
+                  value={linkDraft}
+                  onChange={(event) => setLinkDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      attachWebLink();
+                    }
+                  }}
+                  placeholder="https://example.com"
+                  className="bg-background text-foreground placeholder:text-muted-foreground h-10 min-w-0 flex-1 rounded-lg border px-3 text-base outline-none md:text-sm"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={attachWebLink}
+                    className="bg-primary text-primary-foreground h-10 rounded-lg px-3 text-sm font-bold"
+                  >
+                    Attach link
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLinkEditorOpen(false);
+                      setLinkDraft("");
+                    }}
+                    aria-label="Cancel adding web link"
+                    className="text-muted-foreground hover:bg-background grid size-10 place-items-center rounded-lg"
+                  >
+                    <X aria-hidden="true" className="size-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="mt-3 flex flex-col gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-1">
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={uploading || Boolean(imageURL)}
+                className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold disabled:opacity-50"
+              >
+                <ImagePlus aria-hidden="true" className="size-4" />
+                Add image
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading || Boolean(fileAttachment)}
+                className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold disabled:opacity-50"
+              >
+                <FileUp aria-hidden="true" className="size-4" />
+                Add file
+              </button>
+              <button
+                type="button"
+                onClick={() => setLinkEditorOpen(true)}
+                disabled={Boolean(linkURL) || linkEditorOpen}
+                className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold disabled:opacity-50"
+              >
+                <Link2 aria-hidden="true" className="size-4" />
+                Add web link
+              </button>
+            </div>
             <input
-              ref={inputRef}
+              ref={imageInputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp"
+              aria-label="Choose an image to attach"
               className="hidden"
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) void uploadImage(file);
+                event.target.value = "";
+              }}
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={POST_FILE_ACCEPT}
+              aria-label="Choose a file to attach"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void uploadFile(file);
                 event.target.value = "";
               }}
             />

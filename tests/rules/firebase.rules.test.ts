@@ -996,6 +996,8 @@ describe("Firestore rules", () => {
       type: "question",
       content: "How do you structure peer feedback?",
       imageURLs: [],
+      fileAttachments: [],
+      linkURLs: [],
       tags: ["Feedback"],
       resourceId: null,
       mentionUids: ["reader"],
@@ -1139,6 +1141,8 @@ describe("Firestore rules", () => {
       content:
         "Plant cell comparison cards for a middle school science lesson.",
       imageURLs: [],
+      fileAttachments: [],
+      linkURLs: [],
       tags: ["Resources", "Science"],
       resourceId: null,
     });
@@ -1880,7 +1884,7 @@ describe("Storage rules", () => {
     );
   });
 
-  it("limits post media writes to active owners and reads to signed-in users", async () => {
+  it("limits post media and document writes to active owners and reads to signed-in users", async () => {
     await seedActiveUser("owner");
     const ownerStorage = testEnv
       .authenticatedContext("owner")
@@ -1896,6 +1900,20 @@ describe("Storage rules", () => {
       }),
     );
     await assertSucceeds(getBytes(ref(otherStorage, postPath)));
+    const documentPath = "posts/owner/post-one/lesson-plan.pdf";
+    await assertSucceeds(
+      uploadBytes(ref(ownerStorage, documentPath), new Uint8Array([1]), {
+        contentType: "application/pdf",
+      }),
+    );
+    await assertSucceeds(getBytes(ref(otherStorage, documentPath)));
+    await assertFails(
+      uploadBytes(
+        ref(ownerStorage, "posts/owner/post-one/archive.zip"),
+        new Uint8Array([1]),
+        { contentType: "application/zip" },
+      ),
+    );
     await assertFails(
       uploadBytes(
         ref(otherStorage, "posts/owner/post-two/classroom.webp"),

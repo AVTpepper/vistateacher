@@ -17,7 +17,13 @@ describe("feed schemas", () => {
           content: "A useful classroom observation.",
           tags: ["Science", "Grade 7"],
         }),
-      ).toMatchObject({ type, imageURLs: [], resourceId: null });
+      ).toMatchObject({
+        type,
+        imageURLs: [],
+        fileAttachments: [],
+        linkURLs: [],
+        resourceId: null,
+      });
     },
   );
 
@@ -40,6 +46,48 @@ describe("feed schemas", () => {
           { length: 5 },
           (_, index) => `https://example.test/${index}.png`,
         ),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts safe post files and web links", () => {
+    expect(
+      createPostSchema.safeParse({
+        type: "post",
+        content: "Attached planning materials.",
+        fileAttachments: [
+          {
+            name: "lesson-plan.pdf",
+            url: "https://storage.example.test/lesson-plan.pdf",
+            contentType: "application/pdf",
+            size: 1_024,
+          },
+        ],
+        linkURLs: ["https://example.test/classroom-activity"],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects unsafe links and invalid post files", () => {
+    expect(
+      createPostSchema.safeParse({
+        type: "post",
+        content: "Unsafe link",
+        linkURLs: ["javascript:alert(1)"],
+      }).success,
+    ).toBe(false);
+    expect(
+      createPostSchema.safeParse({
+        type: "post",
+        content: "Oversized attachment",
+        fileAttachments: [
+          {
+            name: "lesson-plan.pdf",
+            url: "https://storage.example.test/lesson-plan.pdf",
+            contentType: "application/pdf",
+            size: 25 * 1024 * 1024 + 1,
+          },
+        ],
       }).success,
     ).toBe(false);
   });
