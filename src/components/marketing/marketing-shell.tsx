@@ -243,6 +243,9 @@ export function MarketingFooter() {
           <Link className="hover:text-sidebar-foreground" href="/privacy">
             Privacy
           </Link>
+          <Link className="hover:text-sidebar-foreground" href="/cookies">
+            Cookies
+          </Link>
           <Link className="hover:text-sidebar-foreground" href="/terms">
             Terms
           </Link>

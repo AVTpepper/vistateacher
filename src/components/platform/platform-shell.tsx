@@ -471,6 +471,9 @@ function PlatformFooter() {
               <Link className="hover:text-white" href="/privacy">
                 Privacy
               </Link>
+              <Link className="hover:text-white" href="/cookies">
+                Cookies
+              </Link>
               <Link className="hover:text-white" href="/terms">
                 Terms
               </Link>

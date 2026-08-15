@@ -231,6 +231,11 @@ test("publishes help and legal pages", async ({ page }) => {
     page.getByRole("heading", { name: "Privacy Policy" }),
   ).toBeVisible();
 
+  await page.goto("/cookies");
+  await expect(
+    page.getByRole("heading", { name: "Cookie Policy" }),
+  ).toBeVisible();
+
   await page.goto("/terms");
   await expect(
     page.getByRole("heading", { name: "Terms of Service" }),

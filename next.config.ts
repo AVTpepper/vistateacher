@@ -43,6 +43,26 @@ const nextConfig: NextConfig = {
         destination: "/forum/:path*",
         permanent: true,
       },
+      { source: "/favicon.ico", destination: "/icon.svg", permanent: true },
+      {
+        source: "/apple-touch-icon.png",
+        destination: "/apple-icon",
+        permanent: true,
+      },
+      {
+        source: "/apple-touch-icon-precomposed.png",
+        destination: "/apple-icon",
+        permanent: true,
+      },
+      { source: "/auth/login", destination: "/sign-in", permanent: true },
+      { source: "/auth/signup", destination: "/sign-up", permanent: true },
+      {
+        source: "/explore-educators",
+        destination: "/discover",
+        permanent: true,
+      },
+      { source: "/careers", destination: "/about", permanent: true },
+      { source: "/jobs", destination: "/about", permanent: true },
     ];
   },
   async headers() {
