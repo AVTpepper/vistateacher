@@ -11,12 +11,12 @@ import {
   Share2,
   Trash2,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { PostImageViewer } from "@/features/feed/post-image-viewer";
 import { MentionText } from "@/features/mentions/mention-text";
 import { MentionTextarea } from "@/features/mentions/mention-textarea";
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
@@ -457,17 +457,7 @@ export function PostCard({
           </div>
         )}
       </div>
-      {post.imageURLs[0] && (
-        <div className="bg-muted relative mx-4 mb-3 aspect-video overflow-hidden rounded-lg">
-          <Image
-            src={post.imageURLs[0]}
-            alt="Shared post image"
-            fill
-            unoptimized
-            className="object-cover"
-          />
-        </div>
-      )}
+      {post.imageURLs[0] && <PostImageViewer src={post.imageURLs[0]} />}
       <div className="text-muted-foreground mx-4 flex flex-wrap items-center justify-between gap-2 border-b pb-2 text-xs">
         <button
           type="button"
