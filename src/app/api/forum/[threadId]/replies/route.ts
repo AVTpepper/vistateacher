@@ -29,7 +29,7 @@ export async function POST(
   });
   if (!parsed.success)
     return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid reply." },
+      { error: parsed.error.issues[0]?.message ?? "Invalid comment." },
       { status: 400 },
     );
   try {

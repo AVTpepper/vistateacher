@@ -42,7 +42,7 @@ export function writeMentionNotifications(
     actorName: string;
     entityId: string;
     entityKey: string;
-    context: "post" | "comment" | "forum discussion" | "forum reply";
+    context: "post" | "comment" | "forum discussion" | "forum comment";
     href: string;
   },
 ): void {

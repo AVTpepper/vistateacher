@@ -13,7 +13,6 @@ import {
   Pin,
   Send,
   Tag,
-  ThumbsUp,
   Trash2,
   Unlock,
   X,
@@ -46,8 +45,8 @@ export function ForumThreadExperience({
 }) {
   const router = useRouter();
   const [data, setData] = useState(initialData);
-  const [reply, setReply] = useState("");
-  const [replyMentions, setReplyMentions] = useState<MentionTarget[]>([]);
+  const [comment, setComment] = useState("");
+  const [commentMentions, setCommentMentions] = useState<MentionTarget[]>([]);
   const [pending, setPending] = useState(false);
   const { thread, replies } = data;
 
@@ -82,38 +81,93 @@ export function ForumThreadExperience({
   }
 
   async function saveReplyEdit(replyId: string, currentContent: string) {
-    const nextContent = window.prompt("Edit reply", currentContent);
+    const nextContent = window.prompt("Edit comment", currentContent);
     if (!nextContent) return;
     const response = await fetch(`/api/forum/${thread.id}/replies/${replyId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: nextContent }),
     });
-    if (!response.ok) return toast.error("We couldn't update that reply.");
-    toast.success("Reply updated.");
+    if (!response.ok) return toast.error("We couldn't update that comment.");
+    setData((current) => ({
+      ...current,
+      replies: current.replies.map((item) =>
+        item.id === replyId
+          ? {
+              ...item,
+              content: nextContent,
+              editedAt: new Date().toISOString(),
+            }
+          : item,
+      ),
+    }));
+    toast.success("Comment updated.");
     router.refresh();
   }
 
-  async function submitReply() {
+  async function submitComment(
+    parentReplyId: string | null,
+    content: string,
+    mentions: MentionTarget[],
+  ): Promise<boolean> {
     setPending(true);
     const response = await fetch(`/api/forum/${thread.id}/replies`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        content: reply,
-        mentionUids: replyMentions.map((mention) => mention.uid),
+        parentReplyId,
+        content,
+        mentionUids: mentions.map((mention) => mention.uid),
       }),
     });
     const result = (await response.json().catch(() => null)) as {
+      replyId?: string;
       error?: string;
     } | null;
     setPending(false);
-    if (!response.ok)
-      return toast.error(result?.error ?? "We couldn't post this reply.");
-    setReply("");
-    setReplyMentions([]);
-    toast.success("Reply posted.");
+    if (!response.ok || !result?.replyId) {
+      toast.error(result?.error ?? "We couldn't post this comment.");
+      return false;
+    }
+    const now = new Date().toISOString();
+    setData((current) => ({
+      ...current,
+      thread: {
+        ...current.thread,
+        replyCount: current.thread.replyCount + 1,
+      },
+      replies: [
+        ...current.replies,
+        {
+          id: result.replyId!,
+          parentReplyId,
+          author: {
+            uid: viewer.uid,
+            displayName: viewer.displayName,
+            photoURL: viewer.photoURL,
+            gradeLevel: "",
+            school: "",
+          },
+          content,
+          mentions,
+          likeCount: 0,
+          createdAt: now,
+          updatedAt: now,
+          editedAt: null,
+          liked: false,
+          accepted: false,
+          ownedByViewer: true,
+          canModerate: true,
+        },
+      ],
+    }));
+    if (!parentReplyId) {
+      setComment("");
+      setCommentMentions([]);
+    }
+    toast.success(parentReplyId ? "Reply posted." : "Comment posted.");
     router.refresh();
+    return true;
   }
 
   async function toggleLike(replyId: string | null, liked: boolean) {
@@ -157,8 +211,8 @@ export function ForumThreadExperience({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ replyId }),
     });
-    if (!response.ok) return toast.error("We couldn't accept that answer.");
-    toast.success("Best answer updated.");
+    if (!response.ok) return toast.error("We couldn't accept that comment.");
+    toast.success("Best comment updated.");
     router.refresh();
   }
 
@@ -186,8 +240,24 @@ export function ForumThreadExperience({
     const response = await fetch(`/api/forum/${thread.id}/replies/${replyId}`, {
       method: "DELETE",
     });
-    if (!response.ok) throw new Error("We couldn't delete that reply.");
-    toast.success("Reply deleted.");
+    if (!response.ok) throw new Error("We couldn't delete that comment.");
+    setData((current) => {
+      const deletedIds = new Set([
+        replyId,
+        ...current.replies
+          .filter((item) => item.parentReplyId === replyId)
+          .map((item) => item.id),
+      ]);
+      return {
+        ...current,
+        thread: {
+          ...current.thread,
+          replyCount: Math.max(0, current.thread.replyCount - deletedIds.size),
+        },
+        replies: current.replies.filter((item) => !deletedIds.has(item.id)),
+      };
+    });
+    toast.success("Comment deleted.");
     router.refresh();
   }
 
@@ -278,7 +348,7 @@ export function ForumThreadExperience({
                 aria-hidden="true"
                 className={`size-4 ${thread.liked ? "fill-current" : ""}`}
               />
-              {thread.likeCount} likes
+              {thread.likeCount} {thread.likeCount === 1 ? "like" : "likes"}
             </span>
           </button>
           <span className="flex items-center gap-1.5">
@@ -287,7 +357,8 @@ export function ForumThreadExperience({
           </span>
           <span className="flex items-center gap-1.5">
             <MessageSquare aria-hidden="true" className="size-4" />
-            {thread.replyCount} replies
+            {thread.replyCount}{" "}
+            {thread.replyCount === 1 ? "comment" : "comments"}
           </span>
           <div className="ml-auto flex items-center gap-1">
             <ForumReportDialog threadId={thread.id} replyId={null} />
@@ -340,19 +411,37 @@ export function ForumThreadExperience({
       </article>
 
       <section className="mb-4 space-y-3">
-        {replies.map((item, index) => (
-          <ReplyCard
-            key={item.id}
-            reply={item}
-            number={index + 1}
-            canAccept={thread.ownedByViewer || viewer.role === "platform_admin"}
-            onLike={(liked) => void toggleLike(item.id, liked)}
-            onAccept={() => void accept(item.id)}
-            onDelete={() => deleteReply(item.id)}
-            onEdit={() => void saveReplyEdit(item.id, item.content)}
-            threadId={thread.id}
-          />
-        ))}
+        {replies
+          .filter((item) => !item.parentReplyId)
+          .map((item, index) => (
+            <CommentCard
+              key={item.id}
+              reply={item}
+              responses={replies.filter(
+                (response) => response.parentReplyId === item.id,
+              )}
+              number={index + 1}
+              canAccept={
+                thread.ownedByViewer || viewer.role === "platform_admin"
+              }
+              onLike={(liked) => void toggleLike(item.id, liked)}
+              onAccept={() => void accept(item.id)}
+              onDelete={() => deleteReply(item.id)}
+              onEdit={() => void saveReplyEdit(item.id, item.content)}
+              onLikeResponse={(replyId, liked) =>
+                void toggleLike(replyId, liked)
+              }
+              onDeleteResponse={(replyId) => deleteReply(replyId)}
+              onEditResponse={(replyId, content) =>
+                void saveReplyEdit(replyId, content)
+              }
+              onReply={(content, mentions) =>
+                submitComment(item.id, content, mentions)
+              }
+              pending={pending}
+              threadId={thread.id}
+            />
+          ))}
       </section>
 
       {thread.locked ? (
@@ -361,7 +450,7 @@ export function ForumThreadExperience({
         </div>
       ) : (
         <section className="surface-card p-5">
-          <h2 className="font-serif text-xl">Add Your Reply</h2>
+          <h2 className="font-serif text-xl">Add Your Comment</h2>
           <div className="mt-4 flex items-start gap-3">
             <ProfileIdentityLink
               uid={viewer.uid}
@@ -372,24 +461,26 @@ export function ForumThreadExperience({
             />
             <div className="min-w-0 flex-1">
               <MentionTextarea
-                value={reply}
-                onValueChange={setReply}
-                mentions={replyMentions}
-                onMentionsChange={setReplyMentions}
+                value={comment}
+                onValueChange={setComment}
+                mentions={commentMentions}
+                onMentionsChange={setCommentMentions}
                 excludeUid={viewer.uid}
                 maxLength={5_000}
                 rows={4}
-                placeholder="Share your experience, insight, or advice..."
+                placeholder="Add your comment..."
                 className="resource-input resize-none"
               />
               <button
                 type="button"
-                disabled={reply.trim().length < 3 || pending}
-                onClick={() => void submitReply()}
+                disabled={comment.trim().length < 3 || pending}
+                onClick={() =>
+                  void submitComment(null, comment, commentMentions)
+                }
                 className="bg-primary text-primary-foreground mt-3 ml-auto flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-bold disabled:opacity-50"
               >
                 <Send aria-hidden="true" className="size-4" />
-                {pending ? "Posting..." : "Post Reply"}
+                {pending ? "Posting..." : "Post Comment"}
               </button>
             </div>
           </div>
@@ -399,25 +490,49 @@ export function ForumThreadExperience({
   );
 }
 
-function ReplyCard({
+function CommentCard({
   reply,
+  responses,
   number,
   canAccept,
   onLike,
   onAccept,
   onDelete,
   onEdit,
+  onLikeResponse,
+  onDeleteResponse,
+  onEditResponse,
+  onReply,
+  pending,
   threadId,
 }: {
   reply: ForumReply;
+  responses: ForumReply[];
   number: number;
   canAccept: boolean;
   onLike: (liked: boolean) => void;
   onAccept: () => void;
   onDelete: () => Promise<void>;
   onEdit: () => void;
+  onLikeResponse: (replyId: string, liked: boolean) => void;
+  onDeleteResponse: (replyId: string) => Promise<void>;
+  onEditResponse: (replyId: string, content: string) => void;
+  onReply: (content: string, mentions: MentionTarget[]) => Promise<boolean>;
+  pending: boolean;
   threadId: string;
 }) {
+  const [replying, setReplying] = useState(false);
+  const [response, setResponse] = useState("");
+  const [responseMentions, setResponseMentions] = useState<MentionTarget[]>([]);
+
+  async function submitResponse() {
+    const posted = await onReply(response, responseMentions);
+    if (!posted) return;
+    setResponse("");
+    setResponseMentions([]);
+    setReplying(false);
+  }
+
   return (
     <article
       id={`reply-${reply.id}`}
@@ -425,7 +540,7 @@ function ReplyCard({
     >
       {reply.accepted && (
         <div className="text-success mb-3 flex items-center gap-1.5 text-xs font-bold">
-          <Award aria-hidden="true" className="size-4" /> Best Answer
+          <Award aria-hidden="true" className="size-4" /> Best Comment
         </div>
       )}
       <div className="flex items-start gap-3">
@@ -461,7 +576,7 @@ function ReplyCard({
             <div className="flex items-center gap-1">
               {canAccept && !reply.accepted && (
                 <IconButton
-                  label="Accept as best answer"
+                  label="Accept as best comment"
                   icon={Award}
                   onClick={onAccept}
                 />
@@ -469,17 +584,17 @@ function ReplyCard({
               <ForumReportDialog threadId={threadId} replyId={reply.id} />
               {reply.canModerate && (
                 <IconButton
-                  label="Edit reply"
+                  label="Edit comment"
                   icon={MessageSquare}
                   onClick={onEdit}
                 />
               )}
               {reply.canModerate && (
-                <DeleteConfirmDialog itemName="reply" onConfirm={onDelete}>
+                <DeleteConfirmDialog itemName="comment" onConfirm={onDelete}>
                   <button
                     type="button"
-                    aria-label="Delete reply"
-                    title="Delete reply"
+                    aria-label="Delete comment"
+                    title="Delete comment"
                     className="text-destructive hover:bg-muted grid size-8 place-items-center rounded-lg"
                   >
                     <Trash2 aria-hidden="true" className="size-4" />
@@ -491,17 +606,159 @@ function ReplyCard({
           <p className="text-foreground/80 mt-3 text-sm leading-6 whitespace-pre-wrap">
             <MentionText content={reply.content} mentions={reply.mentions} />
           </p>
+          <div className="text-muted-foreground mt-3 flex items-center gap-4 border-t pt-3 text-xs">
+            <button
+              type="button"
+              aria-pressed={reply.liked}
+              onClick={() => onLike(!reply.liked)}
+              className={`flex items-center gap-1.5 ${reply.liked ? "text-primary" : "hover:text-primary"}`}
+            >
+              <Heart
+                aria-hidden="true"
+                className={`size-3.5 ${reply.liked ? "fill-current" : ""}`}
+              />
+              {reply.likeCount} {reply.likeCount === 1 ? "like" : "likes"}
+            </button>
+            <button
+              type="button"
+              aria-expanded={replying}
+              onClick={() => setReplying((current) => !current)}
+              className="hover:text-primary flex items-center gap-1.5"
+            >
+              <MessageSquare aria-hidden="true" className="size-3.5" />
+              Reply
+            </button>
+          </div>
+          {replying && (
+            <div className="bg-muted/35 mt-3 rounded-xl border p-3">
+              <MentionTextarea
+                value={response}
+                onValueChange={setResponse}
+                mentions={responseMentions}
+                onMentionsChange={setResponseMentions}
+                maxLength={5_000}
+                rows={3}
+                placeholder={`Reply to ${reply.author.displayName}...`}
+                className="resource-input resize-none"
+              />
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReplying(false)}
+                  className="h-9 rounded-lg border px-3 text-xs font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={response.trim().length < 3 || pending}
+                  onClick={() => void submitResponse()}
+                  className="bg-primary text-primary-foreground h-9 rounded-lg px-3 text-xs font-bold disabled:opacity-50"
+                >
+                  {pending ? "Posting..." : "Post Reply"}
+                </button>
+              </div>
+            </div>
+          )}
+          {responses.length > 0 && (
+            <div className="mt-4 space-y-3 border-l-2 pl-3 sm:pl-4">
+              {responses.map((responseItem) => (
+                <CommentResponse
+                  key={responseItem.id}
+                  reply={responseItem}
+                  onLike={(liked) => onLikeResponse(responseItem.id, liked)}
+                  onDelete={() => onDeleteResponse(responseItem.id)}
+                  onEdit={() =>
+                    onEditResponse(responseItem.id, responseItem.content)
+                  }
+                  threadId={threadId}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function CommentResponse({
+  reply,
+  onLike,
+  onDelete,
+  onEdit,
+  threadId,
+}: {
+  reply: ForumReply;
+  onLike: (liked: boolean) => void;
+  onDelete: () => Promise<void>;
+  onEdit: () => void;
+  threadId: string;
+}) {
+  return (
+    <article id={`reply-${reply.id}`} className="scroll-mt-24 py-1">
+      <div className="flex items-start gap-3">
+        <ProfileIdentityLink
+          uid={reply.author.uid}
+          displayName={reply.author.displayName}
+          photoURL={reply.author.photoURL}
+          avatarClassName="size-8 rounded-full text-[9px]"
+          showName={false}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <ProfileIdentityLink
+                uid={reply.author.uid}
+                displayName={reply.author.displayName}
+                photoURL={reply.author.photoURL}
+                showAvatar={false}
+                className="text-xs"
+              />
+              <span className="text-muted-foreground ml-2 text-[11px]">
+                {formatDistanceToNow(new Date(reply.createdAt), {
+                  addSuffix: true,
+                })}
+                {reply.editedAt ? " · edited" : ""}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <ForumReportDialog threadId={threadId} replyId={reply.id} />
+              {reply.ownedByViewer && (
+                <IconButton
+                  label="Edit comment"
+                  icon={MessageSquare}
+                  onClick={onEdit}
+                />
+              )}
+              {reply.canModerate && (
+                <DeleteConfirmDialog itemName="comment" onConfirm={onDelete}>
+                  <button
+                    type="button"
+                    aria-label="Delete comment"
+                    title="Delete comment"
+                    className="text-destructive hover:bg-muted grid size-8 place-items-center rounded-lg"
+                  >
+                    <Trash2 aria-hidden="true" className="size-3.5" />
+                  </button>
+                </DeleteConfirmDialog>
+              )}
+            </div>
+          </div>
+          <p className="text-foreground/80 mt-2 text-sm leading-6 whitespace-pre-wrap">
+            <MentionText content={reply.content} mentions={reply.mentions} />
+          </p>
           <button
             type="button"
             aria-pressed={reply.liked}
             onClick={() => onLike(!reply.liked)}
-            className={`mt-3 flex items-center gap-1.5 border-t pt-3 text-xs ${reply.liked ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+            className={`mt-2 flex items-center gap-1.5 text-xs ${reply.liked ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
           >
-            <ThumbsUp
+            <Heart
               aria-hidden="true"
               className={`size-3.5 ${reply.liked ? "fill-current" : ""}`}
             />
-            {reply.likeCount} helpful
+            {reply.likeCount} {reply.likeCount === 1 ? "like" : "likes"}
           </button>
         </div>
       </div>
@@ -542,8 +799,8 @@ function ForumReportDialog({
   return (
     <Dialog.Root open={open} onOpenChange={(next) => !pending && setOpen(next)}>
       <Dialog.Trigger
-        aria-label={replyId ? "Report reply" : "Report discussion"}
-        title={replyId ? "Report reply" : "Report discussion"}
+        aria-label={replyId ? "Report comment" : "Report discussion"}
+        title={replyId ? "Report comment" : "Report discussion"}
         className="text-muted-foreground hover:bg-muted hover:text-foreground grid size-11 place-items-center rounded-lg"
       >
         <Flag aria-hidden="true" className="size-4" />

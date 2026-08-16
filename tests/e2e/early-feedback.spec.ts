@@ -155,10 +155,7 @@ test("post images fit without cropping and image, file, and web link attachments
   await page.getByLabel("Web link", { exact: true }).fill("example.com/lesson");
   await page.getByRole("button", { name: "Attach link" }).click();
   await expect(page.getByText("https://example.com/lesson")).toBeVisible();
-  await page
-    .getByRole("button", { name: "Post", exact: true })
-    .last()
-    .click();
+  await page.getByRole("button", { name: "Post", exact: true }).last().click();
 
   const post = page
     .getByRole("article")
@@ -242,22 +239,24 @@ test("profile stats reveal real content and connection-aware actions", async ({
     name: "Profile sections",
   });
   await expect(
-    profileSections.getByRole("link", { name: "About" }),
+    profileSections.getByRole("button", { name: "About" }),
   ).toHaveAttribute("aria-current", "page");
-  expect(await profileSections.getByRole("link").allTextContents()).toEqual([
+  expect(await profileSections.getByRole("button").allTextContents()).toEqual([
     "About",
     "Resources",
     "Posts",
   ]);
 
-  await page.getByRole("link", { name: "View Alex Rivera's posts" }).click();
+  await page.getByRole("button", { name: "View Alex Rivera's posts" }).click();
   await expect(page).toHaveURL(/\/profile\/free-educator\?tab=posts/);
   await expect(
     page.getByText("What routines help students make their thinking visible?"),
   ).toBeVisible();
 
   await page.goto("/profile/plus-educator");
-  await page.getByRole("link", { name: "View Maya Chen's resources" }).click();
+  await page
+    .getByRole("button", { name: "View Maya Chen's resources" })
+    .click();
   await expect(page).toHaveURL(/\/profile\/plus-educator\?tab=resources/);
   await expect(page.getByText("Ecosystem Notice and Wonder")).toBeVisible();
   await expect(

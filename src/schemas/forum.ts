@@ -30,6 +30,7 @@ export const createForumThreadSchema = z.object({
 
 export const createForumReplySchema = z.object({
   threadId: z.string().trim().min(1).max(128),
+  parentReplyId: z.string().trim().min(1).max(128).nullable().default(null),
   content: z.string().trim().min(3).max(5_000),
   mentionUids: mentionUidsSchema,
 });

@@ -1,14 +1,17 @@
+"use client";
+
 import { BookOpen, FileText, Users } from "lucide-react";
 import Link from "next/link";
 
 import { ProfilePostList } from "@/features/profiles/profile-post-list";
+import {
+  ProfileTabButton,
+  useProfileTabs,
+} from "@/features/profiles/profile-tab-context";
 import type { FeedPost } from "@/lib/feed/server";
 import { cn } from "@/lib/utils";
 
 export function ProfileTabs({
-  active,
-  profileBasePath,
-  profileUid,
   displayName,
   bio,
   details,
@@ -16,9 +19,6 @@ export function ProfileTabs({
   resources,
   viewer,
 }: {
-  active: "about" | "resources" | "posts";
-  profileBasePath: "/profile" | "/educators";
-  profileUid: string;
   displayName: string;
   bio: string;
   details: Array<{ label: string; value: string }>;
@@ -26,13 +26,12 @@ export function ProfileTabs({
   resources: Array<{ id: string; title: string; type: string }>;
   viewer: { uid: string; displayName: string; photoURL: string | null };
 }) {
+  const { activeTab } = useProfileTabs();
   const tabs = [
     { key: "about" as const, label: "About", icon: Users },
     { key: "resources" as const, label: "Resources", icon: BookOpen },
     { key: "posts" as const, label: "Posts", icon: FileText },
   ];
-  const profileHref = `${profileBasePath}/${encodeURIComponent(profileUid)}`;
-
   return (
     <>
       <nav
@@ -41,24 +40,26 @@ export function ProfileTabs({
         className="surface-card mt-4 flex gap-1 p-1"
       >
         {tabs.map(({ key, label, icon: Icon }) => (
-          <Link
+          <ProfileTabButton
             key={key}
-            aria-current={active === key ? "page" : undefined}
-            href={`${profileHref}?tab=${key}#profile-content`}
+            tab={key}
+            ariaCurrent={activeTab === key ? "page" : undefined}
             className={cn(
               "text-muted-foreground hover:text-foreground hover:bg-muted flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors",
-              active === key &&
+              activeTab === key &&
                 "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
             )}
           >
-            <Icon aria-hidden="true" className="size-3.5" />
-            {label}
-          </Link>
+            <span>
+              <Icon aria-hidden="true" className="mr-2 inline size-3.5" />
+              {label}
+            </span>
+          </ProfileTabButton>
         ))}
       </nav>
 
       <div className="mt-4">
-        {active === "posts" &&
+        {activeTab === "posts" &&
           (posts.length ? (
             <ProfilePostList initialPosts={posts} viewer={viewer} />
           ) : (
@@ -68,7 +69,7 @@ export function ProfileTabs({
               detail="Published community posts will appear here."
             />
           ))}
-        {active === "resources" &&
+        {activeTab === "resources" &&
           (resources.length ? (
             <div className="space-y-3">
               {resources.map((resource) => (
@@ -98,7 +99,7 @@ export function ProfileTabs({
               detail="Shared educator resources will appear here."
             />
           ))}
-        {active === "about" && (
+        {activeTab === "about" && (
           <section className="surface-card p-6">
             <h2 className="font-serif text-xl">
               About {displayName.split(" ")[0]}

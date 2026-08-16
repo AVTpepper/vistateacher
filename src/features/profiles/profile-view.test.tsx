@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ProfileView } from "@/features/profiles/profile-view";
+import { ProfileTabProvider } from "@/features/profiles/profile-tab-context";
 import type { ProfileView as ProfileViewData } from "@/lib/profiles/server";
 
 vi.mock("@/features/network/follow-button", () => ({
@@ -56,7 +57,6 @@ function data(
 }
 
 const commonProps = {
-  activeTab: "about" as const,
   postCount: 5,
   posts: [],
   resourceCount: 2,
@@ -68,9 +68,17 @@ const commonProps = {
   },
 };
 
+function renderProfile(connectionStatus: ProfileViewData["connectionStatus"]) {
+  return render(
+    <ProfileTabProvider initialTab="about">
+      <ProfileView {...commonProps} data={data(connectionStatus)} />
+    </ProfileTabProvider>,
+  );
+}
+
 describe("ProfileView", () => {
   it("uses visible content counts, links every stat, and disables messaging while disconnected", () => {
-    render(<ProfileView {...commonProps} data={data("pending")} />);
+    renderProfile("pending");
 
     expect(
       screen.getByRole("link", {
@@ -81,12 +89,12 @@ describe("ProfileView", () => {
       "/network?view=connections&uid=educator&scope=shared",
     );
     expect(
-      screen.getByRole("link", {
+      screen.getByRole("button", {
         name: "View Marlena Kulasinska's resources",
       }),
     ).toHaveTextContent(/2\s*Resources/);
     expect(
-      screen.getByRole("link", {
+      screen.getByRole("button", {
         name: "View Marlena Kulasinska's posts",
       }),
     ).toHaveTextContent(/5\s*Posts/);
@@ -100,7 +108,7 @@ describe("ProfileView", () => {
   });
 
   it("enables the message link once the relationship is accepted", () => {
-    render(<ProfileView {...commonProps} data={data("accepted")} />);
+    renderProfile("accepted");
 
     expect(screen.getByRole("link", { name: "Message" })).toHaveAttribute(
       "href",

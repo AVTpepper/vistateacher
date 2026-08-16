@@ -17,8 +17,15 @@ interface MentionTextareaProps extends Omit<
   excludeUid?: string;
 }
 
-function activeMention(value: string) {
-  return /@([^@\n]{1,40})$/u.exec(value);
+function activeMention(value: string, mentions: MentionTarget[] = []) {
+  const match = /@([^@\n]{1,40})$/u.exec(value);
+  const candidate = match?.[1] ?? "";
+  const beginsWithSelectedMention = mentions.some(
+    (mention) =>
+      candidate === mention.displayName ||
+      candidate.startsWith(`${mention.displayName} `),
+  );
+  return beginsWithSelectedMention ? null : match;
 }
 
 export const MentionTextarea = forwardRef<
@@ -37,7 +44,7 @@ export const MentionTextarea = forwardRef<
   ref,
 ) {
   const [suggestions, setSuggestions] = useState<MentionTarget[]>([]);
-  const match = activeMention(value);
+  const match = activeMention(value, mentions);
   const query = match?.[1]?.trim() ?? "";
 
   useEffect(() => {
@@ -46,22 +53,28 @@ export const MentionTextarea = forwardRef<
       return;
     }
     const controller = new AbortController();
+    let active = true;
     const timer = window.setTimeout(() => {
       void fetch(`/api/search?q=${encodeURIComponent(query)}`, {
         signal: controller.signal,
       })
         .then((response) => (response.ok ? response.json() : null))
         .then(
-          (result: { educators?: MentionTarget[] } | null) =>
+          (result: { educators?: MentionTarget[] } | null) => {
+            if (!active) return;
             setSuggestions(
               (result?.educators ?? [])
                 .filter((educator) => educator.uid !== excludeUid)
                 .slice(0, 6),
-            ),
-          () => setSuggestions([]),
+            );
+          },
+          () => {
+            if (active) setSuggestions([]);
+          },
         );
     }, 180);
     return () => {
+      active = false;
       window.clearTimeout(timer);
       controller.abort();
     };
@@ -77,7 +90,7 @@ export const MentionTextarea = forwardRef<
   }
 
   function select(mention: MentionTarget) {
-    const current = activeMention(value);
+    const current = activeMention(value, mentions);
     if (!current || current.index === undefined) return;
     update(
       `${value.slice(0, current.index)}@${mention.displayName} ${value.slice(current.index + current[0].length)}`,
@@ -101,7 +114,7 @@ export const MentionTextarea = forwardRef<
         )}
         {...props}
       />
-      {suggestions.length > 0 && (
+      {query.length >= 2 && suggestions.length > 0 && (
         <div
           role="listbox"
           aria-label="Mention an educator"
@@ -112,6 +125,7 @@ export const MentionTextarea = forwardRef<
               key={suggestion.uid}
               type="button"
               role="option"
+              aria-label={suggestion.displayName}
               aria-selected={mentions.some(
                 (mention) => mention.uid === suggestion.uid,
               )}

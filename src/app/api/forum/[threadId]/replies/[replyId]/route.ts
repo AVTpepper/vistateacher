@@ -31,7 +31,7 @@ export async function PATCH(
   });
   if (!parsed.success)
     return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid reply." },
+      { error: parsed.error.issues[0]?.message ?? "Invalid comment." },
       { status: 400 },
     );
   try {
@@ -61,7 +61,7 @@ export async function DELETE(
     );
   const parsed = forumReplyActionSchema.safeParse(await params);
   if (!parsed.success)
-    return NextResponse.json({ error: "Invalid reply." }, { status: 400 });
+    return NextResponse.json({ error: "Invalid comment." }, { status: 400 });
   try {
     await deleteForumReply(
       account.uid,

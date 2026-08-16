@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { FollowButton } from "@/features/network/follow-button";
+import { ProfileTabButton } from "@/features/profiles/profile-tab-context";
 import { ProfileTabs } from "@/features/profiles/profile-tabs";
 import type { FeedPost } from "@/lib/feed/server";
 import { coverThemeById, resolveCoverTheme } from "@/lib/profiles/cover-themes";
@@ -24,25 +25,20 @@ import type { ProfileView as ProfileViewData } from "@/lib/profiles/server";
 
 export function ProfileView({
   data,
-  activeTab,
   postCount,
   posts,
-  profileBasePath = "/profile",
   resourceCount,
   resources,
   viewer,
 }: {
   data: ProfileViewData;
-  activeTab: "about" | "resources" | "posts";
   postCount: number;
   posts: FeedPost[];
-  profileBasePath?: "/profile" | "/educators";
   resourceCount: number;
   resources: Array<{ id: string; title: string; type: string }>;
   viewer: { uid: string; displayName: string; photoURL: string | null };
 }) {
   const { profile } = data;
-  const profileHref = `${profileBasePath}/${encodeURIComponent(profile.uid)}`;
   const coverTheme = coverThemeById(resolveCoverTheme(profile.coverTheme));
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
   const stats = [
@@ -51,18 +47,21 @@ export function ProfileView({
       value: profile.connectionCount,
       label: "Connections",
       href: `/network?view=connections&uid=${encodeURIComponent(profile.uid)}&scope=shared`,
+      tab: null,
     },
     {
       icon: BookOpen,
       value: resourceCount,
       label: "Resources",
-      href: `${profileHref}?tab=resources#profile-content`,
+      href: null,
+      tab: "resources" as const,
     },
     {
       icon: FileText,
       value: postCount,
       label: "Posts",
-      href: `${profileHref}?tab=posts#profile-content`,
+      href: null,
+      tab: "posts" as const,
     },
   ];
 
@@ -232,30 +231,46 @@ export function ProfileView({
           aria-label="Profile statistics"
           className="mt-5 grid grid-cols-3 gap-2 border-t pt-5"
         >
-          {stats.map(({ icon: Icon, value, label, href }) => (
-            <Link
-              aria-label={`View ${profile.displayName}'s ${label.toLowerCase()}`}
-              className="hover:bg-muted focus-visible:ring-ring rounded-xl px-2 py-2 text-center transition-colors focus-visible:ring-2 focus-visible:outline-none"
-              href={href}
-              key={label}
-            >
-              <span className="flex items-center justify-center gap-1.5">
-                <Icon aria-hidden="true" className="text-primary size-3.5" />
-                <span className="text-lg font-bold">
-                  {value.toLocaleString()}
+          {stats.map(({ icon: Icon, value, label, href, tab }) => {
+            const content = (
+              <>
+                <span className="flex items-center justify-center gap-1.5">
+                  <Icon aria-hidden="true" className="text-primary size-3.5" />
+                  <span className="text-lg font-bold">
+                    {value.toLocaleString()}
+                  </span>
                 </span>
-              </span>
-              <span className="text-muted-foreground mt-0.5 block text-xs">
-                {label}
-              </span>
-            </Link>
-          ))}
+                <span className="text-muted-foreground mt-0.5 block text-xs">
+                  {label}
+                </span>
+              </>
+            );
+            const className =
+              "hover:bg-muted focus-visible:ring-ring rounded-xl px-2 py-2 text-center transition-colors focus-visible:ring-2 focus-visible:outline-none";
+            const ariaLabel = `View ${profile.displayName}'s ${label.toLowerCase()}`;
+            return href ? (
+              <Link
+                aria-label={ariaLabel}
+                className={className}
+                href={href}
+                key={label}
+              >
+                {content}
+              </Link>
+            ) : (
+              <ProfileTabButton
+                ariaLabel={ariaLabel}
+                className={className}
+                key={label}
+                tab={tab!}
+              >
+                {content}
+              </ProfileTabButton>
+            );
+          })}
         </div>
       </section>
       <ProfileTabs
-        active={activeTab}
-        profileBasePath={profileBasePath}
-        profileUid={profile.uid}
         displayName={profile.displayName}
         bio={profile.bio}
         posts={posts}
@@ -278,7 +293,10 @@ export function ProfileView({
           { label: "Education stage", value: profile.gradeLevel },
           { label: "School", value: profile.school },
           { label: "Location", value: location },
-          { label: "Experience", value: `${profile.yearsOfExperience} years` },
+          {
+            label: "Experience",
+            value: `${profile.yearsOfExperience} years`,
+          },
           {
             label: "Plan",
             value: data.plan === "plus" ? "Plus member" : "Community account",

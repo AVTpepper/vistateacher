@@ -1208,7 +1208,7 @@ describe("Firestore rules", () => {
     });
   });
 
-  it("uploads common and phone image resources and cleans failed reservations", async () => {
+  it("uploads common images and PowerPoint resources and cleans failed reservations", async () => {
     await seedNetworkUser("image-author");
     const base = {
       title: "Classroom image resource",
@@ -1225,6 +1225,11 @@ describe("Firestore rules", () => {
       ["png", "image/png"],
       ["heic", "image/heic"],
       ["heif", "image/heif"],
+      ["ppt", "application/vnd.ms-powerpoint"],
+      [
+        "pptx",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      ],
     ] as const) {
       const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
       const reservation = await reserveResourceUpload("image-author", {
@@ -1274,7 +1279,7 @@ describe("Firestore rules", () => {
         ),
       ]);
       expect(resource.exists()).toBe(false);
-      expect(usage.data()?.resourceUploads).toBe(4);
+      expect(usage.data()?.resourceUploads).toBe(6);
     });
   });
 
@@ -1460,9 +1465,24 @@ describe("Firestore rules", () => {
     });
     const replyId = await addForumReply("reviewer", {
       threadId,
+      parentReplyId: null,
       content: "Silent writing before partner talk has worked well for us.",
       mentionUids: ["author"],
     });
+    const nestedReplyId = await addForumReply("author", {
+      threadId,
+      parentReplyId: replyId,
+      content: "That sounds like a useful way to make thinking visible.",
+      mentionUids: [],
+    });
+    await expect(
+      addForumReply("reviewer", {
+        threadId,
+        parentReplyId: nestedReplyId,
+        content: "A third nesting level should not be created.",
+        mentionUids: [],
+      }),
+    ).rejects.toMatchObject({ code: "invalid-parent" });
     await expect(
       getForumThread(threadId, "reviewer", "educator"),
     ).resolves.toMatchObject({ thread: { viewCount: 1 } });
@@ -1484,7 +1504,9 @@ describe("Firestore rules", () => {
         category,
         thread,
         reply,
+        nestedReply,
         replyNotification,
+        nestedReplyNotification,
         likeNotification,
         threadMention,
         replyMention,
@@ -1505,10 +1527,28 @@ describe("Firestore rules", () => {
         getDoc(
           doc(
             context.firestore(),
+            "forumThreads",
+            threadId,
+            "replies",
+            nestedReplyId,
+          ),
+        ),
+        getDoc(
+          doc(
+            context.firestore(),
             "users",
             "author",
             "notifications",
             `forum-reply_${threadId}_${replyId}`,
+          ),
+        ),
+        getDoc(
+          doc(
+            context.firestore(),
+            "users",
+            "reviewer",
+            "notifications",
+            `forum-reply_${threadId}_${nestedReplyId}`,
           ),
         ),
         getDoc(
@@ -1539,19 +1579,27 @@ describe("Firestore rules", () => {
           ),
         ),
       ]);
-      expect(category.data()).toMatchObject({ threadCount: 1, postCount: 2 });
+      expect(category.data()).toMatchObject({ threadCount: 1, postCount: 3 });
       expect(thread.data()).toMatchObject({
         likeCount: 1,
-        replyCount: 1,
+        replyCount: 2,
         solved: true,
         acceptedReplyId: replyId,
         locked: true,
         viewCount: 2,
       });
       expect(reply.data()).toMatchObject({ likeCount: 1, accepted: true });
+      expect(nestedReply.data()).toMatchObject({
+        parentReplyId: replyId,
+        accepted: false,
+      });
       expect(replyNotification.data()?.href).toBe(
         `/forum/${threadId}#reply-${replyId}`,
       );
+      expect(nestedReplyNotification.data()).toMatchObject({
+        message: "author replied to your forum comment.",
+        href: `/forum/${threadId}#reply-${nestedReplyId}`,
+      });
       expect(likeNotification.data()?.href).toBe(`/forum/${threadId}`);
       expect(threadMention.data()?.href).toBe(`/forum/${threadId}`);
       expect(replyMention.data()?.href).toBe(
@@ -1907,6 +1955,21 @@ describe("Storage rules", () => {
       }),
     );
     await assertSucceeds(getBytes(ref(otherStorage, documentPath)));
+    for (const [fileName, contentType] of [
+      ["lesson.ppt", "application/vnd.ms-powerpoint"],
+      [
+        "lesson.pptx",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      ],
+    ] as const) {
+      const powerPointPath = `posts/owner/post-one/${fileName}`;
+      await assertSucceeds(
+        uploadBytes(ref(ownerStorage, powerPointPath), new Uint8Array([1]), {
+          contentType,
+        }),
+      );
+      await assertSucceeds(getBytes(ref(otherStorage, powerPointPath)));
+    }
     await assertFails(
       uploadBytes(
         ref(ownerStorage, "posts/owner/post-one/archive.zip"),

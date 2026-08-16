@@ -15,7 +15,8 @@ export function forumErrorResponse(error: unknown): NextResponse | null {
     "already-reported": ["You already reported this content.", 409],
     "invalid-cursor": ["Invalid forum cursor.", 400],
     "invalid-category": ["Choose an active forum category.", 400],
-    "invalid-answer": ["That reply cannot be accepted.", 400],
+    "invalid-answer": ["That comment cannot be accepted.", 400],
+    "invalid-parent": ["That comment is no longer available.", 400],
     "admin-required": ["Administrator access is required.", 403],
   } as const;
   const [message, status] = responses[error.code];

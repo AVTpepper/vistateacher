@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ProfileView } from "@/features/profiles/profile-view";
+import { ProfileTabProvider } from "@/features/profiles/profile-tab-context";
 import { requireCurrentAccount } from "@/lib/auth/session";
 import { getProfilePosts } from "@/lib/feed/server";
 import { adminDb } from "@/lib/firebase/admin";
@@ -46,23 +47,24 @@ export default async function ProfilePage({
 
   return (
     <div className="px-4 py-5 lg:px-6">
-      <ProfileView
-        data={data}
-        activeTab={activeTab}
-        postCount={profilePosts.total}
-        posts={profilePosts.posts}
-        resourceCount={resources.length}
-        resources={resources.slice(0, 20).map((document) => ({
-          id: document.id,
-          title: String(document.data().title),
-          type: String(document.data().type ?? "Resource"),
-        }))}
-        viewer={{
-          uid: account.uid,
-          displayName: account.displayName ?? "Educator",
-          photoURL: account.photoURL,
-        }}
-      />
+      <ProfileTabProvider initialTab={activeTab} key={uid}>
+        <ProfileView
+          data={data}
+          postCount={profilePosts.total}
+          posts={profilePosts.posts}
+          resourceCount={resources.length}
+          resources={resources.slice(0, 20).map((document) => ({
+            id: document.id,
+            title: String(document.data().title),
+            type: String(document.data().type ?? "Resource"),
+          }))}
+          viewer={{
+            uid: account.uid,
+            displayName: account.displayName ?? "Educator",
+            photoURL: account.photoURL,
+          }}
+        />
+      </ProfileTabProvider>
     </div>
   );
 }

@@ -7,11 +7,11 @@ import {
   ChevronRight,
   Clock3,
   Eye,
-  Hash,
   Heart,
   HelpCircle,
   LayoutGrid,
   Lightbulb,
+  ListTree,
   MessageCircle,
   MessageSquare,
   Monitor,
@@ -232,13 +232,21 @@ function CategoryCard({ category }: { category: ForumCategory }) {
           </span>
           <span className="text-muted-foreground mt-3 flex gap-4 text-xs">
             <span className="flex items-center gap-1">
-              <MessageSquare aria-hidden="true" className="size-3" />
-              {category.threadCount.toLocaleString()} threads
+              <ListTree aria-hidden="true" className="size-3" />
+              {category.threadCount.toLocaleString()}{" "}
+              {category.threadCount === 1 ? "thread" : "threads"}
             </span>
             <span className="flex items-center gap-1">
-              <Hash aria-hidden="true" className="size-3" />
-              {category.postCount.toLocaleString()} posts
+              <MessageCircle aria-hidden="true" className="size-3" />
+              {category.commentCount.toLocaleString()}{" "}
+              {category.commentCount === 1 ? "comment" : "comments"}
             </span>
+          </span>
+          <span className="text-muted-foreground mt-2 flex items-center gap-1 text-xs">
+            <Clock3 aria-hidden="true" className="size-3" />
+            {category.lastActivityAt
+              ? `Last activity ${formatDistanceToNow(new Date(category.lastActivityAt), { addSuffix: true })}`
+              : "No activity yet"}
           </span>
         </span>
         <ChevronRight
@@ -291,7 +299,8 @@ function ThreadRow({ thread }: { thread: ForumThreadSummary }) {
             </span>
             <span className="flex items-center gap-1">
               <MessageSquare aria-hidden="true" className="size-3" />
-              {thread.replyCount} replies
+              {thread.replyCount}{" "}
+              {thread.replyCount === 1 ? "comment" : "comments"}
             </span>
             <span className="flex items-center gap-1">
               <Eye aria-hidden="true" className="size-3" />

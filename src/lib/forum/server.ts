@@ -12,6 +12,7 @@ import {
 import { decodeForumCursor, encodeForumCursor } from "@/lib/forum/cursor";
 import { DEFAULT_FORUM_CATEGORIES } from "@/lib/forum/categories";
 import { adminDb } from "@/lib/firebase/admin";
+import { createSearchKeywords } from "@/lib/search/normalize";
 import { writePublicActivity } from "@/lib/feed/server";
 import {
   mentionsFromData,
@@ -48,7 +49,8 @@ export interface ForumCategory {
   icon: string;
   color: string;
   threadCount: number;
-  postCount: number;
+  commentCount: number;
+  lastActivityAt: string | null;
 }
 
 export interface ForumThreadSummary {
@@ -77,6 +79,7 @@ export interface ForumThreadSummary {
 
 export interface ForumReply {
   id: string;
+  parentReplyId: string | null;
   author: ForumAuthor;
   content: string;
   mentions: MentionTarget[];
@@ -112,6 +115,7 @@ export class ForumActionError extends Error {
       | "invalid-cursor"
       | "invalid-category"
       | "invalid-answer"
+      | "invalid-parent"
       | "admin-required",
   ) {
     super(code);
@@ -170,6 +174,7 @@ async function ensureDefaultForumCategories(): Promise<void> {
       color: category.color,
       threadCount: 0,
       postCount: 0,
+      lastActivityAt: null,
       order: category.order,
       active: true,
     });
@@ -179,22 +184,46 @@ async function ensureDefaultForumCategories(): Promise<void> {
 
 export async function getForumCategories(): Promise<ForumCategory[]> {
   await ensureDefaultForumCategories();
-  const snapshot = await adminDb()
+  const db = adminDb();
+  const snapshot = await db
     .collection("forumCategories")
     .where("active", "==", true)
     .orderBy("order", "asc")
     .limit(50)
     .get();
-  return snapshot.docs.map((document) => {
+  const latestActivity = await Promise.all(
+    snapshot.docs.map(async (document) => {
+      const data = document.data();
+      if (data.lastActivityAt instanceof Timestamp)
+        return data.lastActivityAt.toDate().toISOString();
+      if (count(data.threadCount) === 0) return null;
+
+      const latestThread = await db
+        .collection("forumThreads")
+        .where("categoryId", "==", document.id)
+        .where("moderationStatus", "==", "approved")
+        .orderBy("lastActivityAt", "desc")
+        .orderBy(FieldPath.documentId(), "desc")
+        .limit(1)
+        .get();
+      const activity = latestThread.docs[0]?.data().lastActivityAt;
+      return activity instanceof Timestamp
+        ? activity.toDate().toISOString()
+        : null;
+    }),
+  );
+  return snapshot.docs.map((document, index) => {
     const data = document.data();
+    const threadCount = count(data.threadCount);
     return {
       id: document.id,
       name: String(data.name ?? "Forum category"),
       description: String(data.description ?? ""),
       icon: String(data.icon ?? "MessageSquare"),
       color: String(data.color ?? "#3B6B5C"),
-      threadCount: count(data.threadCount),
-      postCount: count(data.postCount),
+      threadCount,
+      commentCount: Math.max(0, count(data.postCount) - threadCount),
+      lastActivityAt: latestActivity[index] ?? null,
     };
   });
 }
@@ -374,6 +403,8 @@ export async function getForumThread(
       const authorId = String(data.authorId);
       return {
         id: reply.id,
+        parentReplyId:
+          typeof data.parentReplyId === "string" ? data.parentReplyId : null,
         author: authorMap.get(authorId) ?? author(authorId, undefined),
         content: String(data.content ?? ""),
         mentions: mentionsFromData(data.mentions),
@@ -421,6 +452,11 @@ export async function createForumThread(
       title: input.title,
       titleLower: input.title.toLocaleLowerCase("en-US"),
       content: input.content,
+      searchKeywords: createSearchKeywords([
+        input.title,
+        input.content,
+        ...input.tags,
+      ]),
       tags: [
         ...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US"))),
       ],
@@ -459,6 +495,7 @@ export async function createForumThread(
     transaction.update(categoryRef, {
       threadCount: FieldValue.increment(1),
       postCount: FieldValue.increment(1),
+      lastActivityAt: FieldValue.serverTimestamp(),
     });
   });
   return threadRef.id;
@@ -471,21 +508,33 @@ export async function addForumReply(
   const db = adminDb();
   const threadRef = db.doc(`forumThreads/${input.threadId}`);
   const replyRef = threadRef.collection("replies").doc();
+  const parentReplyRef = input.parentReplyId
+    ? threadRef.collection("replies").doc(input.parentReplyId)
+    : null;
   await db.runTransaction(async (transaction) => {
     const userRef = db.doc(`users/${authorId}`);
-    const [thread, user] = await Promise.all([
+    const [thread, user, parentReply] = await Promise.all([
       transaction.get(threadRef),
       transaction.get(userRef),
+      parentReplyRef ? transaction.get(parentReplyRef) : Promise.resolve(null),
     ]);
     if (!user.exists || user.data()?.status !== "active")
       throw new ForumActionError("inactive");
     if (!thread.exists || thread.data()?.moderationStatus !== "approved")
       throw new ForumActionError("not-found");
     if (thread.data()?.locked === true) throw new ForumActionError("locked");
+    if (
+      parentReplyRef &&
+      (!parentReply?.exists ||
+        parentReply.data()?.moderationStatus !== "approved" ||
+        typeof parentReply.data()?.parentReplyId === "string")
+    )
+      throw new ForumActionError("invalid-parent");
     const mentions = await resolveMentions(transaction, input.mentionUids);
     const actorName = String(user.data()?.displayName ?? "An educator");
     transaction.create(replyRef, {
       authorId,
+      parentReplyId: input.parentReplyId,
       content: input.content,
       mentions,
       likeCount: 0,
@@ -501,7 +550,7 @@ export async function addForumReply(
       actorName,
       entityId: input.threadId,
       entityKey: `forum_reply_${input.threadId}_${replyRef.id}`,
-      context: "forum reply",
+      context: "forum comment",
       href: `/forum/${input.threadId}#reply-${replyRef.id}`,
     });
     transaction.update(threadRef, {
@@ -511,8 +560,11 @@ export async function addForumReply(
     });
     transaction.update(db.doc(`forumCategories/${thread.data()?.categoryId}`), {
       postCount: FieldValue.increment(1),
+      lastActivityAt: FieldValue.serverTimestamp(),
     });
-    const ownerId = String(thread.data()?.authorId ?? "");
+    const ownerId = String(
+      parentReply?.data()?.authorId ?? thread.data()?.authorId ?? "",
+    );
     if (ownerId && ownerId !== authorId) {
       transaction.create(
         db.doc(
@@ -523,7 +575,9 @@ export async function addForumReply(
           actorId: authorId,
           actorName,
           entityId: input.threadId,
-          message: `${actorName} replied to your forum discussion.`,
+          message: input.parentReplyId
+            ? `${actorName} replied to your forum comment.`
+            : `${actorName} commented on your forum discussion.`,
           href: `/forum/${input.threadId}#reply-${replyRef.id}`,
           read: false,
           archived: false,
@@ -556,6 +610,11 @@ export async function updateForumThread(
       title: input.title,
       titleLower: input.title.toLocaleLowerCase("en-US"),
       content: input.content,
+      searchKeywords: createSearchKeywords([
+        input.title,
+        input.content,
+        ...input.tags,
+      ]),
       tags: [
         ...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US"))),
       ],
@@ -649,7 +708,7 @@ export async function setForumLiked(
           actorId: uid,
           actorName,
           entityId: threadId,
-          message: `${actorName} found your ${replyId ? "forum reply" : "discussion"} helpful.`,
+          message: `${actorName} liked your ${replyId ? "forum comment" : "discussion"}.`,
           href: replyId
             ? `/forum/${threadId}#reply-${replyId}`
             : `/forum/${threadId}`,
@@ -716,7 +775,10 @@ export async function acceptForumReply(
       throw new ForumActionError("not-found");
     if (thread.data()?.authorId !== uid && !isPlatformAdmin(role))
       throw new ForumActionError("not-owner");
-    if (reply.data()?.moderationStatus !== "approved")
+    if (
+      reply.data()?.moderationStatus !== "approved" ||
+      typeof reply.data()?.parentReplyId === "string"
+    )
       throw new ForumActionError("invalid-answer");
     const previousReplyId = thread.data()?.acceptedReplyId;
     if (typeof previousReplyId === "string" && previousReplyId !== replyId)
@@ -798,6 +860,14 @@ export async function deleteForumReply(
   const db = adminDb();
   const threadRef = db.doc(`forumThreads/${threadId}`);
   const replyRef = threadRef.collection("replies").doc(replyId);
+  const childReplies = await threadRef
+    .collection("replies")
+    .where("parentReplyId", "==", replyId)
+    .get();
+  const deletedReplyIds = [
+    replyId,
+    ...childReplies.docs.map((item) => item.id),
+  ];
   await db.runTransaction(async (transaction) => {
     const [thread, reply] = await Promise.all([
       transaction.get(threadRef),
@@ -811,23 +881,30 @@ export async function deleteForumReply(
       isPlatformAdmin(role);
     if (!permitted) throw new ForumActionError("not-owner");
     transaction.delete(replyRef);
+    for (const childReply of childReplies.docs)
+      transaction.delete(childReply.ref);
     transaction.update(threadRef, {
-      replyCount: Math.max(0, count(thread.data()?.replyCount) - 1),
-      ...(thread.data()?.acceptedReplyId === replyId
+      replyCount: Math.max(
+        0,
+        count(thread.data()?.replyCount) - deletedReplyIds.length,
+      ),
+      ...(deletedReplyIds.includes(String(thread.data()?.acceptedReplyId))
         ? { solved: false, acceptedReplyId: null }
         : {}),
       updatedAt: FieldValue.serverTimestamp(),
     });
     transaction.update(db.doc(`forumCategories/${thread.data()?.categoryId}`), {
-      postCount: FieldValue.increment(-1),
+      postCount: FieldValue.increment(-deletedReplyIds.length),
     });
   });
-  const [likes, reports] = await Promise.all([
-    db.collection("forumLikes").where("replyId", "==", replyId).get(),
-    db.collection("reports").where("targetId", "==", replyId).get(),
-  ]);
+  const cleanupSnapshots = await Promise.all(
+    deletedReplyIds.flatMap((deletedReplyId) => [
+      db.collection("forumLikes").where("replyId", "==", deletedReplyId).get(),
+      db.collection("reports").where("targetId", "==", deletedReplyId).get(),
+    ]),
+  );
   const writer = db.bulkWriter();
-  for (const document of [...likes.docs, ...reports.docs])
+  for (const document of cleanupSnapshots.flatMap((snapshot) => snapshot.docs))
     writer.delete(document.ref);
   await writer.close();
 }

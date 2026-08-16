@@ -6,6 +6,7 @@ import {
   MarketingHeader,
 } from "@/components/marketing/marketing-shell";
 import { ProfileView } from "@/features/profiles/profile-view";
+import { ProfileTabProvider } from "@/features/profiles/profile-tab-context";
 import { getCurrentAccount } from "@/lib/auth/session";
 import { getProfilePosts } from "@/lib/feed/server";
 import { adminDb } from "@/lib/firebase/admin";
@@ -52,24 +53,24 @@ export default async function PublicEducatorPage({
     <div className="bg-background min-h-screen">
       <MarketingHeader />
       <main className="px-4 py-8 lg:px-6">
-        <ProfileView
-          data={data}
-          activeTab={activeTab}
-          postCount={profilePosts.total}
-          posts={profilePosts.posts}
-          profileBasePath="/educators"
-          resourceCount={resources.length}
-          resources={resources.slice(0, 20).map((document) => ({
-            id: document.id,
-            title: String(document.data().title),
-            type: String(document.data().type ?? "Resource"),
-          }))}
-          viewer={{
-            uid: account?.uid ?? "__anonymous__",
-            displayName: account?.displayName ?? "Guest",
-            photoURL: account?.photoURL ?? null,
-          }}
-        />
+        <ProfileTabProvider initialTab={activeTab} key={uid}>
+          <ProfileView
+            data={data}
+            postCount={profilePosts.total}
+            posts={profilePosts.posts}
+            resourceCount={resources.length}
+            resources={resources.slice(0, 20).map((document) => ({
+              id: document.id,
+              title: String(document.data().title),
+              type: String(document.data().type ?? "Resource"),
+            }))}
+            viewer={{
+              uid: account?.uid ?? "__anonymous__",
+              displayName: account?.displayName ?? "Guest",
+              photoURL: account?.photoURL ?? null,
+            }}
+          />
+        </ProfileTabProvider>
       </main>
       <MarketingFooter />
     </div>

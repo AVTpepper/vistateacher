@@ -28,7 +28,7 @@ export async function PUT(
     ...(await params),
   });
   if (!parsed.success)
-    return NextResponse.json({ error: "Invalid answer." }, { status: 400 });
+    return NextResponse.json({ error: "Invalid comment." }, { status: 400 });
   try {
     await acceptForumReply(
       account.uid,
