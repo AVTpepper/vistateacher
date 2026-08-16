@@ -1,6 +1,10 @@
 import "server-only";
 
 import { adminDb } from "@/lib/firebase/admin";
+import {
+  forumDiscussionResults,
+  type ForumSearchCandidate,
+} from "@/lib/search/forum-results";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import type { ProfileSearchResult } from "@/types/models";
 
@@ -18,28 +22,39 @@ export async function searchCommunity(
     return { educators: [], resources: [], discussions: [] };
   }
 
-  const token = query.split(" ")[0];
   const queryTokens = query.split(" ").filter(Boolean);
+  const token =
+    queryTokens.find((value) => value.length >= 2) ?? queryTokens[0];
   const db = adminDb();
-  const [educators, educatorFallback, resources, discussions] =
-    await Promise.all([
-      db
-        .collection("users")
-        .where("searchKeywords", "array-contains", token)
-        .limit(20)
-        .get(),
-      db.collection("users").limit(80).get(),
-      db
-        .collection("resources")
-        .where("tags", "array-contains", token)
-        .limit(5)
-        .get(),
-      db
-        .collection("forumThreads")
-        .where("tags", "array-contains", token)
-        .limit(5)
-        .get(),
-    ]);
+  const [
+    educators,
+    educatorFallback,
+    resources,
+    discussionKeywords,
+    discussionFallback,
+  ] = await Promise.all([
+    db
+      .collection("users")
+      .where("searchKeywords", "array-contains", token)
+      .limit(20)
+      .get(),
+    db.collection("users").limit(80).get(),
+    db
+      .collection("resources")
+      .where("tags", "array-contains", token)
+      .limit(5)
+      .get(),
+    db
+      .collection("forumThreads")
+      .where("searchKeywords", "array-contains", token)
+      .limit(10)
+      .get(),
+    db
+      .collection("forumThreads")
+      .where("moderationStatus", "==", "approved")
+      .limit(100)
+      .get(),
+  ]);
 
   const educatorByUid = new Map<string, ProfileSearchResult>();
   const upsertEducator = (
@@ -92,12 +107,26 @@ export async function searchCommunity(
         title: String(document.data().title),
         type: String(document.data().type ?? "Resource"),
       })),
-    discussions: discussions.docs
-      .filter((document) => document.data().moderationStatus === "approved")
-      .map((document) => ({
-        id: document.id,
-        title: String(document.data().title),
-        categoryId: String(document.data().categoryId ?? ""),
-      })),
+    discussions: forumDiscussionResults(
+      Array.from(
+        new Map(
+          [...discussionKeywords.docs, ...discussionFallback.docs].map(
+            (document) => {
+              const data = document.data();
+              const candidate: ForumSearchCandidate = {
+                id: document.id,
+                title: String(data.title ?? ""),
+                content: String(data.content ?? ""),
+                categoryId: String(data.categoryId ?? ""),
+                tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
+                moderationStatus: String(data.moderationStatus ?? ""),
+              };
+              return [document.id, candidate] as const;
+            },
+          ),
+        ).values(),
+      ),
+      query,
+    ),
   };
 }

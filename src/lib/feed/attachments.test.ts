@@ -13,6 +13,12 @@ describe("post attachments", () => {
     expect(postFileContentType("grades.xlsx")).toBe(
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
+    expect(postFileContentType("lesson.PPT")).toBe(
+      "application/vnd.ms-powerpoint",
+    );
+    expect(postFileContentType("lesson.PPTX")).toBe(
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    );
     expect(postFileContentType("archive.zip")).toBeNull();
   });
 

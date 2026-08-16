@@ -11,6 +11,7 @@ export const resourceAccessSchema = z.enum(["free", "plus"]);
 export const resourceMimeTypeSchema = z.enum([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "image/jpeg",
   "image/png",

@@ -228,6 +228,10 @@ for (const category of DEFAULT_FORUM_CATEGORIES) {
     color: category.color,
     threadCount: category.id === "student-engagement" ? 1 : 0,
     postCount: category.id === "student-engagement" ? 2 : 0,
+    lastActivityAt:
+      category.id === "student-engagement"
+        ? FieldValue.serverTimestamp()
+        : null,
     order: category.order,
     active: true,
   });

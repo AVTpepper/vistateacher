@@ -97,7 +97,7 @@ export function GlobalSearch({
         >
           <Search aria-hidden="true" className="size-4 shrink-0" />
           <span className="min-w-0 flex-1 truncate">
-            Search teachers, resources...
+            Search teachers, resources, forums...
           </span>
           <kbd className="border-border bg-card hidden rounded-md border px-1.5 py-0.5 font-mono text-[10px] sm:inline">
             Ctrl K
@@ -109,7 +109,7 @@ export function GlobalSearch({
         <Dialog.Content className="bg-card fixed top-[12vh] left-1/2 z-50 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 overflow-hidden rounded-xl border shadow-2xl">
           <Dialog.Title className="sr-only">Search VistaTeacher</Dialog.Title>
           <Dialog.Description className="sr-only">
-            Search educators, resources, and discussions.
+            Search educators, resources, and forum discussions.
           </Dialog.Description>
           <div className="flex h-14 items-center gap-3 border-b px-4">
             {loading ? (
@@ -128,7 +128,7 @@ export function GlobalSearch({
               aria-label="Search VistaTeacher"
               value={query}
               onChange={(event) => updateQuery(event.target.value)}
-              placeholder="Search teachers, resources, discussions..."
+              placeholder="Search teachers, resources, forums..."
               className="h-10 min-w-0 flex-1 rounded-sm bg-transparent text-sm outline-none"
             />
             <Dialog.Close
@@ -174,7 +174,7 @@ export function GlobalSearch({
                     />
                   ))}
                 </ResultGroup>
-                <ResultGroup title="Discussions">
+                <ResultGroup title="Forum discussions">
                   {results.discussions.map((discussion) => (
                     <ResultButton
                       key={discussion.id}

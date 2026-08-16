@@ -16,6 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { getFirebaseClient } from "@/lib/firebase/client";
 import {
   formatFileSize,
+  RESOURCE_FILE_ACCEPT,
+  resourceFileContentType,
   resourceFileError,
 } from "@/lib/resources/file-validation";
 import type { IncompleteResource } from "@/lib/resources/server";
@@ -112,6 +114,8 @@ export function ResourceUploadDialog({
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting || !validate() || !file) return;
+    const contentType = resourceFileContentType(file.name);
+    if (!contentType) return;
     setSubmitting(true);
     setServerError(null);
     setProgress(0);
@@ -129,7 +133,7 @@ export function ResourceUploadDialog({
             .filter(Boolean)
             .slice(0, 8),
           fileName: file.name,
-          fileType: file.type,
+          fileType: contentType,
           fileSize: file.size,
         }),
       });
@@ -154,7 +158,7 @@ export function ResourceUploadDialog({
         const task = uploadBytesResumable(
           ref(getFirebaseClient().storage, reservation.uploadPath),
           file,
-          { contentType: file.type },
+          { contentType },
         );
         task.on(
           "state_changed",
@@ -433,7 +437,8 @@ export function ResourceUploadDialog({
                   </span>
                   {file && (
                     <span className="text-muted-foreground mt-1 block text-xs">
-                      {file.type} · {formatFileSize(file.size)}
+                      {resourceFileContentType(file.name)} ·{" "}
+                      {formatFileSize(file.size)}
                     </span>
                   )}
                 </button>
@@ -444,7 +449,7 @@ export function ResourceUploadDialog({
               type="file"
               className="sr-only"
               tabIndex={-1}
-              accept=".pdf,.docx,.pptx,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4"
+              accept={RESOURCE_FILE_ACCEPT}
               onChange={(event) => {
                 chooseFile(event.target.files?.[0]);
                 setErrors((current) => ({ ...current, file: "" }));

@@ -37,6 +37,7 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   async redirects() {
     return [
+      { source: "/home", destination: "/", permanent: true },
       { source: "/forums", destination: "/forum", permanent: true },
       {
         source: "/forums/:path*",
@@ -61,6 +62,13 @@ const nextConfig: NextConfig = {
         destination: "/discover",
         permanent: true,
       },
+      { source: "/educators", destination: "/discover", permanent: true },
+      {
+        source: "/lesson-builder",
+        destination: "/ai-lessons",
+        permanent: true,
+      },
+      { source: "/contact", destination: "/support", permanent: true },
       { source: "/careers", destination: "/about", permanent: true },
       { source: "/jobs", destination: "/about", permanent: true },
     ];

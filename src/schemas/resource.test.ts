@@ -28,6 +28,13 @@ describe("resource schemas", () => {
         fileType: "image/heic",
       }).success,
     ).toBe(true);
+    expect(
+      reserveResourceSchema.safeParse({
+        ...valid,
+        fileName: "lesson.ppt",
+        fileType: "application/vnd.ms-powerpoint",
+      }).success,
+    ).toBe(true);
   });
 
   it("rejects executable files and files over 25 MB", () => {

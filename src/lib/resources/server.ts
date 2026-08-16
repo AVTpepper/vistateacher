@@ -92,6 +92,7 @@ function extensionForMime(mime: ReserveResourceInput["fileType"]): string {
     "application/pdf": "pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
       "docx",
+    "application/vnd.ms-powerpoint": "ppt",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation":
       "pptx",
     "image/jpeg": "jpg",
