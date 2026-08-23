@@ -12,7 +12,10 @@ import {
 import { decodeForumCursor, encodeForumCursor } from "@/lib/forum/cursor";
 import { DEFAULT_FORUM_CATEGORIES } from "@/lib/forum/categories";
 import { adminDb } from "@/lib/firebase/admin";
-import { createSearchKeywords } from "@/lib/search/normalize";
+import {
+  createSearchKeywords,
+  normalizeSearchText,
+} from "@/lib/search/normalize";
 import { writePublicActivity } from "@/lib/feed/server";
 import {
   mentionsFromData,
@@ -33,6 +36,7 @@ import type { UserRole } from "@/types/models";
 
 const PAGE_SIZE = 10;
 const REPLY_LIMIT = 100;
+const SEARCH_LIMIT = 100;
 
 export interface ForumAuthor {
   uid: string;
@@ -303,6 +307,14 @@ export async function getForumPage(
   viewerRole: UserRole,
   query: ForumQuery,
 ): Promise<ForumPage> {
+  if (query.query)
+    return searchForumPage(
+      viewerUid,
+      viewerRole,
+      query.categoryId,
+      query.query,
+    );
+
   const db = adminDb();
   let threads: Query = db
     .collection("forumThreads")
@@ -334,6 +346,68 @@ export async function getForumPage(
             documentId: last.id,
           })
         : null,
+  };
+}
+
+async function searchForumPage(
+  viewerUid: string,
+  viewerRole: UserRole,
+  categoryId: string,
+  rawQuery: string,
+): Promise<ForumPage> {
+  const query = normalizeSearchText(rawQuery);
+  const queryTokens = query.split(" ").filter(Boolean);
+  const token =
+    queryTokens.find((value) => value.length >= 2) ?? queryTokens[0];
+  if (!token) return { threads: [], nextCursor: null };
+
+  const db = adminDb();
+  const [keywordMatches, recentThreads] = await Promise.all([
+    db
+      .collection("forumThreads")
+      .where("searchKeywords", "array-contains", token)
+      .limit(SEARCH_LIMIT)
+      .get(),
+    db
+      .collection("forumThreads")
+      .where("moderationStatus", "==", "approved")
+      .limit(SEARCH_LIMIT)
+      .get(),
+  ]);
+  const matches = Array.from(
+    new Map(
+      [...keywordMatches.docs, ...recentThreads.docs].map(
+        (document) => [document.id, document] as const,
+      ),
+    ).values(),
+  )
+    .filter((document) => {
+      const data = document.data();
+      if (
+        data.moderationStatus !== "approved" ||
+        (categoryId && data.categoryId !== categoryId)
+      )
+        return false;
+      const haystack = normalizeSearchText(
+        [data.title, data.content, ...strings(data.tags)]
+          .filter((value) => typeof value === "string")
+          .join(" "),
+      );
+      return (
+        haystack.includes(query) ||
+        queryTokens.some((value) => haystack.includes(value))
+      );
+    })
+    .sort(
+      (left, right) =>
+        timestamp(right.data().lastActivityAt).toMillis() -
+        timestamp(left.data().lastActivityAt).toMillis(),
+    )
+    .slice(0, SEARCH_LIMIT);
+
+  return {
+    threads: await hydrateThreads(viewerUid, viewerRole, matches),
+    nextCursor: null,
   };
 }
 

@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     );
   const parsed = forumQuerySchema.safeParse({
     categoryId: request.nextUrl.searchParams.get("categoryId") ?? "",
+    query: request.nextUrl.searchParams.get("query") ?? "",
     cursor: request.nextUrl.searchParams.get("cursor") ?? undefined,
   });
   if (!parsed.success)

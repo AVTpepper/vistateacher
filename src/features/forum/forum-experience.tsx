@@ -17,6 +17,7 @@ import {
   Monitor,
   Pin,
   PlusCircle,
+  Search,
   Sparkles,
   TrendingUp,
   Users,
@@ -25,7 +26,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -71,7 +72,41 @@ export function ForumExperience({
   const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query.trim());
+  const [searchPage, setSearchPage] = useState<ForumPage | null>(null);
+  const [searching, setSearching] = useState(false);
   const contentHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (deferredQuery.length < 2) {
+      setSearchPage(null);
+      setSearching(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setSearching(true);
+    const params = new URLSearchParams({ query: deferredQuery });
+    if (selectedCategory) params.set("categoryId", selectedCategory.id);
+    void fetch(`/api/forum?${params}`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Search failed");
+        return (await response.json()) as ForumPage;
+      })
+      .then(setSearchPage)
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name !== "AbortError") {
+          setSearchPage({ threads: [], nextCursor: null });
+          toast.error("We couldn't search the forum.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setSearching(false);
+      });
+
+    return () => controller.abort();
+  }, [deferredQuery, selectedCategory]);
 
   useEffect(() => {
     if (!showThreads) return;
@@ -100,6 +135,12 @@ export function ForumExperience({
     });
   }
 
+  const searchingForum = deferredQuery.length >= 2;
+  const visiblePage = searchingForum
+    ? (searchPage ?? { threads: [], nextCursor: null })
+    : page;
+  const showingThreads = showThreads || searchingForum;
+
   return (
     <div className="mx-auto max-w-6xl">
       <header className="mb-6 flex items-start justify-between gap-4">
@@ -118,6 +159,21 @@ export function ForumExperience({
         />
       </header>
 
+      <label className="surface-card relative mb-5 block max-w-2xl">
+        <Search
+          aria-hidden="true"
+          className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2"
+        />
+        <span className="sr-only">Search forum discussions</span>
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search discussions, questions, and tags..."
+          className="h-11 w-full bg-transparent pr-3 pl-9 text-sm outline-none"
+        />
+      </label>
+
       <div className="surface-card mb-5 flex w-fit p-1">
         <ViewButton
           label="Categories"
@@ -133,7 +189,7 @@ export function ForumExperience({
         />
       </div>
 
-      {!showThreads ? (
+      {!showingThreads ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {categories.map((category) => (
             <CategoryCard key={category.id} category={category} />
@@ -147,8 +203,20 @@ export function ForumExperience({
             tabIndex={-1}
             className="mb-4 font-serif text-2xl outline-none"
           >
-            {selectedCategory?.name ?? "All discussions"}
+            {searchingForum
+              ? "Search results"
+              : (selectedCategory?.name ?? "All discussions")}
           </h2>
+          {searchingForum && (
+            <p
+              className="text-muted-foreground mb-4 text-sm"
+              aria-live="polite"
+            >
+              {searching
+                ? `Searching for “${deferredQuery}”…`
+                : `${visiblePage.threads.length} results for “${deferredQuery}”`}
+            </p>
+          )}
           {selectedCategory && (
             <div className="mb-4 flex items-center gap-2 text-sm">
               <Link
@@ -161,13 +229,13 @@ export function ForumExperience({
               <span className="font-semibold">{selectedCategory.name}</span>
             </div>
           )}
-          {loading && !page.threads.length ? (
+          {(searching || loading) && !visiblePage.threads.length ? (
             <div className="text-muted-foreground py-16 text-center text-sm">
               Loading discussions...
             </div>
-          ) : page.threads.length ? (
+          ) : visiblePage.threads.length ? (
             <div className="space-y-2">
-              {page.threads.map((thread) => (
+              {visiblePage.threads.map((thread) => (
                 <ThreadRow key={thread.id} thread={thread} />
               ))}
             </div>
@@ -177,17 +245,29 @@ export function ForumExperience({
                 aria-hidden="true"
                 className="text-muted-foreground/30 mx-auto size-8"
               />
-              <h2 className="mt-3 font-serif text-xl">No threads yet</h2>
-              <button
-                type="button"
-                onClick={() => setCreating(true)}
-                className="bg-primary text-primary-foreground mt-4 rounded-lg px-4 py-2 text-sm font-bold"
-              >
-                Start a Thread
-              </button>
+              <h2 className="mt-3 font-serif text-xl">
+                {searchingForum ? "No matching discussions" : "No threads yet"}
+              </h2>
+              {searchingForum ? (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="border-primary text-primary mt-4 rounded-lg border px-4 py-2 text-sm font-bold"
+                >
+                  Clear search
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCreating(true)}
+                  className="bg-primary text-primary-foreground mt-4 rounded-lg px-4 py-2 text-sm font-bold"
+                >
+                  Start a Thread
+                </button>
+              )}
             </div>
           )}
-          {page.nextCursor && (
+          {!searchingForum && page.nextCursor && (
             <button
               type="button"
               disabled={loading}

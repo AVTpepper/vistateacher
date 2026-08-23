@@ -37,6 +37,7 @@ export const createForumReplySchema = z.object({
 
 export const forumQuerySchema = z.object({
   categoryId: z.string().trim().max(80).default(""),
+  query: z.string().trim().max(100).default(""),
   cursor: z.string().trim().min(1).max(512).optional(),
 });
 

@@ -26,6 +26,7 @@ export default async function ForumPage({
   const initialPage = showThreads
     ? await getForumPage(account.uid, account.role, {
         categoryId: selectedCategory?.id ?? "",
+        query: "",
         cursor: undefined,
       })
     : { threads: [], nextCursor: null };

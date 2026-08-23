@@ -281,7 +281,7 @@ export async function getDashboardData(
     listResources({ query: "", type: "", subject: "", sort: "rating" }),
     listOwnedResources(uid),
     getFeedPage(uid, "all"),
-    getForumPage(uid, role, { categoryId: "", cursor: undefined }),
+    getForumPage(uid, role, { categoryId: "", query: "", cursor: undefined }),
     getDashboardActionItems(uid),
   ]);
   const recommendedResources = resources
