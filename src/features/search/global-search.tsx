@@ -17,9 +17,11 @@ const emptyResults: GroupedSearchResults = {
 export function GlobalSearch({
   enableShortcut = true,
   onOpen,
+  triggerVariant = "bar",
 }: {
   enableShortcut?: boolean;
   onOpen?: () => void;
+  triggerVariant?: "bar" | "icon";
 } = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -92,16 +94,33 @@ export function GlobalSearch({
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         <button
+          type="button"
           onClick={onOpen}
-          className="bg-muted text-muted-foreground hover:text-foreground flex h-11 w-full max-w-xl items-center gap-2 rounded-xl px-3 text-left text-sm transition-colors"
+          aria-label={
+            triggerVariant === "icon" ? "Search VistaTeacher" : undefined
+          }
+          className={
+            triggerVariant === "icon"
+              ? "grid size-11 shrink-0 place-items-center rounded-xl text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              : "bg-muted text-muted-foreground hover:text-foreground flex h-11 w-full max-w-xl items-center gap-2 rounded-xl px-3 text-left text-sm transition-colors"
+          }
         >
-          <Search aria-hidden="true" className="size-4 shrink-0" />
-          <span className="min-w-0 flex-1 truncate">
-            Search teachers, resources, forums...
-          </span>
-          <kbd className="border-border bg-card hidden rounded-md border px-1.5 py-0.5 font-mono text-[10px] sm:inline">
-            Ctrl K
-          </kbd>
+          <Search
+            aria-hidden="true"
+            className={
+              triggerVariant === "icon" ? "size-4.5" : "size-4 shrink-0"
+            }
+          />
+          {triggerVariant === "bar" && (
+            <>
+              <span className="min-w-0 flex-1 truncate">
+                Search teachers, resources, forums...
+              </span>
+              <kbd className="border-border bg-card hidden rounded-md border px-1.5 py-0.5 font-mono text-[10px] sm:inline">
+                Ctrl K
+              </kbd>
+            </>
+          )}
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>

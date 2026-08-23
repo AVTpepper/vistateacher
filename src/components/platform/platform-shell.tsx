@@ -255,6 +255,16 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
           <div className="hidden min-w-0 flex-1 lg:block lg:px-5">
             <GlobalSearch />
           </div>
+          <div className="lg:hidden">
+            <GlobalSearch
+              enableShortcut={false}
+              triggerVariant="icon"
+              onOpen={() => {
+                setMobileOpen(false);
+                setUserMenuOpen(false);
+              }}
+            />
+          </div>
           <NotificationMenu onOpen={() => setUserMenuOpen(false)} />
           <div className="relative">
             <button
