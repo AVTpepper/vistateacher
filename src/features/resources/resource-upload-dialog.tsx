@@ -13,7 +13,10 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { getFirebaseClient } from "@/lib/firebase/client";
+import {
+  firebaseUploadErrorMessage,
+  refreshFirebaseClientAuth,
+} from "@/lib/firebase/client-auth";
 import {
   formatFileSize,
   RESOURCE_FILE_ACCEPT,
@@ -153,10 +156,11 @@ export function ResourceUploadDialog({
           reservation?.error ?? "We couldn't reserve this upload.",
         );
       resourceId = reservation.resourceId;
+      const client = await refreshFirebaseClientAuth();
 
       await new Promise<void>((resolve, reject) => {
         const task = uploadBytesResumable(
-          ref(getFirebaseClient().storage, reservation.uploadPath),
+          ref(client.storage, reservation.uploadPath),
           file,
           { contentType },
         );
@@ -197,8 +201,10 @@ export function ResourceUploadDialog({
         if (cleanup && !cleanup.ok && cleanup.status !== 404)
           console.error("Resource reservation cleanup failed", resourceId);
       }
-      const message =
-        error instanceof Error ? error.message : "Resource upload failed.";
+      const message = firebaseUploadErrorMessage(
+        error,
+        error instanceof Error ? error.message : "Resource upload failed.",
+      );
       setServerError(message);
       toast.error(message);
     } finally {

@@ -1,6 +1,11 @@
 "use client";
 
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import {
+  getDownloadURL,
+  ref,
+  uploadBytes,
+  uploadBytesResumable,
+} from "firebase/storage";
 import {
   FileText,
   FileUp,
@@ -22,7 +27,10 @@ import {
   postFileContentType,
   postFileError,
 } from "@/lib/feed/attachments";
-import { getFirebaseClient } from "@/lib/firebase/client";
+import {
+  firebaseUploadErrorMessage,
+  refreshFirebaseClientAuth,
+} from "@/lib/firebase/client-auth";
 import type { MentionTarget } from "@/lib/mentions/types";
 import { cn } from "@/lib/utils";
 import type { CreatePostInput, PostFileAttachment } from "@/schemas/feed";
@@ -85,11 +93,14 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
     try {
       const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const path = `posts/${account.uid}/${crypto.randomUUID()}/${crypto.randomUUID()}.${extension}`;
-      const object = ref(getFirebaseClient().storage, path);
+      const client = await refreshFirebaseClientAuth();
+      const object = ref(client.storage, path);
       await uploadBytes(object, file, { contentType: file.type });
       setImageURL(await getDownloadURL(object));
-    } catch {
-      toast.error("We couldn't upload that image.");
+    } catch (error) {
+      toast.error(
+        firebaseUploadErrorMessage(error, "We couldn't upload that image."),
+      );
     } finally {
       setUploading(false);
     }
@@ -107,16 +118,22 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
     try {
       const extension = file.name.split(".").at(-1)!.toLocaleLowerCase("en-US");
       const path = `posts/${account.uid}/${crypto.randomUUID()}/${crypto.randomUUID()}.${extension}`;
-      const object = ref(getFirebaseClient().storage, path);
-      await uploadBytes(object, file, { contentType });
+      const client = await refreshFirebaseClientAuth();
+      const object = ref(client.storage, path);
+      await new Promise<void>((resolve, reject) => {
+        const task = uploadBytesResumable(object, file, { contentType });
+        task.on("state_changed", undefined, reject, resolve);
+      });
       setFileAttachment({
         name: file.name,
         url: await getDownloadURL(object),
         contentType,
         size: file.size,
       });
-    } catch {
-      toast.error("We couldn't upload that file.");
+    } catch (error) {
+      toast.error(
+        firebaseUploadErrorMessage(error, "We couldn't upload that file."),
+      );
     } finally {
       setUploading(false);
     }
