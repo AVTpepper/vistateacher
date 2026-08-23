@@ -193,6 +193,108 @@ function lessonResourceData(
   };
 }
 
+export async function ensurePublishedLessonResources(
+  uid: string,
+): Promise<void> {
+  const db = adminDb();
+  const userRef = db.doc(`users/${uid}`);
+  const user = await userRef.get();
+  if (!user.exists || user.data()?.publishedLessonResourcesBackfilledAt) return;
+
+  const lessons = await db
+    .collection("lessons")
+    .where("ownerId", "==", uid)
+    .limit(LESSON_LIMIT)
+    .get();
+  const candidates = lessons.docs.filter(
+    (lesson) =>
+      lesson.data().visibility === "published" && lesson.data().content,
+  );
+  const lessonRefs = candidates.map((lesson) => lesson.ref);
+  const resourceRefs = candidates.map((lesson) =>
+    db.doc(`resources/lesson_${lesson.id}`),
+  );
+
+  await db.runTransaction(async (transaction) => {
+    const snapshots = await transaction.getAll(
+      userRef,
+      ...lessonRefs,
+      ...resourceRefs,
+    );
+    const currentUser = snapshots[0];
+    if (
+      !currentUser.exists ||
+      currentUser.data()?.publishedLessonResourcesBackfilledAt
+    )
+      return;
+
+    const currentLessons = snapshots.slice(1, 1 + lessonRefs.length);
+    const currentResources = snapshots.slice(1 + lessonRefs.length);
+    let activatedResources = 0;
+
+    currentLessons.forEach((lesson, index) => {
+      const data = lesson.data();
+      const parsedContent = lessonPlanSchema.safeParse(data?.content);
+      if (
+        !lesson.exists ||
+        data?.ownerId !== uid ||
+        data.visibility !== "published" ||
+        !parsedContent.success
+      )
+        return;
+
+      const resource = currentResources[index];
+      if (
+        resource?.exists &&
+        resource.data()?.status === "active" &&
+        resource.data()?.moderationStatus === "approved"
+      )
+        return;
+
+      transaction.set(
+        resourceRefs[index],
+        {
+          ...lessonResourceData(uid, lesson.id, parsedContent.data),
+          ...(resource?.exists
+            ? {}
+            : {
+                downloadCount: 0,
+                ratingTotal: 0,
+                ratingAverage: 0,
+                ratingCount: 0,
+                createdAt:
+                  data.publishedAt ??
+                  data.updatedAt ??
+                  FieldValue.serverTimestamp(),
+              }),
+        },
+        { merge: true },
+      );
+      writePublicActivity(transaction, {
+        authorId: uid,
+        kind: "lesson-published",
+        entityId: lesson.id,
+        label: "Published a lesson plan",
+        title: parsedContent.data.title,
+        href: `/lessons/${lesson.id}`,
+        tags: ["lesson-plan", parsedContent.data.subject],
+      });
+      activatedResources += 1;
+    });
+
+    transaction.set(
+      userRef,
+      {
+        publishedLessonResourcesBackfilledAt: FieldValue.serverTimestamp(),
+        ...(activatedResources
+          ? { resourceCount: FieldValue.increment(activatedResources) }
+          : {}),
+      },
+      { merge: true },
+    );
+  });
+}
+
 async function currentPlan(uid: string) {
   const snapshot = await adminDb().doc(`subscriptions/${uid}`).get();
   return resolveEffectivePlan(subscriptionRecord(snapshot.data()));

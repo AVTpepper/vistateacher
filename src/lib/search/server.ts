@@ -16,6 +16,7 @@ export interface GroupedSearchResults {
 
 export async function searchCommunity(
   rawQuery: string,
+  viewerUid?: string,
 ): Promise<GroupedSearchResults> {
   const query = normalizeSearchText(rawQuery);
   if (query.length < 2) {
@@ -31,6 +32,7 @@ export async function searchCommunity(
     educatorFallback,
     resources,
     resourceFallback,
+    viewerResources,
     discussionKeywords,
     discussionFallback,
   ] = await Promise.all([
@@ -46,6 +48,13 @@ export async function searchCommunity(
       .limit(5)
       .get(),
     db.collection("resources").where("status", "==", "active").limit(100).get(),
+    viewerUid
+      ? db
+          .collection("resources")
+          .where("authorId", "==", viewerUid)
+          .limit(100)
+          .get()
+      : Promise.resolve(null),
     db
       .collection("forumThreads")
       .where("searchKeywords", "array-contains", token)
@@ -102,9 +111,11 @@ export async function searchCommunity(
 
   const resourceResults = Array.from(
     new Map(
-      [...resources.docs, ...resourceFallback.docs].map(
-        (document) => [document.id, document] as const,
-      ),
+      [
+        ...resources.docs,
+        ...resourceFallback.docs,
+        ...(viewerResources?.docs ?? []),
+      ].map((document) => [document.id, document] as const),
     ).values(),
   )
     .filter((document) => {

@@ -343,16 +343,39 @@ export async function cancelResourceUpload(
 
 export async function listResources(
   query: ResourceQuery,
+  viewerUid?: string,
 ): Promise<ResourceSummary[]> {
   const db = adminDb();
-  const snapshot = await db
-    .collection("resources")
-    .where("status", "==", "active")
-    .where("moderationStatus", "==", "approved")
-    .limit(RESOURCE_LIMIT)
-    .get();
+  const snapshots = await Promise.all([
+    db
+      .collection("resources")
+      .where("status", "==", "active")
+      .where("moderationStatus", "==", "approved")
+      .limit(RESOURCE_LIMIT)
+      .get(),
+    ...(viewerUid
+      ? [
+          db
+            .collection("resources")
+            .where("authorId", "==", viewerUid)
+            .limit(RESOURCE_LIMIT)
+            .get(),
+        ]
+      : []),
+  ]);
+  const documents = Array.from(
+    new Map(
+      snapshots.flatMap((snapshot) =>
+        snapshot.docs.map((document) => [document.id, document] as const),
+      ),
+    ).values(),
+  ).filter(
+    (document) =>
+      document.data().status === "active" &&
+      document.data().moderationStatus === "approved",
+  );
   const authorIds = [
-    ...new Set(snapshot.docs.map((doc) => String(doc.data().authorId))),
+    ...new Set(documents.map((doc) => String(doc.data().authorId))),
   ];
   const authors = authorIds.length
     ? await db.getAll(...authorIds.map((uid) => db.doc(`users/${uid}`)))
@@ -361,7 +384,7 @@ export async function listResources(
     authors.map((author) => [author.id, author.data()]),
   );
   const needle = query.query.toLocaleLowerCase("en-US");
-  const resources = snapshot.docs
+  const resources = documents
     .map((document) =>
       summary(
         document.id,
