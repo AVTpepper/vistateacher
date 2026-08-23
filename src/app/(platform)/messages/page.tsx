@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { MessagesExperience } from "@/features/messages/messages-experience";
 import { requireCurrentAccount } from "@/lib/auth/session";
@@ -23,6 +24,8 @@ export default async function MessagesPage({
     ? (conversations.find((item) => item.participant.uid === composeUid)?.id ??
       null)
     : null;
+  if (composeUid && !composeConversationId)
+    redirect(`/messages/new?recipient=${encodeURIComponent(composeUid)}`);
   const activeId =
     requestedId && conversations.some((item) => item.id === requestedId)
       ? requestedId
@@ -41,9 +44,6 @@ export default async function MessagesPage({
       }}
       initialConversations={conversations}
       initialConversationId={activeId}
-      initialComposeUid={
-        composeUid && !composeConversationId ? composeUid : null
-      }
       initialMessages={initialMessages}
     />
   );

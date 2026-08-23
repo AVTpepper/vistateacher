@@ -11,12 +11,12 @@ import {
   List,
   Search,
   Star,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { useDeferredValue, useState } from "react";
 
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
-import { ResourceUploadDialog } from "@/features/resources/resource-upload-dialog";
 import type {
   IncompleteResource,
   ResourceSummary,
@@ -88,7 +88,12 @@ export function ResourceLibrary({
             Teacher-made lesson plans, worksheets, activities, and more.
           </p>
         </div>
-        <ResourceUploadDialog />
+        <Link
+          href="/resources/new"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-bold"
+        >
+          <Upload aria-hidden="true" className="size-4" /> Upload
+        </Link>
       </header>
       {incompleteResources.length > 0 && (
         <section
@@ -119,7 +124,12 @@ export function ResourceLibrary({
                     View original post
                   </Link>
                 </div>
-                <ResourceUploadDialog draft={draft} />
+                <Link
+                  href={`/resources/new?draft=${encodeURIComponent(draft.id)}`}
+                  className="bg-card hover:bg-secondary inline-flex h-11 items-center rounded-xl border px-4 text-sm font-bold"
+                >
+                  Finish resource
+                </Link>
               </div>
             ))}
           </div>

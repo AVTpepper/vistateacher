@@ -7,11 +7,13 @@ import {
   FileText,
   Loader2,
   MessageCircle,
+  MessageSquarePlus,
   Paperclip,
   Search,
   Send,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
@@ -28,7 +30,6 @@ import { toast } from "sonner";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
-import { NewConversationDialog } from "@/features/messages/new-conversation-dialog";
 import { ReportMessageDialog } from "@/features/messages/report-message-dialog";
 import { getFirebaseClient } from "@/lib/firebase/client";
 import type {
@@ -42,13 +43,11 @@ export function MessagesExperience({
   viewer,
   initialConversations,
   initialConversationId,
-  initialComposeUid,
   initialMessages,
 }: {
   viewer: { uid: string; displayName: string; photoURL: string | null };
   initialConversations: ConversationSummary[];
   initialConversationId: string | null;
-  initialComposeUid: string | null;
   initialMessages: MessagePage | null;
 }) {
   const router = useRouter();
@@ -319,10 +318,14 @@ export function MessagesExperience({
                     {unread} new
                   </span>
                 )}
-                <NewConversationDialog
-                  viewerUid={viewer.uid}
-                  initialRecipientUid={initialComposeUid}
-                />
+                <Link
+                  href="/messages/new"
+                  aria-label="New conversation"
+                  title="New conversation"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 grid size-11 place-items-center rounded-xl shadow-sm transition-transform hover:-translate-y-0.5"
+                >
+                  <MessageSquarePlus aria-hidden="true" className="size-4" />
+                </Link>
               </div>
             </div>
             <label className="surface-inset input-shell flex min-h-11 items-center gap-2 px-3">

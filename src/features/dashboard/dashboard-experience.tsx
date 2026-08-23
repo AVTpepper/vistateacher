@@ -185,14 +185,14 @@ export function DashboardExperience({
             tone: "text-accent-readable bg-accent/10",
           },
           {
-            href: "/resources",
+            href: "/resources/new",
             label: "Share a resource",
             detail: "Support other teachers",
             icon: BookOpen,
             tone: "text-primary bg-primary/10",
           },
           {
-            href: "/forum",
+            href: "/forum/new",
             label: "Start a discussion",
             detail: "Learn with the community",
             icon: MessageSquareText,
