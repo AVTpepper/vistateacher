@@ -21,6 +21,19 @@ function ControlledMentionTextarea() {
   );
 }
 
+function DelayedMentionStateTextarea() {
+  const [value, setValue] = useState("");
+  return (
+    <MentionTextarea
+      aria-label="Post"
+      value={value}
+      onValueChange={setValue}
+      mentions={[]}
+      onMentionsChange={() => undefined}
+    />
+  );
+}
+
 describe("MentionTextarea", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -45,6 +58,29 @@ describe("MentionTextarea", () => {
 
     fireEvent.change(comment, {
       target: { value: "@Marlena Kulasinska thanks for sharing" },
+    });
+    await act(async () => vi.advanceTimersByTimeAsync(200));
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(search).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reopen stale suggestions while parent mention state catches up", async () => {
+    vi.useFakeTimers();
+    const search = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ educators: [marlena] }),
+    });
+    vi.stubGlobal("fetch", search);
+    render(<DelayedMentionStateTextarea />);
+
+    const post = screen.getByRole("textbox", { name: "Post" });
+    fireEvent.change(post, { target: { value: "@Mar" } });
+    await act(async () => vi.advanceTimersByTimeAsync(200));
+
+    fireEvent.click(screen.getByRole("option", { name: "Marlena Kulasinska" }));
+    fireEvent.change(post, {
+      target: { value: "@Marlena Kulasinska I still see the list" },
     });
     await act(async () => vi.advanceTimersByTimeAsync(200));
 

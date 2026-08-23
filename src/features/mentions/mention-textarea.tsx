@@ -17,6 +17,11 @@ interface MentionTextareaProps extends Omit<
   excludeUid?: string;
 }
 
+interface SuggestionResult {
+  query: string;
+  educators: MentionTarget[];
+}
+
 function activeMention(value: string, mentions: MentionTarget[] = []) {
   const match = /@([^@\n]{1,40})$/u.exec(value);
   const candidate = match?.[1] ?? "";
@@ -43,13 +48,27 @@ export const MentionTextarea = forwardRef<
   },
   ref,
 ) {
-  const [suggestions, setSuggestions] = useState<MentionTarget[]>([]);
-  const match = activeMention(value, mentions);
+  const [suggestionResult, setSuggestionResult] = useState<SuggestionResult>({
+    query: "",
+    educators: [],
+  });
+  const [dismissedMention, setDismissedMention] = useState<{
+    index: number;
+    displayName: string;
+  } | null>(null);
+  const candidateMatch = activeMention(value, mentions);
+  const matchesDismissedMention =
+    dismissedMention &&
+    candidateMatch?.index === dismissedMention.index &&
+    candidateMatch[0].startsWith(`@${dismissedMention.displayName}`);
+  const match = matchesDismissedMention ? null : candidateMatch;
   const query = match?.[1]?.trim() ?? "";
+  const suggestions =
+    suggestionResult.query === query ? suggestionResult.educators : [];
 
   useEffect(() => {
     if (query.length < 2) {
-      setSuggestions([]);
+      setSuggestionResult({ query: "", educators: [] });
       return;
     }
     const controller = new AbortController();
@@ -62,14 +81,15 @@ export const MentionTextarea = forwardRef<
         .then(
           (result: { educators?: MentionTarget[] } | null) => {
             if (!active) return;
-            setSuggestions(
-              (result?.educators ?? [])
+            setSuggestionResult({
+              query,
+              educators: (result?.educators ?? [])
                 .filter((educator) => educator.uid !== excludeUid)
                 .slice(0, 6),
-            );
+            });
           },
           () => {
-            if (active) setSuggestions([]);
+            if (active) setSuggestionResult({ query, educators: [] });
           },
         );
     }, 180);
@@ -81,6 +101,12 @@ export const MentionTextarea = forwardRef<
   }, [excludeUid, query]);
 
   function update(nextValue: string) {
+    setDismissedMention((current) =>
+      current &&
+      nextValue.slice(current.index).startsWith(`@${current.displayName}`)
+        ? current
+        : null,
+    );
     onValueChange(nextValue);
     onMentionsChange(
       mentions.filter((mention) =>
@@ -99,7 +125,11 @@ export const MentionTextarea = forwardRef<
       ...mentions.filter((item) => item.uid !== mention.uid),
       mention,
     ]);
-    setSuggestions([]);
+    setDismissedMention({
+      index: current.index,
+      displayName: mention.displayName,
+    });
+    setSuggestionResult({ query: "", educators: [] });
   }
 
   return (
