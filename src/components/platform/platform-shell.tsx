@@ -62,6 +62,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   const mobileDrawerRef = useRef<HTMLElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const profileHref = account.onboarded ? "/profile" : "/onboarding";
+  const immersiveMessages = pathname.startsWith("/messages");
   const closeMobileMenu = () => setMobileOpen(false);
 
   useEffect(() => {
@@ -391,9 +392,16 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
           </div>
         </nav>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <main className="flex-1">{children}</main>
-        <PlatformFooter />
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col",
+          immersiveMessages && "overflow-hidden",
+        )}
+      >
+        <main className={cn("flex-1", immersiveMessages && "min-h-0")}>
+          {children}
+        </main>
+        {!immersiveMessages && <PlatformFooter />}
       </div>
     </div>
   );

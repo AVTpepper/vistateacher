@@ -534,7 +534,14 @@ input[type="file"] {
 }
 
 .messages-shell {
-  height: clamp(32rem, calc(100dvh - 8.5rem), 52rem);
+  height: calc(100dvh - 4rem);
+}
+
+@media (max-width: 639px) {
+  .messages-shell > .surface-card {
+    border-inline: 0;
+    border-radius: 0;
+  }
 }
 
 @media (min-width: 1024px) {

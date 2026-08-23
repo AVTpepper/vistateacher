@@ -18,8 +18,7 @@ export const billingPlans = [
       "Educator profile",
       "Up to 5 connections",
       "10 messages per day",
-      "5 resource uploads per month",
-      "5 resource downloads per month",
+      "Unlimited resource uploads and downloads",
       "1 AI lesson with 2 refinements per month",
       "2 PDF or DOCX lesson exports per month",
     ],
@@ -32,7 +31,6 @@ export const billingPlans = [
     note: "$79 when billed yearly (save $29).",
     features: [
       "Unlimited connections and messages",
-      "Unlimited resource uploads and downloads",
       "50 AI generations per month",
       "Unlimited PDF and DOCX lesson exports",
       "Full analytics and Plus resources",

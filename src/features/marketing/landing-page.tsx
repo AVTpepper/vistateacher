@@ -514,7 +514,7 @@ export async function LandingPage() {
                 features={[
                   "Professional educator profile",
                   "Community discovery",
-                  "5 resource downloads each month",
+                  "Unlimited resource uploads and downloads",
                   "1 AI lesson with 2 refinements",
                 ]}
               />
@@ -526,7 +526,7 @@ export async function LandingPage() {
                 features={[
                   "Expanded connections and messaging",
                   "50 AI generations each month",
-                  "Unlimited resource uploads and downloads",
+                  "Access to Plus resources",
                   "Unlimited exports and full analytics",
                 ]}
               />

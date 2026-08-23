@@ -70,7 +70,6 @@ export class ResourceActionError extends Error {
   constructor(
     public readonly code:
       | "inactive"
-      | "limit-reached"
       | "not-found"
       | "not-owner"
       | "not-ready"

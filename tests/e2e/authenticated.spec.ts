@@ -85,6 +85,12 @@ test("keeps message avatars fixed and focuses the rounded composer", async ({
   await page.goto("/messages");
 
   const activeConversation = page.getByLabel("Active conversation");
+  await expect(page.getByLabel("Platform footer navigation")).toHaveCount(0);
+  expect(
+    await activeConversation.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBe(true);
   const avatars = activeConversation.locator(
     'img[alt="Maya Chen"], span[aria-label="Maya Chen"]',
   );
@@ -99,6 +105,13 @@ test("keeps message avatars fixed and focuses the rounded composer", async ({
     [40, 40],
     [32, 32],
   ]);
+  expect(
+    await activeConversation
+      .getByText("I sent over the organizer we discussed.")
+      .evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element).fontSize),
+      ),
+  ).toBeLessThanOrEqual(14);
 
   const message = page.getByLabel("Message", { exact: true });
   await message.click();

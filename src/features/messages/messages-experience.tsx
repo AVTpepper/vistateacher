@@ -296,7 +296,7 @@ export function MessagesExperience({
   );
 
   return (
-    <div className="messages-shell px-3 py-3 sm:px-4 sm:py-4 lg:px-6">
+    <div className="messages-shell sm:px-4 sm:py-4 lg:px-6">
       <div className="surface-card flex h-full min-h-0 overflow-hidden">
         <section
           aria-label="Conversations"
@@ -454,7 +454,7 @@ export function MessagesExperience({
           />
           {active ? (
             <>
-              <header className="border-border/70 bg-card/70 relative z-10 flex h-16 shrink-0 items-center gap-3 border-b px-3 backdrop-blur-md sm:px-5">
+              <header className="border-border/70 bg-card/70 relative z-10 flex h-14 shrink-0 items-center gap-2 border-b px-2 backdrop-blur-md sm:h-16 sm:gap-3 sm:px-5">
                 <button
                   type="button"
                   aria-label="Back to conversations"
@@ -476,7 +476,7 @@ export function MessagesExperience({
                     displayName={active.participant.displayName}
                     photoURL={active.participant.photoURL}
                     showAvatar={false}
-                    className="text-sm"
+                    className="max-w-full text-sm"
                   />
                   <p className="text-muted-foreground truncate text-xs">
                     {active.participant.gradeLevel}
@@ -509,7 +509,7 @@ export function MessagesExperience({
                 </button>
               </header>
 
-              <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-6">
+              <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-2 py-3 sm:px-6 sm:py-5">
                 {messagePage.nextCursor && (
                   <button
                     type="button"
@@ -520,7 +520,7 @@ export function MessagesExperience({
                     {loadingHistory ? "Loading..." : "Load older messages"}
                   </button>
                 )}
-                <div className="mx-auto flex max-w-3xl flex-col gap-4">
+                <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:gap-4">
                   {messagePage.messages.map((message) => (
                     <MessageBubble
                       key={message.id}
@@ -535,7 +535,7 @@ export function MessagesExperience({
                 </div>
               </div>
 
-              <footer className="border-border/70 bg-card/80 relative z-10 shrink-0 border-t p-3 backdrop-blur-md sm:p-4">
+              <footer className="border-border/70 bg-card/80 relative z-10 shrink-0 border-t p-2 backdrop-blur-md sm:p-4">
                 {active.blockedByViewer || active.blockedViewer ? (
                   <div className="surface-inset mx-auto max-w-3xl px-4 py-3 text-center">
                     <p className="text-muted-foreground text-sm">
@@ -563,7 +563,7 @@ export function MessagesExperience({
                         </button>
                       </div>
                     )}
-                    <div className="surface-inset input-shell flex min-w-0 items-end gap-1.5 p-1.5 sm:gap-2 sm:p-2">
+                    <div className="surface-inset input-shell flex min-w-0 items-end gap-1 p-1 sm:gap-2 sm:p-2">
                       <input
                         ref={fileInput}
                         type="file"
@@ -676,13 +676,15 @@ function MessageBubble({
       )}
       <div
         className={cn(
-          "flex max-w-[min(100%,28rem)] min-w-0 flex-col gap-1",
-          mine ? "items-end" : "items-start",
+          "flex min-w-0 flex-col gap-1 sm:max-w-[min(82%,28rem)]",
+          mine
+            ? "max-w-[86%] items-end"
+            : "max-w-[calc(100%-2.5rem)] items-start",
         )}
       >
         <div
           className={cn(
-            "rounded-2xl px-4 py-2.5 text-sm leading-6 shadow-xs",
+            "rounded-2xl px-3 py-2 text-[13px] leading-5 shadow-xs sm:px-4 sm:py-2.5 sm:text-sm sm:leading-6",
             mine
               ? "bg-primary text-primary-foreground rounded-br-md"
               : "surface-card rounded-bl-md",

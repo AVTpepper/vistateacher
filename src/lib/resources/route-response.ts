@@ -8,10 +8,6 @@ export function resourceErrorResponse(error: unknown): NextResponse | null {
   if (!(error instanceof ResourceActionError)) return null;
   const responses = {
     inactive: ["Your account cannot perform this action.", 403],
-    "limit-reached": [
-      "Your Community plan includes five resource uploads per month.",
-      403,
-    ],
     "not-found": ["Resource not found.", 404],
     "not-owner": ["You do not own this resource.", 403],
     "not-ready": ["This resource is not ready.", 409],
