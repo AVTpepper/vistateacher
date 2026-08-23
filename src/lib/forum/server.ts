@@ -216,7 +216,7 @@ export async function getForumCategories(): Promise<ForumCategory[]> {
         : null;
     }),
   );
-  return snapshot.docs.map((document, index) => {
+  const categories = snapshot.docs.map((document, index) => {
     const data = document.data();
     const threadCount = count(data.threadCount);
     return {
@@ -229,6 +229,12 @@ export async function getForumCategories(): Promise<ForumCategory[]> {
       commentCount: Math.max(0, count(data.postCount) - threadCount),
       lastActivityAt: latestActivity[index] ?? null,
     };
+  });
+  return categories.sort((left, right) => {
+    if (!left.lastActivityAt && !right.lastActivityAt) return 0;
+    if (!left.lastActivityAt) return 1;
+    if (!right.lastActivityAt) return -1;
+    return right.lastActivityAt.localeCompare(left.lastActivityAt);
   });
 }
 
