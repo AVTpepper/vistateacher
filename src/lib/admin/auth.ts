@@ -8,7 +8,7 @@ import { requireCurrentAccount, type SessionAccount } from "@/lib/auth/session";
 
 export async function requirePlatformAdmin(): Promise<SessionAccount> {
   const account = await requireCurrentAccount();
-  if (account.role !== "platform_admin") redirect("/app");
+  if (account.role !== "platform_admin") redirect("/dashboard");
   return account;
 }
 

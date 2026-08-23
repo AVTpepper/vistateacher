@@ -7,7 +7,7 @@ async function signIn(page: Page, email = "community@vista.local") {
   await expect(emailInput).toHaveValue(email);
   await page.getByLabel("Password", { exact: true }).fill("VistaTeacher1!");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/app$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
 }
 
 test("forum category URLs, validation, API errors, and creation remain stable", async ({
@@ -129,6 +129,7 @@ test("post images fit without cropping and image, file, and web link attachments
   test.skip(testInfo.project.name !== "chromium");
   test.setTimeout(90_000);
   await signIn(page);
+  await page.goto("/app");
 
   await page.getByRole("button", { name: /What's on your mind/ }).click();
   await page
@@ -303,7 +304,7 @@ test("unsafe return destinations are ignored", async ({ page }, testInfo) => {
   await page.getByLabel("Email address").fill("community@vista.local");
   await page.getByLabel("Password", { exact: true }).fill("VistaTeacher1!");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/app$/);
+  await expect(page).toHaveURL(/\/dashboard$/);
 });
 
 test("mobile form controls remain at least 16px and dialogs fit the visual viewport", async ({

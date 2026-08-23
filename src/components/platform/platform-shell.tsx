@@ -27,6 +27,7 @@ import type { Plan } from "@/types/models";
 import type { UserRole } from "@/types/models";
 
 const primaryNavigation = [
+  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { label: "Feed", icon: Home, href: "/app" },
   { label: "Discover", icon: Compass, href: "/discover" },
   { label: "Network", icon: UsersRound, href: "/network" },
@@ -39,7 +40,6 @@ const primaryNavigation = [
     plus: true,
   },
   { label: "Messages", icon: Mail, href: "/messages" },
-  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
 ] as const;
 
 interface PlatformShellProps {
@@ -224,7 +224,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
               )}
             </button>
             <Link
-              href="/app"
+              href="/dashboard"
               aria-label="VistaTeacher home"
               className="flex shrink-0 items-center gap-2 lg:hidden"
             >
@@ -240,7 +240,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             </Link>
           </div>
           <Link
-            href="/app"
+            href="/dashboard"
             className="hidden min-h-11 shrink-0 items-center gap-2.5 rounded-lg lg:flex"
           >
             <span
@@ -409,7 +409,7 @@ function PlatformFooter() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(3,minmax(0,1fr))]">
           <div>
             <Link
-              href="/app"
+              href="/dashboard"
               className="text-sidebar-foreground inline-flex items-center gap-2 font-serif text-lg"
             >
               <span

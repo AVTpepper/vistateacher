@@ -140,5 +140,5 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ next: "/app" });
+  return NextResponse.json({ next: "/dashboard" });
 }

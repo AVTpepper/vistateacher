@@ -25,7 +25,9 @@ export default async function OnboardingPage({
   if (account.onboarded)
     redirect(
       returnTo ??
-        (planIntent ? planIntentHref("/settings/billing", planIntent) : "/app"),
+        (planIntent
+          ? planIntentHref("/settings/billing", planIntent)
+          : "/dashboard"),
     );
 
   return (

@@ -89,7 +89,7 @@ export function VerifyEmailPanel({
               destination,
             )
           : (destination ??
-              (planIntent && result.next === "/app"
+              (planIntent && result.next === "/dashboard"
                 ? planIntentHref("/settings/billing", planIntent)
                 : planIntentHref(result.next, planIntent))),
       );

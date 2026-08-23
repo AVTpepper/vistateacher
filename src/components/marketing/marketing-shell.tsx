@@ -86,7 +86,7 @@ export function MarketingHeader({ signedIn = false }: { signedIn?: boolean }) {
               className="hidden min-[420px]:inline-flex"
               size="sm"
             >
-              <Link href="/app">Dashboard</Link>
+              <Link href="/dashboard">Dashboard</Link>
             </Button>
           ) : (
             <>
@@ -172,7 +172,7 @@ export function MarketingHeader({ signedIn = false }: { signedIn?: boolean }) {
               size="sm"
             >
               <Link
-                href="/app"
+                href="/dashboard"
                 onClick={() => setMenuOpen(false)}
                 tabIndex={menuOpen ? 0 : -1}
               >

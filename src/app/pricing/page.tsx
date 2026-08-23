@@ -97,7 +97,7 @@ export default async function PricingPage() {
                   href={
                     account
                       ? account.onboarded
-                        ? "/app"
+                        ? "/dashboard"
                         : planIntentHref(
                             "/onboarding",
                             plan.id === "plus" ? "plus" : null,

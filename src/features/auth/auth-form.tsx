@@ -139,7 +139,7 @@ export function AuthForm({
         safeDestination,
       );
     if (safeDestination) return safeDestination;
-    return planIntent && next === "/app"
+    return planIntent && next === "/dashboard"
       ? planIntentHref("/settings/billing", planIntent)
       : planIntentHref(next, planIntent);
   }

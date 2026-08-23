@@ -21,7 +21,7 @@ async function signIn(page: Page, email: string) {
   await page.getByLabel("Password", { exact: true }).fill("VistaTeacher1!");
   await page.getByRole("button", { name: "Sign in" }).click();
   try {
-    await expect(page).toHaveURL(/\/app$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
   } catch (error) {
     throw new Error(
       `${String(error)}\nBrowser diagnostics:\n${diagnostics.join("\n") || "none"}`,
@@ -172,6 +172,10 @@ test("signs in a seeded educator and protects platform workflows", async ({
   await signIn(page, "community@vista.local");
 
   await expect(
+    page.getByRole("heading", { name: "Welcome back, Alex." }),
+  ).toBeVisible();
+  await page.goto("/app");
+  await expect(
     page.getByRole("button", { name: "Community feed" }),
   ).toBeVisible();
   await expectNoPageOverflow(page);
@@ -215,7 +219,7 @@ test("signs in a seeded educator and protects platform workflows", async ({
   if (await marketingMenu.isVisible()) await marketingMenu.click();
   await expect(
     page.getByRole("link", { name: "Dashboard", exact: true }),
-  ).toHaveAttribute("href", "/app");
+  ).toHaveAttribute("href", "/dashboard");
   await expect(
     page.getByRole("link", { name: "Sign in", exact: true }),
   ).toHaveCount(0);
@@ -266,7 +270,7 @@ test("signs in a seeded educator and protects platform workflows", async ({
   await expectNoPageOverflow(page);
 
   await page.goto("/admin");
-  await expect(page).toHaveURL(/\/app$/);
+  await expect(page).toHaveURL(/\/dashboard$/);
 });
 
 test("keeps authenticated educator routes responsive and accessible", async ({
@@ -382,12 +386,14 @@ test("keeps desktop platform navigation complete and within the viewport", async
     name: "Primary platform navigation",
   });
   await expect(navigation).toBeVisible();
+  await expect(navigation.getByRole("link").first()).toHaveText("Dashboard");
   expect(
     await navigation.evaluate(
       (element) => element.scrollWidth <= element.clientWidth,
     ),
   ).toBe(true);
   for (const label of [
+    "Dashboard",
     "Feed",
     "Discover",
     "Network",
@@ -395,7 +401,6 @@ test("keeps desktop platform navigation complete and within the viewport", async
     "Forum",
     "AI Lesson Builder",
     "Messages",
-    "Dashboard",
   ]) {
     await expect(navigation.getByRole("link", { name: label })).toBeVisible();
   }

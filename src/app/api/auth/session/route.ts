@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = NextResponse.json({
-      next: profileExists ? "/app" : "/onboarding",
+      next: profileExists ? "/dashboard" : "/onboarding",
     });
     response.cookies.set(SESSION_COOKIE_NAME, sessionCookie, {
       httpOnly: true,
