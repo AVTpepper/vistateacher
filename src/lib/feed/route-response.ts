@@ -11,6 +11,10 @@ export function feedErrorResponse(error: unknown): NextResponse | null {
     "not-found": ["Post not found.", 404],
     "not-owner": ["You do not own this post.", 403],
     "not-visible": ["This post is not available.", 404],
+    "not-interactive": [
+      "Activity updates cannot be liked, commented on, shared, or saved.",
+      409,
+    ],
     "already-reported": ["You already reported this post.", 409],
     "invalid-cursor": ["The feed cursor is invalid.", 400],
   } as const;

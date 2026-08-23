@@ -143,6 +143,7 @@ export class FeedActionError extends Error {
       | "not-found"
       | "not-owner"
       | "not-visible"
+      | "not-interactive"
       | "already-reported"
       | "invalid-cursor",
   ) {
@@ -534,6 +535,11 @@ async function assertVisiblePost(
   return post;
 }
 
+function assertInteractivePost(post: FirebaseFirestore.DocumentSnapshot): void {
+  if (post.data()?.type === "activity")
+    throw new FeedActionError("not-interactive");
+}
+
 export async function setPostLiked(
   uid: string,
   postId: string,
@@ -549,6 +555,7 @@ export async function setPostLiked(
       transaction.get(likeRef),
       transaction.get(actorRef),
     ]);
+    assertInteractivePost(post);
     if (liked === like.exists) return;
     if (liked) {
       transaction.create(likeRef, {
@@ -598,6 +605,7 @@ export async function setPostBookmarked(
       assertVisiblePost(transaction, postRef),
       transaction.get(bookmarkRef),
     ]);
+    assertInteractivePost(post);
     if (bookmarked === bookmark.exists) return;
     if (bookmarked)
       transaction.create(bookmarkRef, {
@@ -627,6 +635,7 @@ export async function recordPostShare(
       assertVisiblePost(transaction, postRef),
       transaction.get(shareRef),
     ]);
+    assertInteractivePost(post);
     if (share.exists) return false;
     transaction.create(shareRef, {
       postId,
@@ -653,6 +662,7 @@ export async function addPostComment(
       assertVisiblePost(transaction, postRef),
       transaction.get(userRef),
     ]);
+    assertInteractivePost(post);
     if (!user.exists || user.data()?.status !== "active")
       throw new FeedActionError("inactive");
     const mentions = await resolveMentions(transaction, input.mentionUids);

@@ -7,11 +7,13 @@ import {
   FileText,
   Heart,
   MessageCircle,
+  MessageSquareText,
   MoreHorizontal,
   Paperclip,
   Pencil,
   Send,
   Share2,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
@@ -66,7 +68,66 @@ async function mutation(url: string, method: string, body?: unknown) {
   });
 }
 
-export function PostCard({
+export function PostCard({ initialPost, ...props }: PostCardProps) {
+  if (initialPost.type === "activity")
+    return initialPost.activity ? (
+      <ActivityFeedItem post={initialPost} />
+    ) : null;
+
+  return <InteractivePostCard initialPost={initialPost} {...props} />;
+}
+
+function ActivityFeedItem({ post }: { post: FeedPost }) {
+  const activity = post.activity;
+  if (!activity) return null;
+
+  const ActivityIcon =
+    activity.kind === "forum-thread"
+      ? MessageSquareText
+      : activity.kind === "lesson-published"
+        ? Sparkles
+        : FileText;
+  const activityLabel = `${activity.label.charAt(0).toLocaleLowerCase("en-US")}${activity.label.slice(1)}`;
+
+  return (
+    <article className="border-primary/25 mx-2 flex items-start gap-3 border-l-2 px-4 py-3 sm:mx-4">
+      <ProfileIdentityLink
+        uid={post.author.uid}
+        displayName={post.author.displayName}
+        photoURL={post.author.photoURL}
+        avatarClassName="size-9 rounded-full text-[10px]"
+        showName={false}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm leading-5">
+          <ProfileIdentityLink
+            uid={post.author.uid}
+            displayName={post.author.displayName}
+            photoURL={post.author.photoURL}
+            showAvatar={false}
+            className="mr-1 text-sm"
+          />
+          <span className="text-muted-foreground">{activityLabel}.</span>
+        </p>
+        <Link
+          href={activity.href}
+          className="hover:text-primary mt-1 inline-flex items-center gap-1.5 text-sm font-semibold transition-colors"
+        >
+          <ActivityIcon aria-hidden="true" className="size-3.5 shrink-0" />
+          <span className="truncate">{activity.title}</span>
+        </Link>
+        <time
+          dateTime={post.createdAt}
+          className="text-muted-foreground mt-1 block text-xs"
+        >
+          {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+        </time>
+      </div>
+    </article>
+  );
+}
+
+function InteractivePostCard({
   initialPost,
   initialComments,
   viewer,
