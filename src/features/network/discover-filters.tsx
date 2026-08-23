@@ -3,6 +3,8 @@
 import { Filter, Search } from "lucide-react";
 import { useState } from "react";
 
+import { COUNTRIES } from "@/lib/location/countries";
+
 export function DiscoverFilters({
   values,
   subjects,
@@ -67,14 +69,13 @@ export function DiscoverFilters({
             value={values.grade}
             options={grades}
           />
-          <label className="space-y-1 text-xs font-semibold">
-            <span>Location</span>
-            <input
-              name="location"
-              defaultValue={values.location}
-              className="bg-background h-9 w-full rounded-lg border px-3 text-sm font-normal"
-            />
-          </label>
+          <FilterSelect
+            name="location"
+            label="Location"
+            value={values.location}
+            options={COUNTRIES}
+            emptyLabel="All countries"
+          />
           <label className="flex items-end gap-2 pb-2 text-xs font-semibold">
             <input
               name="verified"
@@ -96,11 +97,13 @@ function FilterSelect({
   label,
   value,
   options,
+  emptyLabel,
 }: {
   name: string;
   label: string;
   value: string;
-  options: string[];
+  options: readonly string[];
+  emptyLabel?: string;
 }) {
   return (
     <label className="space-y-1 text-xs font-semibold">
@@ -110,7 +113,7 @@ function FilterSelect({
         defaultValue={value}
         className="bg-background h-9 w-full rounded-lg border px-2 text-sm font-normal"
       >
-        <option value="">All {label.toLowerCase()}s</option>
+        <option value="">{emptyLabel ?? `All ${label.toLowerCase()}s`}</option>
         {options.map((option) => (
           <option key={option}>{option}</option>
         ))}
