@@ -507,8 +507,10 @@ async function completeGeneration(
                 ratingTotal: 0,
                 ratingAverage: 0,
                 ratingCount: 0,
-                createdAt: FieldValue.serverTimestamp(),
               }),
+          ...(resource.data()?.createdAt
+            ? {}
+            : { createdAt: FieldValue.serverTimestamp() }),
         },
         { merge: true },
       );
@@ -662,8 +664,10 @@ export async function updateLesson(
                 ratingTotal: 0,
                 ratingAverage: 0,
                 ratingCount: 0,
-                createdAt: FieldValue.serverTimestamp(),
               }),
+          ...(resource.data()?.createdAt
+            ? {}
+            : { createdAt: FieldValue.serverTimestamp() }),
         },
         { merge: true },
       );

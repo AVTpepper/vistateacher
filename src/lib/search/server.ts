@@ -30,6 +30,7 @@ export async function searchCommunity(
     educators,
     educatorFallback,
     resources,
+    resourceFallback,
     discussionKeywords,
     discussionFallback,
   ] = await Promise.all([
@@ -44,6 +45,7 @@ export async function searchCommunity(
       .where("tags", "array-contains", token)
       .limit(5)
       .get(),
+    db.collection("resources").where("status", "==", "active").limit(100).get(),
     db
       .collection("forumThreads")
       .where("searchKeywords", "array-contains", token)
@@ -98,15 +100,38 @@ export async function searchCommunity(
   educators.docs.forEach(upsertEducator);
   educatorFallback.docs.forEach(upsertEducator);
 
+  const resourceResults = Array.from(
+    new Map(
+      [...resources.docs, ...resourceFallback.docs].map(
+        (document) => [document.id, document] as const,
+      ),
+    ).values(),
+  )
+    .filter((document) => {
+      const data = document.data();
+      if (data.status !== "active" || data.moderationStatus !== "approved")
+        return false;
+      const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
+      const haystack = normalizeSearchText(
+        [data.title, data.description, data.subject, ...tags]
+          .filter((value) => typeof value === "string")
+          .join(" "),
+      );
+      return (
+        haystack.includes(query) ||
+        queryTokens.some((value) => haystack.includes(value))
+      );
+    })
+    .slice(0, 12)
+    .map((document) => ({
+      id: document.id,
+      title: String(document.data().title),
+      type: String(document.data().type ?? "Resource"),
+    }));
+
   return {
     educators: Array.from(educatorByUid.values()).slice(0, 12),
-    resources: resources.docs
-      .filter((document) => document.data().moderationStatus === "approved")
-      .map((document) => ({
-        id: document.id,
-        title: String(document.data().title),
-        type: String(document.data().type ?? "Resource"),
-      })),
+    resources: resourceResults,
     discussions: forumDiscussionResults(
       Array.from(
         new Map(

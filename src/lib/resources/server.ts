@@ -349,7 +349,6 @@ export async function listResources(
     .collection("resources")
     .where("status", "==", "active")
     .where("moderationStatus", "==", "approved")
-    .orderBy("createdAt", "desc")
     .limit(RESOURCE_LIMIT)
     .get();
   const authorIds = [

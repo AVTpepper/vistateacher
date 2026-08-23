@@ -5,10 +5,10 @@ import {
   ArchiveRestore,
   AtSign,
   Bell,
-  Check,
   CheckCheck,
   Download,
   Heart,
+  Mail,
   MessageSquare,
   Trash2,
   UserPlus,
@@ -18,7 +18,11 @@ import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
-import type { NotificationItem, NotificationPage } from "@/lib/messages/server";
+import {
+  groupNotifications,
+  type NotificationGroup,
+} from "@/features/notifications/notification-groups";
+import type { NotificationPage } from "@/lib/messages/server";
 import { cn } from "@/lib/utils";
 
 type NotificationFilter = "all" | "unread" | "archived";
@@ -33,30 +37,37 @@ export function NotificationsExperience({
   const [page, setPage] = useState(initialPage);
   const [pending, setPending] = useState(false);
   const [filter, setFilter] = useState<NotificationFilter>("all");
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
   const unread = page.notifications.filter(
     (item) => !item.read && !item.archived,
   ).length;
-  const visibleNotifications = page.notifications.filter((item) => {
-    if (filter === "archived") return item.archived;
-    if (filter === "unread") return !item.archived && !item.read;
-    return !item.archived;
-  });
+  const visibleNotifications = groupNotifications(
+    page.notifications.filter((item) => {
+      if (filter === "archived") return item.archived;
+      if (filter === "unread") return !item.archived && !item.read;
+      return !item.archived;
+    }),
+  );
 
   async function updateNotification(
-    notificationId: string | null,
+    notificationIds: string[] | null,
     action: NotificationAction,
+    groupKey?: string,
   ) {
-    if (notificationId) setPendingId(notificationId);
+    if (notificationIds) setPendingKey(groupKey ?? notificationIds[0] ?? null);
     else setPending(true);
-    const response = await fetch("/api/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notificationId, action }),
-    });
-    if (notificationId) setPendingId(null);
+    const responses = await Promise.all(
+      (notificationIds ?? [null]).map((notificationId) =>
+        fetch("/api/notifications", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notificationId, action }),
+        }),
+      ),
+    );
+    if (notificationIds) setPendingKey(null);
     else setPending(false);
-    if (!response.ok) {
+    if (responses.some((response) => !response.ok)) {
       toast.error("We couldn't update notifications.");
       return false;
     }
@@ -64,9 +75,12 @@ export function NotificationsExperience({
       ...current,
       notifications:
         action === "delete"
-          ? current.notifications.filter((item) => item.id !== notificationId)
+          ? current.notifications.filter(
+              (item) => !notificationIds?.includes(item.id),
+            )
           : current.notifications.map((item) => {
-              if (notificationId && item.id !== notificationId) return item;
+              if (notificationIds && !notificationIds.includes(item.id))
+                return item;
               if (action === "mark-read") return { ...item, read: true };
               if (action === "mark-unread") return { ...item, read: false };
               if (action === "archive") return { ...item, archived: true };
@@ -144,11 +158,15 @@ export function NotificationsExperience({
           <div className="surface-card overflow-hidden">
             {visibleNotifications.map((notification) => (
               <NotificationRow
-                key={notification.id}
+                key={notification.key}
                 notification={notification}
-                pending={pendingId === notification.id}
+                pending={pendingKey === notification.key}
                 onAction={(action) =>
-                  void updateNotification(notification.id, action)
+                  void updateNotification(
+                    notification.ids,
+                    action,
+                    notification.key,
+                  )
                 }
               />
             ))}
@@ -191,7 +209,7 @@ function NotificationRow({
   pending,
   onAction,
 }: {
-  notification: NotificationItem;
+  notification: NotificationGroup;
   pending: boolean;
   onAction: (action: NotificationAction) => void;
 }) {
@@ -231,7 +249,11 @@ function NotificationRow({
               onAction(notification.read ? "mark-unread" : "mark-read")
             }
           >
-            <Check aria-hidden="true" className="size-3.5" />
+            {notification.read ? (
+              <Mail aria-hidden="true" className="size-3.5" />
+            ) : (
+              <CheckCheck aria-hidden="true" className="size-3.5" />
+            )}
           </NotificationActionButton>
           <NotificationActionButton
             label={notification.archived ? "Restore" : "Archive"}

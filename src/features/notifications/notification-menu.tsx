@@ -1,22 +1,14 @@
 "use client";
 
-import { Bell, Check, LoaderCircle } from "lucide-react";
+import { Bell, CheckCheck, LoaderCircle, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 
-import type { NotificationItem, NotificationPage } from "@/lib/messages/server";
+import { groupNotifications } from "@/features/notifications/notification-groups";
+import type { NotificationPage } from "@/lib/messages/server";
 import { cn } from "@/lib/utils";
-
-interface NotificationGroup {
-  key: string;
-  ids: string[];
-  message: string;
-  href: string;
-  read: boolean;
-  createdAt: string;
-}
 
 export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
   const router = useRouter();
@@ -58,15 +50,13 @@ export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
   const recent = groupNotifications(active).slice(0, 5);
   const unread = active.filter((item) => !item.read).length;
 
-  function markRead(notificationIds: string[]) {
+  function updateReadState(notificationIds: string[], read: boolean) {
     setPage((current) =>
       current
         ? {
             ...current,
             notifications: current.notifications.map((item) =>
-              notificationIds.includes(item.id)
-                ? { ...item, read: true }
-                : item,
+              notificationIds.includes(item.id) ? { ...item, read } : item,
             ),
           }
         : current,
@@ -75,7 +65,10 @@ export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
       const request = fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notificationId, action: "mark-read" }),
+        body: JSON.stringify({
+          notificationId,
+          action: read ? "mark-read" : "mark-unread",
+        }),
         keepalive: true,
       });
       pendingReads.current.push(request);
@@ -151,7 +144,8 @@ export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
                     <Link
                       href={notification.href}
                       onClick={() => {
-                        if (!notification.read) markRead(notification.ids);
+                        if (!notification.read)
+                          updateReadState(notification.ids, true);
                         setOpen(false);
                       }}
                       className="hover:text-primary min-w-0 flex-1 py-1"
@@ -170,17 +164,26 @@ export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
                         })}
                       </span>
                     </Link>
-                    {!notification.read && (
-                      <button
-                        type="button"
-                        aria-label={`Mark as read: ${notification.message}`}
-                        title="Mark as read"
-                        onClick={() => markRead(notification.ids)}
-                        className="text-muted-foreground hover:bg-muted hover:text-foreground grid size-11 shrink-0 place-items-center rounded-lg"
-                      >
-                        <Check aria-hidden="true" className="size-4" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      aria-label={`${notification.read ? "Mark as unread" : "Mark as read"}: ${notification.message}`}
+                      title={
+                        notification.read ? "Mark as unread" : "Mark as read"
+                      }
+                      onClick={() =>
+                        updateReadState(notification.ids, !notification.read)
+                      }
+                      className="text-muted-foreground hover:bg-muted hover:text-foreground flex min-h-11 shrink-0 items-center gap-1.5 self-center rounded-lg px-2 text-xs font-semibold"
+                    >
+                      {notification.read ? (
+                        <Mail aria-hidden="true" className="size-3.5" />
+                      ) : (
+                        <CheckCheck aria-hidden="true" className="size-3.5" />
+                      )}
+                      <span>
+                        {notification.read ? "Mark as unread" : "Mark as read"}
+                      </span>
+                    </button>
                   </div>
                 ))
               ) : (
@@ -217,51 +220,4 @@ export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
       )}
     </div>
   );
-}
-
-function groupNotifications(
-  notifications: NotificationItem[],
-): NotificationGroup[] {
-  const groups = new Map<string, NotificationItem[]>();
-  for (const notification of notifications) {
-    const aggregate =
-      (notification.type === "post-like" ||
-        notification.type === "post-comment") &&
-      notification.entityId;
-    const key = aggregate
-      ? `${notification.type}:${notification.entityId}`
-      : notification.id;
-    groups.set(key, [...(groups.get(key) ?? []), notification]);
-  }
-
-  return [...groups.entries()].map(([key, items]) => {
-    const latest = items[0];
-    const names = [
-      ...new Set(
-        items.flatMap((item) => (item.actorName ? [item.actorName] : [])),
-      ),
-    ];
-    const action = latest.type === "post-like" ? "liked" : "commented on";
-    return {
-      key,
-      ids: items.map((item) => item.id),
-      message:
-        items.length > 1 && names.length
-          ? `${formatActorNames(names, items.length)} ${action} your post.`
-          : latest.message,
-      href: latest.href,
-      read: items.every((item) => item.read),
-      createdAt: latest.createdAt,
-    };
-  });
-}
-
-function formatActorNames(names: string[], total: number) {
-  if (total === 1) return names[0];
-  if (total === 2 && names.length >= 2) return `${names[0]} and ${names[1]}`;
-  const visibleNames = names.slice(0, 3);
-  const remaining = total - visibleNames.length;
-  if (remaining > 0)
-    return `${visibleNames.join(", ")}, and ${remaining} ${remaining === 1 ? "other" : "others"}`;
-  return `${visibleNames.slice(0, -1).join(", ")}, and ${visibleNames.at(-1)}`;
 }

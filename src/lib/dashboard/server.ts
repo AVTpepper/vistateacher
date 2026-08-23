@@ -352,13 +352,32 @@ export async function getDashboardData(
         period: "month",
         href: "/resources",
       },
-      {
-        label: "AI generations",
-        used: number(monthlyUsage.data()?.aiLessons),
-        limit: entitlements.aiLessonsPerMonth,
-        period: "month",
-        href: "/ai-lessons",
-      },
+      ...(plan === "plus"
+        ? [
+            {
+              label: "AI generations",
+              used: number(monthlyUsage.data()?.aiLessons),
+              limit: entitlements.aiLessonsPerMonth,
+              period: "month" as const,
+              href: "/ai-lessons",
+            },
+          ]
+        : [
+            {
+              label: "New AI lessons",
+              used: number(monthlyUsage.data()?.aiLessonCreations),
+              limit: entitlements.aiLessonCreationsPerMonth,
+              period: "month" as const,
+              href: "/ai-lessons",
+            },
+            {
+              label: "AI refinements",
+              used: number(monthlyUsage.data()?.aiRefinements),
+              limit: entitlements.aiRefinementsPerMonth,
+              period: "month" as const,
+              href: "/ai-lessons",
+            },
+          ]),
       {
         label: "Lesson exports",
         used: number(monthlyUsage.data()?.lessonExports),

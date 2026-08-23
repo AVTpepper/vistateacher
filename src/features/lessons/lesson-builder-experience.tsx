@@ -26,6 +26,7 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -1103,7 +1104,7 @@ export function LessonBuilderExperience({
         }),
       );
       storeLesson(updated);
-      toast.success("Lesson published! It's now visible to the community.");
+      toast.success("Lesson published to Resources and community search.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Publish failed.");
     } finally {
@@ -1132,11 +1133,23 @@ export function LessonBuilderExperience({
         </div>
         <div className="w-full sm:w-auto">
           <div className="flex flex-wrap gap-2 text-xs">
-            {[
-              ["Lessons", workspace.usage.creations],
-              ["Refinements", workspace.usage.refinements],
-              ["Exports", workspace.usage.exports],
-            ].map(([label, usage]) => (
+            {(workspace.plan === "plus"
+              ? [
+                  [
+                    "AI generations",
+                    {
+                      used: workspace.usage.used,
+                      limit: workspace.usage.limit,
+                    },
+                  ],
+                  ["Exports", workspace.usage.exports],
+                ]
+              : [
+                  ["New lessons", workspace.usage.creations],
+                  ["Refinements", workspace.usage.refinements],
+                  ["Exports", workspace.usage.exports],
+                ]
+            ).map(([label, usage]) => (
               <span
                 key={String(label)}
                 className="bg-muted rounded-lg px-3 py-2"
@@ -1147,10 +1160,6 @@ export function LessonBuilderExperience({
                   "Unlimited"}
               </span>
             ))}
-            <span className="bg-muted rounded-lg px-3 py-2">
-              <strong>{workspace.usage.used}</strong> / {workspace.usage.limit}{" "}
-              AI generations this month
-            </span>
           </div>
         </div>
       </header>
@@ -1182,24 +1191,34 @@ export function LessonBuilderExperience({
           const isExpanded = expandedCategories[category.key];
           return (
             <div key={category.key}>
-              <button
-                type="button"
-                onClick={() =>
-                  setExpandedCategories((prev) => ({
-                    ...prev,
-                    [category.key]: !prev[category.key],
-                  }))
-                }
-                className="text-primary mb-2 flex items-center gap-2 text-xs font-bold"
-              >
-                {isExpanded ? (
-                  <ChevronDown className="size-4" />
-                ) : (
-                  <ChevronRight className="size-4" />
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedCategories((prev) => ({
+                      ...prev,
+                      [category.key]: !prev[category.key],
+                    }))
+                  }
+                  className="text-primary flex items-center gap-2 text-xs font-bold"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="size-4" />
+                  ) : (
+                    <ChevronRight className="size-4" />
+                  )}
+                  <Icon className="size-4" />
+                  {category.label} ({items.length})
+                </button>
+                {category.key === "published" && (
+                  <Link
+                    href="/resources"
+                    className="text-muted-foreground hover:text-primary text-xs font-semibold hover:underline"
+                  >
+                    Browse in Resources
+                  </Link>
                 )}
-                <Icon className="size-4" />
-                {category.label} ({items.length})
-              </button>
+              </div>
               {isExpanded && (
                 <div className="flex flex-wrap gap-2">
                   {items.map((item) => (
