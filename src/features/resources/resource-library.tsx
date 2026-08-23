@@ -126,7 +126,7 @@ export function ResourceLibrary({
         </section>
       )}
       <div className="mb-4 flex items-center gap-3">
-        <label className="surface-card relative max-w-md flex-1">
+        <label className="surface-card input-shell relative max-w-md flex-1 overflow-hidden">
           <Search
             aria-hidden="true"
             className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2"
@@ -136,7 +136,7 @@ export function ResourceLibrary({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search resources, tags, subjects..."
-            className="h-11 w-full bg-transparent pr-3 pl-9 text-sm outline-none"
+            className="h-11 w-full bg-transparent pr-3 pl-9 text-sm outline-none focus-visible:outline-none"
           />
         </label>
         <button

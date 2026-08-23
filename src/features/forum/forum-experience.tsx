@@ -159,7 +159,7 @@ export function ForumExperience({
         />
       </header>
 
-      <label className="surface-card relative mb-5 block max-w-2xl">
+      <label className="surface-card input-shell relative mb-5 block max-w-2xl overflow-hidden">
         <Search
           aria-hidden="true"
           className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2"
@@ -170,7 +170,7 @@ export function ForumExperience({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search discussions, questions, and tags..."
-          className="h-11 w-full bg-transparent pr-3 pl-9 text-sm outline-none"
+          className="h-11 w-full bg-transparent pr-3 pl-9 text-sm outline-none focus-visible:outline-none"
         />
       </label>
 
