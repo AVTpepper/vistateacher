@@ -41,6 +41,22 @@ export type NormalizedBillingEvent =
       status: SubscriptionStatus;
       currentPeriodEnd: Date | null;
       cancelAtPeriodEnd: boolean;
+    }
+  | {
+      id: string;
+      type: "invoice.paid";
+      uid: string;
+      createdAt: Date;
+      customerId: string;
+      subscriptionId: string;
+      invoiceId: string;
+      invoiceNumber: string | null;
+      customerEmail: string | null;
+      customerName: string | null;
+      amountPaid: number;
+      currency: string;
+      hostedInvoiceUrl: string | null;
+      invoicePdfUrl: string | null;
     };
 
 export interface BillingProvider {

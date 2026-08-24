@@ -145,6 +145,7 @@ Use `plus@vista.local` for Plus workflows. Automated/local AI uses `AI_PROVIDER=
 - [ ] Choose monthly and yearly Plus and confirm `/settings/billing/checkout` embeds the Stripe form inside VistaTeacher instead of navigating to `checkout.stripe.com`.
 - [ ] Complete monthly and yearly Checkout with `4242 4242 4242 4242`, a future expiry such as `12/34`, any three-digit CVC, and any valid postal code.
 - [ ] Confirm the webhook changes the account to Plus; the success redirect alone must not grant access.
+- [ ] Confirm a successful paid invoice sends the account email a receipt with the amount, invoice reference, and Stripe-hosted invoice link.
 - [ ] Cancel Checkout and confirm the user returns to authenticated billing with their current plan unchanged.
 - [ ] Open Customer Portal and verify cancellation/reactivation states reconcile through webhooks.
 

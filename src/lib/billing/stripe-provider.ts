@@ -117,6 +117,33 @@ class StripeBillingProvider implements BillingProvider {
       };
     }
 
+    if (event.type === "invoice.paid") {
+      const invoice = event.data.object;
+      const subscriptionDetails = invoice.parent?.subscription_details;
+      const uid = subscriptionDetails?.metadata?.uid;
+      const customerId = stripeId(invoice.customer);
+      const subscriptionId = stripeId(
+        subscriptionDetails?.subscription ?? null,
+      );
+      if (!uid || !customerId || !subscriptionId) return null;
+      return {
+        id: event.id,
+        type: "invoice.paid",
+        uid,
+        createdAt,
+        customerId,
+        subscriptionId,
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.number,
+        customerEmail: invoice.customer_email,
+        customerName: invoice.customer_name,
+        amountPaid: invoice.amount_paid,
+        currency: invoice.currency,
+        hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
+        invoicePdfUrl: invoice.invoice_pdf ?? null,
+      };
+    }
+
     if (
       event.type !== "customer.subscription.created" &&
       event.type !== "customer.subscription.updated" &&

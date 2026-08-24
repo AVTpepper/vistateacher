@@ -246,7 +246,10 @@ export async function reconcileBillingEvent(
     const priorEventAt = date(
       subscriptionSnapshot.data()?.stripeEventCreatedAt,
     );
-    const applied = !priorEventAt || priorEventAt <= event.createdAt;
+    const applied =
+      event.type === "invoice.paid" ||
+      !priorEventAt ||
+      priorEventAt <= event.createdAt;
     if (event.type === "checkout.completed" && applied) {
       const prior = readSubscription(subscriptionSnapshot.data() ?? {});
       transaction.update(subscriptionRef, {
@@ -279,6 +282,12 @@ export async function reconcileBillingEvent(
     transaction.create(eventRef, {
       type: event.type,
       uid: event.uid,
+      ...(event.type === "invoice.paid"
+        ? {
+            invoiceId: event.invoiceId,
+            receiptSentAt: null,
+          }
+        : {}),
       stripeCreatedAt: Timestamp.fromDate(event.createdAt),
       applied,
       processedAt: FieldValue.serverTimestamp(),

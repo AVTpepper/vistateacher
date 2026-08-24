@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { sendPaidInvoiceReceipt } from "@/lib/billing/receipt";
 import { getBillingProvider } from "@/lib/billing/stripe-provider";
 import { reconcileBillingEvent } from "@/lib/billing/server";
 
@@ -8,15 +9,26 @@ export async function POST(request: Request) {
   if (!signature)
     return NextResponse.json({ error: "Missing signature." }, { status: 400 });
 
+  let event;
   try {
-    const event = getBillingProvider().constructWebhookEvent(
+    event = getBillingProvider().constructWebhookEvent(
       await request.text(),
       signature,
     );
-    if (!event) return NextResponse.json({ received: true, applied: false });
-    const applied = await reconcileBillingEvent(event);
-    return NextResponse.json({ received: true, applied });
   } catch {
     return NextResponse.json({ error: "Invalid webhook." }, { status: 400 });
+  }
+  if (!event) return NextResponse.json({ received: true, applied: false });
+
+  try {
+    const applied = await reconcileBillingEvent(event);
+    if (event.type === "invoice.paid") await sendPaidInvoiceReceipt(event);
+    return NextResponse.json({ received: true, applied });
+  } catch (error) {
+    console.error("Billing webhook processing failed", event.id, error);
+    return NextResponse.json(
+      { error: "Webhook processing failed." },
+      { status: 500 },
+    );
   }
 }
