@@ -211,7 +211,12 @@ export async function getNetworkList(
       verified: false,
     });
     return candidates
-      .filter((candidate) => candidate.connectionStatus === "none")
+      .filter(
+        (candidate) =>
+          candidate.connectionStatus === "none" ||
+          (candidate.connectionStatus === "pending" &&
+            candidate.connectionDirection === "outgoing"),
+      )
       .sort((left, right) => {
         const score = (profile: ProfileDocument) =>
           Number(profile.gradeLevel === current.gradeLevel) +

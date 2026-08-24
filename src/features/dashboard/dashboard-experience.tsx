@@ -344,13 +344,20 @@ export function DashboardExperience({
                       {profile.gradeLevel} · {profile.subjects[0]}
                     </p>
                   </div>
-                  <FollowButton
-                    targetUid={profile.uid}
-                    connectionStatus={connectionStatus}
-                    connectionDirection={connectionDirection}
-                    mode="connect"
-                    className="shrink-0 whitespace-nowrap"
-                  />
+                  {connectionStatus === "pending" &&
+                  connectionDirection === "outgoing" ? (
+                    <span className="max-w-28 shrink-0 rounded-lg bg-amber-100 px-2 py-1 text-center text-[10px] leading-4 font-semibold text-amber-900 sm:max-w-none sm:whitespace-nowrap dark:bg-amber-900 dark:text-amber-100">
+                      Connection request sent
+                    </span>
+                  ) : (
+                    <FollowButton
+                      targetUid={profile.uid}
+                      connectionStatus={connectionStatus}
+                      connectionDirection={connectionDirection}
+                      mode="connect"
+                      className="shrink-0 whitespace-nowrap"
+                    />
+                  )}
                 </div>
               ),
             )
