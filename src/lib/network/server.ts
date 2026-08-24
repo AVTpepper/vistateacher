@@ -172,6 +172,29 @@ export async function discoverEducators(
     .slice(0, 30);
 }
 
+export async function getRegisteredUserCountries(): Promise<string[]> {
+  const snapshot = await adminDb()
+    .collection("users")
+    .where("status", "==", "active")
+    .select("country")
+    .get();
+  const countries = new Map<string, string>();
+
+  for (const document of snapshot.docs) {
+    const rawCountry = document.data().country;
+    if (typeof rawCountry !== "string") continue;
+
+    const country = rawCountry.trim().replace(/\s+/g, " ");
+    if (country.length < 2 || country.length > 80) continue;
+    const key = country.toLocaleLowerCase("en-US");
+    if (!countries.has(key)) countries.set(key, country);
+  }
+
+  return [...countries.values()].sort((left, right) =>
+    left.localeCompare(right, "en", { sensitivity: "base" }),
+  );
+}
+
 export async function getNetworkList(
   viewerUid: string,
   profileUid: string,

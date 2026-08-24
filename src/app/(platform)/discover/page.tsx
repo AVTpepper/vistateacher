@@ -5,7 +5,10 @@ import Link from "next/link";
 import { DiscoverFilters } from "@/features/network/discover-filters";
 import { EducatorCard } from "@/features/network/educator-card";
 import { requireCurrentAccount } from "@/lib/auth/session";
-import { discoverEducators } from "@/lib/network/server";
+import {
+  discoverEducators,
+  getRegisteredUserCountries,
+} from "@/lib/network/server";
 import { discoveryFiltersSchema } from "@/schemas/network";
 
 export const metadata: Metadata = { title: "Discover educators" };
@@ -52,7 +55,10 @@ export default async function DiscoverPage({
     location: first(params.location),
     verified: first(params.verified) === "true",
   });
-  const educators = await discoverEducators(account.uid, filters);
+  const [educators, countries] = await Promise.all([
+    discoverEducators(account.uid, filters),
+    getRegisteredUserCountries(),
+  ]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 lg:px-6">
@@ -71,7 +77,12 @@ export default async function DiscoverPage({
         </Link>
       </div>
       <div className="mt-6">
-        <DiscoverFilters values={filters} subjects={subjects} grades={grades} />
+        <DiscoverFilters
+          values={filters}
+          subjects={subjects}
+          grades={grades}
+          countries={countries}
+        />
       </div>
       <div className="mt-5 flex items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">

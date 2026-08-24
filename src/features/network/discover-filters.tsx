@@ -3,12 +3,11 @@
 import { Filter, Search } from "lucide-react";
 import { useState } from "react";
 
-import { COUNTRIES } from "@/lib/location/countries";
-
 export function DiscoverFilters({
   values,
   subjects,
   grades,
+  countries,
 }: {
   values: {
     query: string;
@@ -19,6 +18,7 @@ export function DiscoverFilters({
   };
   subjects: string[];
   grades: string[];
+  countries: string[];
 }) {
   const [showFilters, setShowFilters] = useState(
     Boolean(
@@ -73,7 +73,7 @@ export function DiscoverFilters({
             name="location"
             label="Location"
             value={values.location}
-            options={COUNTRIES}
+            options={countries}
             emptyLabel="All countries"
           />
           <label className="flex items-end gap-2 pb-2 text-xs font-semibold">

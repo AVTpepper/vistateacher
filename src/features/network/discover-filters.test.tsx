@@ -16,6 +16,7 @@ describe("DiscoverFilters", () => {
         }}
         subjects={["Mathematics"]}
         grades={["Elementary"]}
+        countries={["Denmark", "Sweden"]}
       />,
     );
 
@@ -24,6 +25,6 @@ describe("DiscoverFilters", () => {
 
     expect(location).toHaveValue("Sweden");
     expect(optionLabels).toContain("All countries");
-    expect(optionLabels).toContain("United States");
+    expect(optionLabels).toEqual(["All countries", "Denmark", "Sweden"]);
   });
 });
