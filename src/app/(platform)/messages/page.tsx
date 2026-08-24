@@ -29,14 +29,13 @@ export default async function MessagesPage({
   const activeId =
     requestedId && conversations.some((item) => item.id === requestedId)
       ? requestedId
-      : composeConversationId
-        ? composeConversationId
-        : (conversations[0]?.id ?? null);
+      : composeConversationId;
   const initialMessages = activeId
     ? await getMessagePage(account.uid, { conversationId: activeId })
     : null;
   return (
     <MessagesExperience
+      key={activeId ?? "inbox"}
       viewer={{
         uid: account.uid,
         displayName: account.displayName ?? "Educator",
