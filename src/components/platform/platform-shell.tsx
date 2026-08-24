@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { LogoutButton } from "@/features/auth/logout-button";
@@ -61,9 +61,14 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const mobileDrawerRef = useRef<HTMLElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+  const contentScrollRef = useRef<HTMLDivElement>(null);
   const profileHref = account.onboarded ? "/profile" : "/onboarding";
   const immersiveMessages = pathname.startsWith("/messages");
   const closeMobileMenu = () => setMobileOpen(false);
+
+  useLayoutEffect(() => {
+    contentScrollRef.current?.scrollTo({ left: 0, top: 0, behavior: "auto" });
+  }, [pathname]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -176,7 +181,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   );
 
   return (
-    <div className="platform-shell bg-background flex min-h-dvh flex-col">
+    <div className="platform-shell bg-background flex h-dvh min-h-0 flex-col overflow-hidden">
       <PresenceHeartbeat />
       <div
         aria-hidden={!mobileOpen}
@@ -412,9 +417,13 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
         </nav>
       </header>
       <div
+        ref={contentScrollRef}
+        id="platform-scroll-container"
         className={cn(
           "flex min-h-0 flex-1 flex-col",
-          immersiveMessages && "overflow-hidden",
+          immersiveMessages
+            ? "overflow-hidden"
+            : "overflow-y-auto overscroll-y-none",
         )}
       >
         <main className={cn("flex-1", immersiveMessages && "min-h-0")}>

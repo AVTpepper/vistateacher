@@ -18,14 +18,18 @@ export default function SettingsLayout({
     const position = pendingScroll.current;
     if (!position) return;
     pendingScroll.current = null;
-    const root = document.documentElement;
-    const previousBehavior = root.style.scrollBehavior;
-    root.style.scrollBehavior = "auto";
-    window.scrollTo(position);
-    root.style.scrollBehavior = previousBehavior;
+    const frame = window.requestAnimationFrame(() => {
+      const scroller = document.getElementById("platform-scroll-container");
+      if (scroller) scroller.scrollTo({ ...position, behavior: "auto" });
+      else window.scrollTo(position);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [pathname]);
   const preserveScroll = () => {
-    pendingScroll.current = { left: window.scrollX, top: window.scrollY };
+    const scroller = document.getElementById("platform-scroll-container");
+    pendingScroll.current = scroller
+      ? { left: scroller.scrollLeft, top: scroller.scrollTop }
+      : { left: window.scrollX, top: window.scrollY };
   };
   const isActive = (href: string) =>
     href === "/settings"

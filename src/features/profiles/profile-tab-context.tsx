@@ -40,11 +40,9 @@ export function ProfileTabProvider({
     const position = pendingScroll.current;
     if (!position) return;
     pendingScroll.current = null;
-    const root = document.documentElement;
-    const previousBehavior = root.style.scrollBehavior;
-    root.style.scrollBehavior = "auto";
-    window.scrollTo(position);
-    root.style.scrollBehavior = previousBehavior;
+    const scroller = document.getElementById("platform-scroll-container");
+    if (scroller) scroller.scrollTo({ ...position, behavior: "auto" });
+    else window.scrollTo(position);
   }, [activeTab]);
 
   useEffect(() => {
@@ -54,7 +52,10 @@ export function ProfileTabProvider({
   }, []);
 
   const selectTab = useCallback((tab: ProfileTab) => {
-    pendingScroll.current = { left: window.scrollX, top: window.scrollY };
+    const scroller = document.getElementById("platform-scroll-container");
+    pendingScroll.current = scroller
+      ? { left: scroller.scrollLeft, top: scroller.scrollTop }
+      : { left: window.scrollX, top: window.scrollY };
     setActiveTab(tab);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", tab);
