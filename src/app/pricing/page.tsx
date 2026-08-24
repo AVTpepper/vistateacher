@@ -35,7 +35,6 @@ export default async function PricingPage() {
       eyebrow="Simple plans"
       title="Begin with community. Add Plus for deeper tools."
       intro="Core professional participation is included with Community access. Plus expands limits and unlocks planning, export, and analytics tools."
-      signedIn={Boolean(account)}
     >
       <div className="grid gap-6 md:grid-cols-2">
         {billingPlans.map((plan) => (
