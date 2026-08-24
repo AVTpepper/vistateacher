@@ -90,7 +90,7 @@ function ActivityFeedItem({ post }: { post: FeedPost }) {
   const activityLabel = `${activity.label.charAt(0).toLocaleLowerCase("en-US")}${activity.label.slice(1)}`;
 
   return (
-    <article className="border-primary/25 mx-2 flex items-start gap-3 border-l-2 px-4 py-3 sm:mx-4">
+    <article className="border-primary/25 mx-2 flex max-w-full min-w-0 items-start gap-3 border-l-2 px-4 py-3 sm:mx-4">
       <ProfileIdentityLink
         uid={post.author.uid}
         displayName={post.author.displayName}
@@ -99,22 +99,29 @@ function ActivityFeedItem({ post }: { post: FeedPost }) {
         showName={false}
       />
       <div className="min-w-0 flex-1">
-        <p className="text-sm leading-5">
+        <p className="flex min-w-0 flex-wrap items-baseline text-sm leading-5">
           <ProfileIdentityLink
             uid={post.author.uid}
             displayName={post.author.displayName}
             photoURL={post.author.photoURL}
             showAvatar={false}
-            className="mr-1 text-sm"
+            className="mr-1 max-w-full text-sm"
           />
-          <span className="text-muted-foreground">{activityLabel}.</span>
+          <span className="text-muted-foreground min-w-0 [overflow-wrap:anywhere]">
+            {activityLabel}.
+          </span>
         </p>
         <Link
           href={activity.href}
-          className="hover:text-primary mt-1 inline-flex items-center gap-1.5 text-sm font-semibold transition-colors"
+          className="hover:text-primary mt-1 flex max-w-full min-w-0 items-start gap-1.5 text-left text-sm font-semibold transition-colors"
         >
-          <ActivityIcon aria-hidden="true" className="size-3.5 shrink-0" />
-          <span className="truncate">{activity.title}</span>
+          <ActivityIcon
+            aria-hidden="true"
+            className="mt-0.5 size-3.5 shrink-0"
+          />
+          <span className="min-w-0 [overflow-wrap:anywhere] whitespace-normal">
+            {activity.title}
+          </span>
         </Link>
         <time
           dateTime={post.createdAt}
@@ -476,12 +483,12 @@ function InteractivePostCard({
         {post.type === "activity" && post.activity ? (
           <Link
             href={post.activity.href}
-            className="bg-muted/35 hover:border-primary/25 block rounded-xl border p-4 transition-colors"
+            className="bg-muted/35 hover:border-primary/25 block min-w-0 rounded-xl border p-4 transition-colors"
           >
-            <span className="text-muted-foreground text-xs font-semibold">
+            <span className="text-muted-foreground block min-w-0 text-xs font-semibold [overflow-wrap:anywhere]">
               {post.activity.label}
             </span>
-            <span className="mt-1 block font-serif text-xl leading-7">
+            <span className="mt-1 block min-w-0 font-serif text-xl leading-7 [overflow-wrap:anywhere]">
               {post.activity.title}
             </span>
             <span className="text-primary mt-2 block text-xs font-bold">

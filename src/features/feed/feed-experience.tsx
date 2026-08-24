@@ -139,7 +139,7 @@ export function FeedExperience({ initialPage, account }: FeedExperienceProps) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto w-full max-w-2xl min-w-0 space-y-4">
       <div className="surface-card flex gap-1 p-1">
         {tabs.map((tab) => (
           <button
