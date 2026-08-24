@@ -32,6 +32,7 @@ export default function SettingsLayout({
         >
           <Link
             href="/settings/profile"
+            scroll={false}
             aria-current={isActive("/settings/profile") ? "page" : undefined}
             className={cn(
               "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
@@ -45,6 +46,7 @@ export default function SettingsLayout({
           </Link>
           <Link
             href="/settings"
+            scroll={false}
             aria-current={isActive("/settings") ? "page" : undefined}
             className={cn(
               "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
@@ -58,6 +60,7 @@ export default function SettingsLayout({
           </Link>
           <Link
             href="/settings/billing"
+            scroll={false}
             aria-current={isActive("/settings/billing") ? "page" : undefined}
             className={cn(
               "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",

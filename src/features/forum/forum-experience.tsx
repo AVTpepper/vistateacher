@@ -101,10 +101,6 @@ export function ForumExperience({
   useEffect(() => {
     if (!showThreads) return;
     contentHeadingRef.current?.focus({ preventScroll: true });
-    contentHeadingRef.current?.scrollIntoView({
-      behavior: "instant",
-      block: "start",
-    });
   }, [selectedCategory?.id, showThreads]);
 
   async function loadMore() {

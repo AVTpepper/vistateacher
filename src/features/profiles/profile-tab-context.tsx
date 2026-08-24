@@ -43,14 +43,8 @@ export function ProfileTabProvider({
     setActiveTab(tab);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", tab);
-    url.hash = "profile-content";
+    url.hash = "";
     window.history.pushState(null, "", url);
-    window.requestAnimationFrame(() => {
-      document.getElementById("profile-content")?.scrollIntoView?.({
-        block: "start",
-        behavior: "smooth",
-      });
-    });
   }, []);
 
   const value = useMemo(
