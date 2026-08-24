@@ -336,7 +336,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                     My Resources
                   </Link>
                   <Link
-                    href="/pricing"
+                    href="/settings/billing"
                     onClick={() => setUserMenuOpen(false)}
                     className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
                   >
