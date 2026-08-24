@@ -5,30 +5,117 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
+import {
+  collection,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+} from "firebase/firestore";
+import { toast } from "sonner";
 
 import { groupNotifications } from "@/features/notifications/notification-groups";
-import type { NotificationPage } from "@/lib/messages/server";
+import { refreshFirebaseClientAuth } from "@/lib/firebase/client-auth";
+import type { NotificationItem, NotificationPage } from "@/lib/messages/server";
 import { cn } from "@/lib/utils";
 
-export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
+export function NotificationMenu({
+  uid,
+  onOpen,
+}: {
+  uid: string;
+  onOpen?: () => void;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState<NotificationPage | null>(null);
   const [loading, setLoading] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
   const pendingReads = useRef<Promise<Response>[]>([]);
+  const liveConnected = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
     void fetch("/api/notifications", { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) return;
-        setPage((await response.json()) as NotificationPage);
+        if (!liveConnected.current) {
+          setPage((await response.json()) as NotificationPage);
+        }
       })
       .catch(() => undefined)
       .finally(() => setLoading(false));
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    let receivedInitialSnapshot = false;
+
+    void refreshFirebaseClientAuth()
+      .then((client) => {
+        if (cancelled) return;
+        const notificationQuery = query(
+          collection(client.db, `users/${uid}/notifications`),
+          orderBy("createdAt", "desc"),
+          limit(30),
+        );
+        unsubscribe = onSnapshot(
+          notificationQuery,
+          (snapshot) => {
+            liveConnected.current = true;
+            const notifications = snapshot.docs.map((document) => {
+              const data = document.data();
+              const createdAt = data.createdAt?.toDate?.() as Date | undefined;
+              return {
+                id: document.id,
+                type: String(data.type ?? "update"),
+                actorId: typeof data.actorId === "string" ? data.actorId : null,
+                actorName:
+                  typeof data.actorName === "string" ? data.actorName : null,
+                entityId:
+                  typeof data.entityId === "string" ? data.entityId : null,
+                message: String(data.message ?? "You have a new update."),
+                href: String(data.href ?? "/app"),
+                read: data.read === true,
+                archived: data.archived === true,
+                createdAt: (createdAt ?? new Date()).toISOString(),
+              } satisfies NotificationItem;
+            });
+            setPage({ notifications, nextCursor: null });
+            setLoading(false);
+
+            if (receivedInitialSnapshot) {
+              const additions = snapshot
+                .docChanges()
+                .filter((change) => change.type === "added");
+              if (additions.length) {
+                const newest = notifications.find(
+                  (item) => item.id === additions[0]?.doc.id,
+                );
+                if (newest) {
+                  toast.message(newest.message, {
+                    action: {
+                      label: "View",
+                      onClick: () => router.push(newest.href),
+                    },
+                  });
+                }
+              }
+            }
+            receivedInitialSnapshot = true;
+          },
+          () => setLoading(false),
+        );
+      })
+      .catch(() => setLoading(false));
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, [router, uid]);
 
   useEffect(() => {
     if (!open) return;

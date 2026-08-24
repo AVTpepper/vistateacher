@@ -265,7 +265,10 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
               }}
             />
           </div>
-          <NotificationMenu onOpen={() => setUserMenuOpen(false)} />
+          <NotificationMenu
+            uid={account.uid}
+            onOpen={() => setUserMenuOpen(false)}
+          />
           <div className="relative">
             <button
               type="button"
