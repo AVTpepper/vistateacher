@@ -3,6 +3,7 @@
 import { CreditCard, LockKeyhole, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLayoutEffect, useRef } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -12,13 +13,27 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const pendingScroll = useRef<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const position = pendingScroll.current;
+    if (!position) return;
+    pendingScroll.current = null;
+    const root = document.documentElement;
+    const previousBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(position);
+    root.style.scrollBehavior = previousBehavior;
+  }, [pathname]);
+  const preserveScroll = () => {
+    pendingScroll.current = { left: window.scrollX, top: window.scrollY };
+  };
   const isActive = (href: string) =>
     href === "/settings"
       ? pathname === href
       : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 lg:px-6">
+    <div className="mx-auto max-w-5xl px-4 py-6 [overflow-anchor:none] lg:px-6">
       <div className="mb-6">
         <p className="text-primary font-mono text-[10px] font-bold tracking-widest uppercase">
           Account
@@ -33,6 +48,7 @@ export default function SettingsLayout({
           <Link
             href="/settings/profile"
             scroll={false}
+            onClick={preserveScroll}
             aria-current={isActive("/settings/profile") ? "page" : undefined}
             className={cn(
               "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
@@ -47,6 +63,7 @@ export default function SettingsLayout({
           <Link
             href="/settings"
             scroll={false}
+            onClick={preserveScroll}
             aria-current={isActive("/settings") ? "page" : undefined}
             className={cn(
               "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
@@ -61,6 +78,7 @@ export default function SettingsLayout({
           <Link
             href="/settings/billing"
             scroll={false}
+            onClick={preserveScroll}
             aria-current={isActive("/settings/billing") ? "page" : undefined}
             className={cn(
               "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",

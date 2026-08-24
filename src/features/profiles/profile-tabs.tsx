@@ -37,7 +37,7 @@ export function ProfileTabs({
       <nav
         id="profile-content"
         aria-label="Profile sections"
-        className="surface-card mt-4 flex gap-1 p-1"
+        className="surface-card mt-4 flex gap-1 p-1 [overflow-anchor:none]"
       >
         {tabs.map(({ key, label, icon: Icon }) => (
           <ProfileTabButton
@@ -58,7 +58,7 @@ export function ProfileTabs({
         ))}
       </nav>
 
-      <div className="mt-4">
+      <div className="mt-4 [overflow-anchor:none]">
         {activeTab === "posts" &&
           (posts.length ? (
             <ProfilePostList initialPosts={posts} viewer={viewer} />

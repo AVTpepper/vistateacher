@@ -128,7 +128,7 @@ export function ForumExperience({
   const showingThreads = showThreads || searchingForum;
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl [overflow-anchor:none]">
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl">Forum</h1>
@@ -209,6 +209,7 @@ export function ForumExperience({
             <div className="mb-4 flex items-center gap-2 text-sm">
               <Link
                 href="/forum"
+                scroll={false}
                 className="text-muted-foreground hover:text-foreground"
               >
                 Categories
@@ -275,6 +276,7 @@ function CategoryCard({ category }: { category: ForumCategory }) {
   return (
     <Link
       href={`/forum?category=${encodeURIComponent(category.id)}`}
+      scroll={false}
       className="surface-card surface-card-interactive group w-full p-5 text-left"
     >
       <div className="flex items-start gap-4">
@@ -423,6 +425,7 @@ function ViewButton({
   return (
     <Link
       href={href}
+      scroll={false}
       aria-current={active ? "page" : undefined}
       className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
     >

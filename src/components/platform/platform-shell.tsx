@@ -355,7 +355,15 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                   )}
                   <Link
                     href="/settings/profile"
-                    onClick={() => setUserMenuOpen(false)}
+                    scroll={false}
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      const root = document.documentElement;
+                      const previousBehavior = root.style.scrollBehavior;
+                      root.style.scrollBehavior = "auto";
+                      window.scrollTo({ left: 0, top: 0 });
+                      root.style.scrollBehavior = previousBehavior;
+                    }}
                     className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
                   >
                     Settings

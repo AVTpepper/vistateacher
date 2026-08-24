@@ -5,7 +5,9 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -32,6 +34,18 @@ export function ProfileTabProvider({
   children: ReactNode;
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
+  const pendingScroll = useRef<{ left: number; top: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const position = pendingScroll.current;
+    if (!position) return;
+    pendingScroll.current = null;
+    const root = document.documentElement;
+    const previousBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(position);
+    root.style.scrollBehavior = previousBehavior;
+  }, [activeTab]);
 
   useEffect(() => {
     const syncTab = () => setActiveTab(tabFromLocation());
@@ -40,6 +54,7 @@ export function ProfileTabProvider({
   }, []);
 
   const selectTab = useCallback((tab: ProfileTab) => {
+    pendingScroll.current = { left: window.scrollX, top: window.scrollY };
     setActiveTab(tab);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", tab);
