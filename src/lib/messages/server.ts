@@ -71,6 +71,11 @@ export interface MessagePage {
   nextCursor: string | null;
 }
 
+export interface MessageQuota {
+  used: number;
+  limit: number | null;
+}
+
 export interface NotificationItem {
   id: string;
   type: string;
@@ -150,6 +155,21 @@ function messageLimit(subscription: DocumentData | undefined, now: Date) {
     end(subscription.trialEndsAt) !== null &&
     end(subscription.trialEndsAt)! > now;
   return paid || trial ? null : 10;
+}
+
+export async function getMessageQuota(
+  uid: string,
+  now = new Date(),
+): Promise<MessageQuota> {
+  const db = adminDb();
+  const [usage, subscription] = await Promise.all([
+    db.doc(`usage/${uid}_${dayKey(now)}`).get(),
+    db.doc(`subscriptions/${uid}`).get(),
+  ]);
+  return {
+    used: number(usage.data()?.messages),
+    limit: messageLimit(subscription.data(), now),
+  };
 }
 
 function blockId(blockerUid: string, blockedUid: string): string {

@@ -5,6 +5,7 @@ import { MessagesExperience } from "@/features/messages/messages-experience";
 import { requireCurrentAccount } from "@/lib/auth/session";
 import {
   getConversationSummaries,
+  getMessageQuota,
   getMessagePage,
 } from "@/lib/messages/server";
 
@@ -16,7 +17,10 @@ export default async function MessagesPage({
   searchParams: Promise<{ conversation?: string; compose?: string }>;
 }) {
   const account = await requireCurrentAccount();
-  const conversations = await getConversationSummaries(account.uid);
+  const [conversations, messageQuota] = await Promise.all([
+    getConversationSummaries(account.uid),
+    getMessageQuota(account.uid),
+  ]);
   const params = await searchParams;
   const requestedId = params.conversation;
   const composeUid = params.compose?.trim() || null;
@@ -44,6 +48,7 @@ export default async function MessagesPage({
       initialConversations={conversations}
       initialConversationId={activeId}
       initialMessages={initialMessages}
+      initialMessageQuota={messageQuota}
     />
   );
 }

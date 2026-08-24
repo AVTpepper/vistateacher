@@ -40,6 +40,7 @@ import type {
   ConversationSummary,
   DirectMessage,
   MessagePage,
+  MessageQuota,
 } from "@/lib/messages/server";
 import { cn } from "@/lib/utils";
 
@@ -48,11 +49,13 @@ export function MessagesExperience({
   initialConversations,
   initialConversationId,
   initialMessages,
+  initialMessageQuota,
 }: {
   viewer: { uid: string; displayName: string; photoURL: string | null };
   initialConversations: ConversationSummary[];
   initialConversationId: string | null;
   initialMessages: MessagePage | null;
+  initialMessageQuota: MessageQuota;
 }) {
   const router = useRouter();
   const [conversations, setConversations] = useState(initialConversations);
@@ -68,6 +71,11 @@ export function MessagesExperience({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [upgradeReason, setUpgradeReason] =
     useState<UpgradePromptReason | null>(null);
+  const [messageUsage, setMessageUsage] = useState(initialMessageQuota);
+  const [messageLimitReached, setMessageLimitReached] = useState(
+    initialMessageQuota.limit !== null &&
+      initialMessageQuota.used >= initialMessageQuota.limit,
+  );
   const fileInput = useRef<HTMLInputElement>(null);
   const messageScroller = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -233,6 +241,7 @@ export function MessagesExperience({
       } | null;
       if (!response.ok && result?.code === "limit-reached") {
         setUpgradeReason("messages");
+        setMessageLimitReached(true);
         if (reservedAttachmentId) {
           void fetch(
             `/api/messages/${activeId}/attachments/${reservedAttachmentId}`,
@@ -247,6 +256,12 @@ export function MessagesExperience({
       setAttachment(null);
       textarea.current?.blur();
       reservedAttachmentId = null;
+      const nextUsed = messageUsage.used + 1;
+      setMessageUsage((current) => ({ ...current, used: nextUsed }));
+      if (messageUsage.limit !== null && nextUsed >= messageUsage.limit) {
+        setMessageLimitReached(true);
+        setUpgradeReason("messages");
+      }
     } catch (error) {
       if (reservedAttachmentId)
         void fetch(
@@ -569,6 +584,24 @@ export function MessagesExperience({
                     <p className="text-muted-foreground text-sm">
                       Messaging is unavailable for this conversation.
                     </p>
+                  </div>
+                ) : messageLimitReached ? (
+                  <div className="border-accent/40 bg-accent/10 mx-auto flex max-w-3xl flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold">
+                        Daily message limit reached
+                      </p>
+                      <p className="text-muted-foreground mt-0.5 text-xs leading-5">
+                        Upgrade to VistaTeacher Plus for unlimited messages and
+                        keep your conversations going.
+                      </p>
+                    </div>
+                    <Link
+                      href="/settings/billing"
+                      className="bg-accent text-accent-foreground flex min-h-10 shrink-0 items-center justify-center rounded-lg px-4 text-xs font-bold"
+                    >
+                      Upgrade to Plus
+                    </Link>
                   </div>
                 ) : (
                   <div className="mx-auto max-w-3xl">
