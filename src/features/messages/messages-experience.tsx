@@ -63,7 +63,7 @@ export function MessagesExperience({
   const [pending, setPending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
-  const messageEnd = useRef<HTMLDivElement>(null);
+  const messageScroller = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const active = conversations.find((item) => item.id === activeId) ?? null;
 
@@ -131,8 +131,9 @@ export function MessagesExperience({
   }, [activeId]);
 
   useEffect(() => {
-    messageEnd.current?.scrollIntoView({ behavior: "auto", block: "end" });
-  }, [messagePage.messages.length]);
+    const scroller = messageScroller.current;
+    if (scroller) scroller.scrollTop = scroller.scrollHeight;
+  }, [activeId, messagePage.messages.length]);
 
   async function selectConversation(conversation: ConversationSummary) {
     const response = await fetch(`/api/messages/${conversation.id}`);
@@ -445,9 +446,13 @@ export function MessagesExperience({
         </section>
 
         <section
-          aria-label="Active conversation"
+          aria-label={
+            active
+              ? `Conversation with ${active.participant.displayName}`
+              : "Active conversation"
+          }
           className={cn(
-            "relative min-w-0 flex-1 flex-col",
+            "relative min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
             mobileChat ? "flex" : "hidden lg:flex",
           )}
         >
@@ -457,7 +462,7 @@ export function MessagesExperience({
           />
           {active ? (
             <>
-              <header className="border-border/70 bg-card/70 relative z-10 flex h-14 shrink-0 items-center gap-2 border-b px-2 backdrop-blur-md sm:h-16 sm:gap-3 sm:px-5">
+              <header className="border-border/70 bg-card/95 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-2 backdrop-blur-md sm:h-16 sm:gap-3 sm:px-5">
                 <button
                   type="button"
                   aria-label="Back to conversations"
@@ -512,7 +517,10 @@ export function MessagesExperience({
                 </button>
               </header>
 
-              <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-2 py-3 sm:px-6 sm:py-5">
+              <div
+                ref={messageScroller}
+                className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-3 sm:px-6 sm:py-5"
+              >
                 {messagePage.nextCursor && (
                   <button
                     type="button"
@@ -534,7 +542,6 @@ export function MessagesExperience({
                       onDelete={() => removeMessage(message)}
                     />
                   ))}
-                  <div ref={messageEnd} />
                 </div>
               </div>
 
