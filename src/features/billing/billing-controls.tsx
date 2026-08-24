@@ -74,7 +74,10 @@ export function BillingControls({
 
       {billing.canCheckout && (
         <div
-          className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1"
+          className={cn(
+            "grid grid-cols-2 gap-1 rounded-lg p-1",
+            compact ? "border border-white/25 bg-black/35" : "bg-muted",
+          )}
           aria-label="Billing interval"
         >
           {(["month", "year"] as const).map((value) => (
@@ -84,8 +87,14 @@ export function BillingControls({
               aria-pressed={interval === value}
               onClick={() => setInterval(value)}
               className={cn(
-                "h-9 rounded-md text-xs font-bold",
-                interval === value && "bg-card text-primary shadow-sm",
+                "h-9 rounded-md text-xs font-bold transition-colors",
+                interval === value
+                  ? compact
+                    ? "bg-white text-[#4b2638] shadow-sm"
+                    : "bg-card text-primary shadow-sm"
+                  : compact
+                    ? "text-white hover:bg-white/10"
+                    : "text-muted-foreground hover:text-foreground",
               )}
             >
               {value === "month" ? "$9 monthly" : "$79 yearly"}
