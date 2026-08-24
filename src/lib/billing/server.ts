@@ -228,6 +228,17 @@ export async function updateSubscriptionCancellation(
   });
 }
 
+export async function confirmCompletedCheckout(
+  uid: string,
+  sessionId: string,
+  provider: BillingProvider = getBillingProvider(),
+): Promise<boolean> {
+  const event = await provider.retrieveCompletedCheckout(sessionId, uid);
+  if (!event) return false;
+  await reconcileBillingEvent(event);
+  return true;
+}
+
 export async function reconcileBillingEvent(
   event: NormalizedBillingEvent,
 ): Promise<boolean> {

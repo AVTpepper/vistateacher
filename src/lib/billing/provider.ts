@@ -61,6 +61,10 @@ export type NormalizedBillingEvent =
 
 export interface BillingProvider {
   createCheckoutSession(input: CheckoutSessionInput): Promise<string>;
+  retrieveCompletedCheckout(
+    sessionId: string,
+    expectedUid: string,
+  ): Promise<NormalizedBillingEvent | null>;
   createPortalSession(input: PortalSessionInput): Promise<string>;
   updateSubscriptionCancellation(
     input: SubscriptionCancellationInput,

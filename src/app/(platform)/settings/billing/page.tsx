@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { BillingPanel } from "@/features/billing/billing-panel";
 import type { BillingView } from "@/features/billing/billing-controls";
 import { requireCurrentAccount } from "@/lib/auth/session";
 import { parsePlanIntent } from "@/lib/billing/plan-intent";
-import { getBillingState } from "@/lib/billing/server";
+import {
+  confirmCompletedCheckout,
+  getBillingState,
+} from "@/lib/billing/server";
 import { resolveStripeMode } from "@/lib/billing/stripe-mode";
+import { checkoutSessionIdSchema } from "@/schemas/billing";
 
 export const metadata: Metadata = { title: "Plan and billing" };
 
@@ -15,16 +20,35 @@ export default async function BillingSettingsPage({
   searchParams: Promise<{
     checkout?: string | string[];
     plan?: string | string[];
+    session_id?: string | string[];
   }>;
 }) {
   const params = await searchParams;
-  const checkout = params.checkout;
+  const checkout = Array.isArray(params.checkout)
+    ? params.checkout[0]
+    : params.checkout;
   const planIntent = parsePlanIntent(params.plan);
   const stripeMode = resolveStripeMode(
     process.env.STRIPE_MODE,
     process.env.STRIPE_SECRET_KEY,
   );
   const account = await requireCurrentAccount();
+  const sessionId = checkoutSessionIdSchema.safeParse(
+    Array.isArray(params.session_id) ? params.session_id[0] : params.session_id,
+  );
+  let checkoutVerified = false;
+  if (checkout === "success" && sessionId.success) {
+    try {
+      checkoutVerified = await confirmCompletedCheckout(
+        account.uid,
+        sessionId.data,
+      );
+    } catch (error) {
+      console.error("Could not confirm completed Stripe Checkout", error);
+    }
+  }
+  if (checkoutVerified) redirect("/settings/billing?checkout=success");
+
   const state = await getBillingState(account.uid);
   const billing: BillingView = {
     ...state,
@@ -35,7 +59,13 @@ export default async function BillingSettingsPage({
     <BillingPanel
       billing={billing}
       checkoutStatus={
-        checkout === "success" || checkout === "canceled" ? checkout : null
+        checkout === "canceled"
+          ? "canceled"
+          : checkout === "success"
+            ? state.effectivePlan === "plus"
+              ? "success"
+              : "processing"
+            : null
       }
       planIntent={planIntent}
       testMode={stripeMode === "TEST"}

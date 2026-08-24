@@ -24,7 +24,7 @@ export function BillingPanel({
   testMode = false,
 }: {
   billing: BillingView;
-  checkoutStatus?: "success" | "canceled" | null;
+  checkoutStatus?: "success" | "processing" | "canceled" | null;
   planIntent?: PlanIntent | null;
   testMode?: boolean;
 }) {
@@ -108,7 +108,9 @@ export function BillingPanel({
             "flex items-start gap-3 rounded-lg border px-4 py-3 text-sm",
             checkoutStatus === "success"
               ? "border-success/30 bg-success/10"
-              : "bg-muted/60",
+              : checkoutStatus === "processing"
+                ? "border-accent/30 bg-accent/10"
+                : "bg-muted/60",
           )}
         >
           {checkoutStatus === "success" ? (
@@ -125,13 +127,17 @@ export function BillingPanel({
           <div>
             <p className="font-bold">
               {checkoutStatus === "success"
-                ? "Checkout complete"
-                : "Checkout canceled"}
+                ? "Plus is active"
+                : checkoutStatus === "processing"
+                  ? "Confirming your payment"
+                  : "Checkout canceled"}
             </p>
             <p className="text-muted-foreground mt-0.5 text-xs leading-5">
               {checkoutStatus === "success"
-                ? "Your payment was received. Plus access updates after Stripe confirms the subscription."
-                : "No payment was made. Your current plan is unchanged."}
+                ? "Your payment was confirmed and VistaTeacher Plus is active."
+                : checkoutStatus === "processing"
+                  ? "Checkout completed, but VistaTeacher is still confirming the subscription. Refresh shortly; you won't be charged again."
+                  : "No payment was made. Your current plan is unchanged."}
             </p>
           </div>
         </div>

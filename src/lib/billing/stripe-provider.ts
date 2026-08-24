@@ -70,6 +70,55 @@ class StripeBillingProvider implements BillingProvider {
     return session.client_secret;
   }
 
+  async retrieveCompletedCheckout(
+    sessionId: string,
+    expectedUid: string,
+  ): Promise<NormalizedBillingEvent | null> {
+    const session = await this.client.checkout.sessions.retrieve(sessionId, {
+      expand: ["subscription"],
+    });
+    const sessionUid = session.client_reference_id ?? session.metadata?.uid;
+    if (
+      sessionUid !== expectedUid ||
+      session.status !== "complete" ||
+      session.payment_status === "unpaid"
+    ) {
+      return null;
+    }
+
+    const subscription =
+      typeof session.subscription === "string"
+        ? await this.client.subscriptions.retrieve(session.subscription)
+        : session.subscription;
+    if (!subscription || subscription.metadata.uid !== expectedUid) {
+      return null;
+    }
+
+    const item = subscription.items.data[0];
+    const interval = item?.price.recurring?.interval;
+    const billingInterval: BillingInterval | null =
+      interval === "month" ? "month" : interval === "year" ? "year" : null;
+    const customerId =
+      stripeId(subscription.customer) ?? stripeId(session.customer);
+    if (!item || !billingInterval || !customerId) return null;
+
+    return {
+      id: `checkout-return_${session.id}`,
+      type: "subscription.updated",
+      uid: expectedUid,
+      createdAt: new Date(Math.floor(Date.now() / 1_000) * 1_000),
+      customerId,
+      subscriptionId: subscription.id,
+      priceId: item.price.id,
+      interval: billingInterval,
+      status: normalizeStripeStatus(subscription.status),
+      currentPeriodEnd: item.current_period_end
+        ? new Date(item.current_period_end * 1_000)
+        : null,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    };
+  }
+
   async createPortalSession(input: PortalSessionInput): Promise<string> {
     const session = await this.client.billingPortal.sessions.create({
       customer: input.customerId,
