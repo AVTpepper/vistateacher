@@ -354,7 +354,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                     </Link>
                   )}
                   <Link
-                    href="/settings"
+                    href="/settings/profile"
                     onClick={() => setUserMenuOpen(false)}
                     className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
                   >
