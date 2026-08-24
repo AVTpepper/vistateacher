@@ -31,6 +31,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import {
+  LimitUpgradeDialog,
+  LimitUpgradeNotice,
+  type UpgradePromptReason,
+} from "@/features/billing/limit-upgrade-prompt";
 import type {
   LessonDetail,
   LessonSummary,
@@ -96,6 +101,15 @@ interface CreateLessonsResponse {
   lessons: LessonDetail[];
 }
 
+class LessonRequestError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
+
 function asSummary(lesson: LessonDetail): LessonSummary {
   return {
     id: lesson.id,
@@ -120,9 +134,12 @@ function lines(value: string): string[] {
 
 async function resultJson<T>(response: Response): Promise<T> {
   const result = (await response.json().catch(() => null)) as
-    (T & { error?: string }) | null;
+    (T & { error?: string; code?: string }) | null;
   if (!response.ok)
-    throw new Error(result?.error ?? "The request could not be completed.");
+    throw new LessonRequestError(
+      result?.error ?? "The request could not be completed.",
+      result?.code,
+    );
   return result as T;
 }
 
@@ -781,6 +798,8 @@ export function LessonBuilderExperience({
   const [editing, setEditing] = useState(false);
   const [attemptedGenerate, setAttemptedGenerate] = useState(false);
   const [aiEnhancingField, setAiEnhancingField] = useState<string | null>(null);
+  const [upgradeReason, setUpgradeReason] =
+    useState<UpgradePromptReason | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<
     Record<string, boolean>
   >({
@@ -832,6 +851,23 @@ export function LessonBuilderExperience({
             }
           : usage.refinements,
     };
+  }
+
+  function showUpgradeFor(error: unknown): boolean {
+    if (workspace.plan !== "free" || !(error instanceof LessonRequestError)) {
+      return false;
+    }
+    const reasonByCode: Partial<Record<string, UpgradePromptReason>> = {
+      "limit-reached": "ai-generations",
+      "creation-limit-reached": "ai-lessons",
+      "refinement-limit-reached": "ai-refinements",
+      "export-limit-reached": "lesson-exports",
+      "plus-required": "ai-generations",
+    };
+    const reason = error.code ? reasonByCode[error.code] : null;
+    if (!reason) return false;
+    setUpgradeReason(reason);
+    return true;
   }
 
   async function selectLesson(lessonId: string) {
@@ -899,9 +935,11 @@ export function LessonBuilderExperience({
           : "Lesson generated and saved as a draft.",
       );
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Generation failed.",
-      );
+      if (!showUpgradeFor(error)) {
+        toast.error(
+          error instanceof Error ? error.message : "Generation failed.",
+        );
+      }
     } finally {
       setWorking(false);
     }
@@ -935,7 +973,9 @@ export function LessonBuilderExperience({
           : "Lesson duplicated.",
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Action failed.");
+      if (!showUpgradeFor(error)) {
+        toast.error(error instanceof Error ? error.message : "Action failed.");
+      }
     } finally {
       setWorking(false);
     }
@@ -998,8 +1038,12 @@ export function LessonBuilderExperience({
       if (!response.ok) {
         const result = (await response.json().catch(() => null)) as {
           error?: string;
+          code?: string;
         } | null;
-        throw new Error(result?.error ?? "The lesson could not be exported.");
+        throw new LessonRequestError(
+          result?.error ?? "The lesson could not be exported.",
+          result?.code,
+        );
       }
       const blob = await response.blob();
       const disposition = response.headers.get("Content-Disposition") ?? "";
@@ -1017,7 +1061,9 @@ export function LessonBuilderExperience({
       }));
       toast.success(`${format.toUpperCase()} downloaded.`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Export failed.");
+      if (!showUpgradeFor(error)) {
+        toast.error(error instanceof Error ? error.message : "Export failed.");
+      }
     } finally {
       setWorking(false);
     }
@@ -1033,8 +1079,12 @@ export function LessonBuilderExperience({
       if (!response.ok) {
         const result = (await response.json().catch(() => null)) as {
           error?: string;
+          code?: string;
         } | null;
-        throw new Error(result?.error ?? "Preview failed.");
+        throw new LessonRequestError(
+          result?.error ?? "Preview failed.",
+          result?.code,
+        );
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -1047,7 +1097,9 @@ export function LessonBuilderExperience({
       window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
       toast.success("PDF preview opened.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Preview failed.");
+      if (!showUpgradeFor(error)) {
+        toast.error(error instanceof Error ? error.message : "Preview failed.");
+      }
     } finally {
       setWorking(false);
     }
@@ -1117,6 +1169,20 @@ export function LessonBuilderExperience({
   const missingFields = missingGenerateFields(source);
   const showGenerateErrors = attemptedGenerate && missingFields.length > 0;
   const requiredHelper = `Fill out ${formatMissingFields([...REQUIRED_GENERATE_FIELDS])} before generating.`;
+  const exhaustedReasons: UpgradePromptReason[] =
+    workspace.plan === "free"
+      ? [
+          ...(workspace.usage.creations.remaining === 0
+            ? (["ai-lessons"] as const)
+            : []),
+          ...(workspace.usage.refinements.remaining === 0
+            ? (["ai-refinements"] as const)
+            : []),
+          ...(workspace.usage.exports.remaining === 0
+            ? (["lesson-exports"] as const)
+            : []),
+        ]
+      : [];
   return (
     <div className="mx-auto max-w-6xl">
       <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -1163,6 +1229,8 @@ export function LessonBuilderExperience({
           </div>
         </div>
       </header>
+
+      <LimitUpgradeNotice reasons={exhaustedReasons} className="mb-5" />
 
       <div className="mb-5 space-y-3">
         <button
@@ -1536,6 +1604,12 @@ export function LessonBuilderExperience({
           )}
         </section>
       </div>
+      <LimitUpgradeDialog
+        reason={upgradeReason}
+        onOpenChange={(open) => {
+          if (!open) setUpgradeReason(null);
+        }}
+      />
     </div>
   );
 }

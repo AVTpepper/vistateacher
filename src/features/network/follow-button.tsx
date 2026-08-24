@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import {
+  LimitUpgradeDialog,
+  type UpgradePromptReason,
+} from "@/features/billing/limit-upgrade-prompt";
 import { cn } from "@/lib/utils";
 
 export function FollowButton({
@@ -24,6 +28,8 @@ export function FollowButton({
   const [status, setStatus] = useState(connectionStatus ?? "none");
   const [direction, setDirection] = useState(connectionDirection);
   const [pending, setPending] = useState(false);
+  const [upgradeReason, setUpgradeReason] =
+    useState<UpgradePromptReason | null>(null);
 
   async function handleConnect() {
     if (status === "pending" && direction === "incoming") {
@@ -86,7 +92,12 @@ export function FollowButton({
         setDirection(null);
         const result = (await response.json().catch(() => null)) as {
           error?: string;
+          code?: string;
         } | null;
+        if (result?.code === "limit-reached") {
+          setUpgradeReason("connections");
+          return;
+        }
         toast.error(result?.error ?? "We couldn't update this connection.");
         return;
       }
@@ -99,48 +110,56 @@ export function FollowButton({
   const hasIncomingRequest = status === "pending" && direction === "incoming";
 
   return (
-    <button
-      type="button"
-      onClick={handleConnect}
-      disabled={pending}
-      className={cn(
-        "flex h-9 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition-colors disabled:opacity-60",
-        isConnected
-          ? "bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-          : isRequestSent
-            ? "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-900 dark:text-amber-100 dark:hover:bg-amber-800"
-            : hasIncomingRequest
-              ? "bg-success/10 text-success hover:bg-success/20"
-              : "bg-primary text-primary-foreground hover:opacity-90",
-        className,
-      )}
-    >
-      {pending ? (
-        <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
-      ) : isConnected ? (
-        <UserCheck aria-hidden="true" className="size-3.5" />
-      ) : isRequestSent ? (
-        <X aria-hidden="true" className="size-3.5" />
-      ) : hasIncomingRequest ? (
-        <UserCheck aria-hidden="true" className="size-3.5" />
-      ) : (
-        <UserPlus aria-hidden="true" className="size-3.5" />
-      )}
-      {mode === "connect"
-        ? isConnected
-          ? "Connected"
-          : isRequestSent
-            ? "Request sent"
-            : hasIncomingRequest
-              ? "Accept request"
-              : "Connect"
-        : isConnected
-          ? "Following"
-          : isRequestSent
-            ? "Request sent"
-            : hasIncomingRequest
-              ? "Accept request"
-              : "Follow"}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={handleConnect}
+        disabled={pending}
+        className={cn(
+          "flex h-9 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition-colors disabled:opacity-60",
+          isConnected
+            ? "bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            : isRequestSent
+              ? "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-900 dark:text-amber-100 dark:hover:bg-amber-800"
+              : hasIncomingRequest
+                ? "bg-success/10 text-success hover:bg-success/20"
+                : "bg-primary text-primary-foreground hover:opacity-90",
+          className,
+        )}
+      >
+        {pending ? (
+          <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
+        ) : isConnected ? (
+          <UserCheck aria-hidden="true" className="size-3.5" />
+        ) : isRequestSent ? (
+          <X aria-hidden="true" className="size-3.5" />
+        ) : hasIncomingRequest ? (
+          <UserCheck aria-hidden="true" className="size-3.5" />
+        ) : (
+          <UserPlus aria-hidden="true" className="size-3.5" />
+        )}
+        {mode === "connect"
+          ? isConnected
+            ? "Connected"
+            : isRequestSent
+              ? "Request sent"
+              : hasIncomingRequest
+                ? "Accept request"
+                : "Connect"
+          : isConnected
+            ? "Following"
+            : isRequestSent
+              ? "Request sent"
+              : hasIncomingRequest
+                ? "Accept request"
+                : "Follow"}
+      </button>
+      <LimitUpgradeDialog
+        reason={upgradeReason}
+        onOpenChange={(open) => {
+          if (!open) setUpgradeReason(null);
+        }}
+      />
+    </>
   );
 }

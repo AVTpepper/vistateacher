@@ -21,9 +21,23 @@ import {
 import Link from "next/link";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
+import {
+  LimitUpgradeNotice,
+  type UpgradePromptReason,
+} from "@/features/billing/limit-upgrade-prompt";
 import { FollowButton } from "@/features/network/follow-button";
 import { LazyDashboardCharts } from "@/features/dashboard/lazy-dashboard-charts";
 import type { DashboardData, DashboardQuota } from "@/lib/dashboard/server";
+
+const QUOTA_UPGRADE_REASONS: Partial<
+  Record<DashboardQuota["label"], UpgradePromptReason>
+> = {
+  Connections: "connections",
+  Messages: "messages",
+  "New AI lessons": "ai-lessons",
+  "AI refinements": "ai-refinements",
+  "Lesson exports": "lesson-exports",
+};
 
 function QuotaRow({ quota }: { quota: DashboardQuota }) {
   const unlimited = quota.limit === null;
@@ -132,6 +146,15 @@ export function DashboardExperience({
       href: "/ai-lessons",
     },
   ];
+  const exhaustedReasons =
+    dashboard.plan === "free"
+      ? dashboard.quotas.flatMap((quota) => {
+          const reason = QUOTA_UPGRADE_REASONS[quota.label];
+          return reason && quota.limit !== null && quota.used >= quota.limit
+            ? [reason]
+            : [];
+        })
+      : [];
 
   return (
     <div
@@ -556,6 +579,11 @@ export function DashboardExperience({
           </div>
         )}
       </section>
+
+      <LimitUpgradeNotice
+        reasons={exhaustedReasons}
+        className="mx-auto max-w-lg"
+      />
 
       <section className="surface-card mx-auto max-w-lg p-5">
         <div className="mb-4 flex items-center justify-between">

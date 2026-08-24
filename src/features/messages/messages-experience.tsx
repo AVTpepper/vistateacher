@@ -30,6 +30,10 @@ import { toast } from "sonner";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import {
+  LimitUpgradeDialog,
+  type UpgradePromptReason,
+} from "@/features/billing/limit-upgrade-prompt";
 import { ReportMessageDialog } from "@/features/messages/report-message-dialog";
 import { getFirebaseClient } from "@/lib/firebase/client";
 import type {
@@ -62,6 +66,8 @@ export function MessagesExperience({
   const [attachment, setAttachment] = useState<File | null>(null);
   const [pending, setPending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [upgradeReason, setUpgradeReason] =
+    useState<UpgradePromptReason | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const messageScroller = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -223,7 +229,19 @@ export function MessagesExperience({
       });
       const result = (await response.json().catch(() => null)) as {
         error?: string;
+        code?: string;
       } | null;
+      if (!response.ok && result?.code === "limit-reached") {
+        setUpgradeReason("messages");
+        if (reservedAttachmentId) {
+          void fetch(
+            `/api/messages/${activeId}/attachments/${reservedAttachmentId}`,
+            { method: "DELETE" },
+          );
+          reservedAttachmentId = null;
+        }
+        return;
+      }
       if (!response.ok) throw new Error(result?.error ?? "Message failed.");
       setContent("");
       setAttachment(null);
@@ -653,6 +671,12 @@ export function MessagesExperience({
           )}
         </section>
       </div>
+      <LimitUpgradeDialog
+        reason={upgradeReason}
+        onOpenChange={(open) => {
+          if (!open) setUpgradeReason(null);
+        }}
+      />
     </div>
   );
 }
