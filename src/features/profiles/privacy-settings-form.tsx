@@ -99,7 +99,7 @@ export function PrivacySettingsForm({
           <h3 className="text-sm font-bold">Notifications</h3>
           <ToggleRow
             label="Email notifications"
-            description="Receive important account and community updates by email."
+            description="Receive community and product updates by email. Essential security and billing messages are always sent."
             checked={settings.notificationSettings.email}
             onChange={(checked) =>
               setSettings((current) => ({

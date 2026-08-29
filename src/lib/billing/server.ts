@@ -4,6 +4,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { getTrialEnd } from "@/lib/billing/policy";
 import type {
+  BillingCommunicationKind,
   BillingProvider,
   NormalizedBillingEvent,
 } from "@/lib/billing/provider";
@@ -252,18 +253,82 @@ export async function confirmCompletedCheckout(
   return true;
 }
 
+export interface BillingReconciliationResult {
+  applied: boolean;
+  communicationKind: BillingCommunicationKind | null;
+  uid: string | null;
+}
+
+function communicationForSubscriptionChange(
+  prior: SubscriptionRecord,
+  event: Extract<NormalizedBillingEvent, { type: "subscription.updated" }>,
+): BillingCommunicationKind | null {
+  if (event.status === "canceled" && prior.status !== "canceled")
+    return "subscription-ended";
+  if (event.cancelAtPeriodEnd && !prior.cancelAtPeriodEnd)
+    return "cancellation-scheduled";
+  if (!event.cancelAtPeriodEnd && prior.cancelAtPeriodEnd)
+    return "renewal-restored";
+  return null;
+}
+
+function directCommunication(
+  event: NormalizedBillingEvent,
+): BillingCommunicationKind | null {
+  if (event.type === "invoice.paid" && event.amountPaid > 0)
+    return "payment-receipt";
+  if (event.type === "invoice.payment_failed") return "payment-failed";
+  if (event.type === "invoice.upcoming") return "renewal-upcoming";
+  if (event.type === "charge.refunded") return "refund-issued";
+  return null;
+}
+
+const BILLING_NOTIFICATION_COPY: Record<BillingCommunicationKind, string> = {
+  "payment-receipt": "Your VistaTeacher Plus payment was received.",
+  "payment-failed":
+    "Your VistaTeacher Plus payment needs attention. Update your payment method.",
+  "renewal-upcoming": "Your VistaTeacher Plus renewal is coming up.",
+  "cancellation-scheduled":
+    "Your VistaTeacher Plus cancellation has been scheduled.",
+  "renewal-restored": "Automatic renewal for VistaTeacher Plus was restored.",
+  "subscription-ended": "Your VistaTeacher Plus membership has ended.",
+  "refund-issued": "A refund was issued for your VistaTeacher payment.",
+};
+
+async function resolveBillingEventUid(
+  event: NormalizedBillingEvent,
+): Promise<string | null> {
+  if (event.uid) return event.uid;
+  const matches = await adminDb()
+    .collection("subscriptions")
+    .where("stripeCustomerId", "==", event.customerId)
+    .limit(1)
+    .get();
+  return matches.docs[0]?.id ?? null;
+}
+
 export async function reconcileBillingEvent(
   event: NormalizedBillingEvent,
-): Promise<boolean> {
+): Promise<BillingReconciliationResult> {
   const db = adminDb();
+  const uid = await resolveBillingEventUid(event);
+  if (!uid) return { applied: false, communicationKind: null, uid: null };
   return db.runTransaction(async (transaction) => {
     const eventRef = db.doc(`billingEvents/${event.id}`);
-    const subscriptionRef = db.doc(`subscriptions/${event.uid}`);
+    const subscriptionRef = db.doc(`subscriptions/${uid}`);
     const [eventSnapshot, subscriptionSnapshot] = await transaction.getAll(
       eventRef,
       subscriptionRef,
     );
-    if (eventSnapshot.exists) return false;
+    if (eventSnapshot.exists) {
+      const communicationKind = eventSnapshot.data()
+        ?.communicationKind as BillingCommunicationKind | null;
+      return {
+        applied: false,
+        communicationKind: communicationKind ?? null,
+        uid,
+      };
+    }
     if (!subscriptionSnapshot.exists)
       throw new BillingError("subscription-unavailable");
 
@@ -274,8 +339,9 @@ export async function reconcileBillingEvent(
       event.type === "invoice.paid" ||
       !priorEventAt ||
       priorEventAt <= event.createdAt;
+    const prior = readSubscription(subscriptionSnapshot.data() ?? {});
+    let communicationKind = directCommunication(event);
     if (event.type === "checkout.completed" && applied) {
-      const prior = readSubscription(subscriptionSnapshot.data() ?? {});
       transaction.update(subscriptionRef, {
         plan: "plus",
         status: "incomplete",
@@ -287,6 +353,7 @@ export async function reconcileBillingEvent(
         updatedAt: FieldValue.serverTimestamp(),
       });
     } else if (event.type === "subscription.updated" && applied) {
+      communicationKind = communicationForSubscriptionChange(prior, event);
       transaction.update(subscriptionRef, {
         plan: "plus",
         status: event.status,
@@ -305,17 +372,32 @@ export async function reconcileBillingEvent(
 
     transaction.create(eventRef, {
       type: event.type,
-      uid: event.uid,
-      ...(event.type === "invoice.paid"
+      uid,
+      communicationKind,
+      ...(communicationKind
         ? {
-            invoiceId: event.invoiceId,
-            receiptSentAt: null,
+            emailSentAt: null,
+            emailAttemptedAt: null,
+            emailError: null,
           }
         : {}),
       stripeCreatedAt: Timestamp.fromDate(event.createdAt),
       applied,
       processedAt: FieldValue.serverTimestamp(),
     });
-    return applied;
+    if (communicationKind) {
+      transaction.set(db.doc(`users/${uid}/notifications/${event.id}`), {
+        type: `billing-${communicationKind}`,
+        actorId: null,
+        actorName: "VistaTeacher",
+        entityId: event.id,
+        message: BILLING_NOTIFICATION_COPY[communicationKind],
+        href: "/settings/billing",
+        read: false,
+        archived: false,
+        createdAt: Timestamp.fromDate(event.createdAt),
+      });
+    }
+    return { applied, communicationKind, uid };
   });
 }

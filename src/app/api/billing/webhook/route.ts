@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { sendPaidInvoiceReceipt } from "@/lib/billing/receipt";
+import { sendBillingCommunication } from "@/lib/billing/receipt";
 import { getBillingProvider } from "@/lib/billing/stripe-provider";
 import { reconcileBillingEvent } from "@/lib/billing/server";
 
@@ -21,9 +21,11 @@ export async function POST(request: Request) {
   if (!event) return NextResponse.json({ received: true, applied: false });
 
   try {
-    const applied = await reconcileBillingEvent(event);
-    if (event.type === "invoice.paid") await sendPaidInvoiceReceipt(event);
-    return NextResponse.json({ received: true, applied });
+    const result = await reconcileBillingEvent(event);
+    if (result.communicationKind) {
+      await sendBillingCommunication(event, result.communicationKind);
+    }
+    return NextResponse.json({ received: true, applied: result.applied });
   } catch (error) {
     console.error("Billing webhook processing failed", event.id, error);
     return NextResponse.json(

@@ -194,6 +194,56 @@ class StripeBillingProvider implements BillingProvider {
     }
 
     if (
+      event.type === "invoice.payment_failed" ||
+      event.type === "invoice.upcoming"
+    ) {
+      const invoice = event.data.object;
+      const subscriptionDetails = invoice.parent?.subscription_details;
+      const uid = subscriptionDetails?.metadata?.uid;
+      const customerId = stripeId(invoice.customer);
+      const subscriptionId = stripeId(
+        subscriptionDetails?.subscription ?? null,
+      );
+      if (!uid || !customerId || !subscriptionId) return null;
+      return {
+        id: event.id,
+        type: event.type,
+        uid,
+        createdAt,
+        customerId,
+        subscriptionId,
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.number,
+        customerEmail: invoice.customer_email,
+        customerName: invoice.customer_name,
+        amountDue: invoice.amount_due,
+        currency: invoice.currency,
+        hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
+        nextPaymentAttempt: invoice.next_payment_attempt
+          ? new Date(invoice.next_payment_attempt * 1_000)
+          : null,
+      };
+    }
+
+    if (event.type === "charge.refunded") {
+      const charge = event.data.object;
+      const customerId = stripeId(charge.customer);
+      if (!customerId || charge.amount_refunded <= 0) return null;
+      return {
+        id: event.id,
+        type: "charge.refunded",
+        uid:
+          typeof charge.metadata.uid === "string" ? charge.metadata.uid : null,
+        createdAt,
+        customerId,
+        amountRefunded: charge.amount_refunded,
+        currency: charge.currency,
+        customerEmail: charge.billing_details.email,
+        receiptUrl: charge.receipt_url ?? null,
+      };
+    }
+
+    if (
       event.type !== "customer.subscription.created" &&
       event.type !== "customer.subscription.updated" &&
       event.type !== "customer.subscription.deleted"

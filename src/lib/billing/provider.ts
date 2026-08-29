@@ -1,6 +1,15 @@
 import type { BillingInterval } from "@/schemas/billing";
 import type { SubscriptionStatus } from "@/types/models";
 
+export type BillingCommunicationKind =
+  | "payment-receipt"
+  | "payment-failed"
+  | "renewal-upcoming"
+  | "cancellation-scheduled"
+  | "renewal-restored"
+  | "subscription-ended"
+  | "refund-issued";
+
 export interface CheckoutSessionInput {
   uid: string;
   email: string;
@@ -57,6 +66,33 @@ export type NormalizedBillingEvent =
       currency: string;
       hostedInvoiceUrl: string | null;
       invoicePdfUrl: string | null;
+    }
+  | {
+      id: string;
+      type: "invoice.payment_failed" | "invoice.upcoming";
+      uid: string;
+      createdAt: Date;
+      customerId: string;
+      subscriptionId: string;
+      invoiceId: string;
+      invoiceNumber: string | null;
+      customerEmail: string | null;
+      customerName: string | null;
+      amountDue: number;
+      currency: string;
+      hostedInvoiceUrl: string | null;
+      nextPaymentAttempt: Date | null;
+    }
+  | {
+      id: string;
+      type: "charge.refunded";
+      uid: string | null;
+      createdAt: Date;
+      customerId: string;
+      amountRefunded: number;
+      currency: string;
+      customerEmail: string | null;
+      receiptUrl: string | null;
     };
 
 export interface BillingProvider {
