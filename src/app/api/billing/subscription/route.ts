@@ -6,7 +6,6 @@ import { hasTrustedOrigin } from "@/lib/auth/request";
 import { getRouteAccount } from "@/lib/auth/route-account";
 import {
   BillingError,
-  getBillingState,
   updateSubscriptionCancellation,
 } from "@/lib/billing/server";
 
@@ -44,10 +43,9 @@ export async function PATCH(request: NextRequest) {
       account.uid,
       parsed.data.cancelAtPeriodEnd,
     );
-    const billing = await getBillingState(account.uid);
     return NextResponse.json({
       ok: true,
-      cancelAtPeriodEnd: billing.cancelAtPeriodEnd,
+      cancelAtPeriodEnd: parsed.data.cancelAtPeriodEnd,
     });
   } catch (error) {
     if (!(error instanceof BillingError)) throw error;

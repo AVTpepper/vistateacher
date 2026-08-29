@@ -43,13 +43,15 @@ function formattedDate(value: string | null): string | null {
 export function BillingControls({
   billing,
   compact = false,
+  preferredInterval,
 }: {
   billing: BillingView;
   compact?: boolean;
+  preferredInterval?: BillingInterval;
 }) {
   const router = useRouter();
   const [interval, setInterval] = useState<BillingInterval>(
-    billing.billingInterval ?? "month",
+    billing.billingInterval ?? preferredInterval ?? "month",
   );
   const [pending, setPending] = useState<"checkout" | "portal" | null>(null);
 

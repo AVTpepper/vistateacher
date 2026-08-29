@@ -6,6 +6,7 @@ import { z } from "zod";
 import { normalizeStripeStatus } from "@/lib/billing/policy";
 import type {
   BillingProvider,
+  BillingAccountSummary,
   CheckoutSessionInput,
   NormalizedBillingEvent,
   PortalSessionInput,
@@ -133,6 +134,41 @@ class StripeBillingProvider implements BillingProvider {
     await this.client.subscriptions.update(input.subscriptionId, {
       cancel_at_period_end: input.cancelAtPeriodEnd,
     });
+  }
+
+  async getBillingAccountSummary(input: {
+    customerId: string;
+    subscriptionId: string;
+  }): Promise<BillingAccountSummary> {
+    const [subscription, customer] = await Promise.all([
+      this.client.subscriptions.retrieve(input.subscriptionId, {
+        expand: ["default_payment_method"],
+      }),
+      this.client.customers.retrieve(input.customerId, {
+        expand: ["invoice_settings.default_payment_method"],
+      }),
+    ]);
+    const item = subscription.items.data[0];
+    const interval = item?.price.recurring?.interval;
+    const defaultMethod =
+      typeof subscription.default_payment_method === "object"
+        ? subscription.default_payment_method
+        : !customer.deleted &&
+            typeof customer.invoice_settings.default_payment_method === "object"
+          ? customer.invoice_settings.default_payment_method
+          : null;
+    return {
+      amount: item?.price.unit_amount ?? null,
+      currency: item?.price.currency ?? null,
+      interval: interval === "month" || interval === "year" ? interval : null,
+      paymentMethod:
+        defaultMethod && "card" in defaultMethod && defaultMethod.card
+          ? {
+              brand: defaultMethod.card.brand,
+              last4: defaultMethod.card.last4,
+            }
+          : null,
+    };
   }
 
   constructWebhookEvent(

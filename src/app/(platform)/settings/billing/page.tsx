@@ -7,6 +7,7 @@ import { requireCurrentAccount } from "@/lib/auth/session";
 import { parsePlanIntent } from "@/lib/billing/plan-intent";
 import {
   confirmCompletedCheckout,
+  getBillingAccountSummary,
   getBillingState,
 } from "@/lib/billing/server";
 import { resolveStripeMode } from "@/lib/billing/stripe-mode";
@@ -20,6 +21,7 @@ export default async function BillingSettingsPage({
   searchParams: Promise<{
     checkout?: string | string[];
     plan?: string | string[];
+    interval?: string | string[];
     session_id?: string | string[];
   }>;
 }) {
@@ -27,7 +29,7 @@ export default async function BillingSettingsPage({
   const checkout = Array.isArray(params.checkout)
     ? params.checkout[0]
     : params.checkout;
-  const planIntent = parsePlanIntent(params.plan);
+  const planIntent = parsePlanIntent(params.plan, params.interval);
   const stripeMode = resolveStripeMode(
     process.env.STRIPE_MODE,
     process.env.STRIPE_SECRET_KEY,
@@ -50,6 +52,7 @@ export default async function BillingSettingsPage({
   if (checkoutVerified) redirect("/settings/billing?checkout=success");
 
   const state = await getBillingState(account.uid);
+  const summary = await getBillingAccountSummary(account.uid).catch(() => null);
   const billing: BillingView = {
     ...state,
     currentPeriodEnd: state.currentPeriodEnd?.toISOString() ?? null,
@@ -69,6 +72,7 @@ export default async function BillingSettingsPage({
       }
       planIntent={planIntent}
       testMode={stripeMode === "TEST"}
+      summary={summary}
     />
   );
 }

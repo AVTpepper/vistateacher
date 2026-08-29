@@ -13,11 +13,12 @@ export default async function OnboardingPage({
 }: {
   searchParams: Promise<{
     plan?: string | string[];
+    interval?: string | string[];
     returnTo?: string | string[];
   }>;
 }) {
   const params = await searchParams;
-  const planIntent = parsePlanIntent(params.plan);
+  const planIntent = parsePlanIntent(params.plan, params.interval);
   const returnTo = safeReturnTo(
     Array.isArray(params.returnTo) ? params.returnTo[0] : params.returnTo,
   );

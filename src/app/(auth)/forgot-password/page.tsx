@@ -9,9 +9,13 @@ export const metadata: Metadata = { title: "Reset password" };
 export default async function ForgotPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ plan?: string | string[] }>;
+  searchParams: Promise<{
+    plan?: string | string[];
+    interval?: string | string[];
+  }>;
 }) {
-  const planIntent = parsePlanIntent((await searchParams).plan);
+  const params = await searchParams;
+  const planIntent = parsePlanIntent(params.plan, params.interval);
   return (
     <>
       <h1 className="font-serif text-3xl">Reset your password</h1>

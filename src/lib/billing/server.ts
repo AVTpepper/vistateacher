@@ -4,6 +4,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { getTrialEnd } from "@/lib/billing/policy";
 import type {
+  BillingAccountSummary,
   BillingCommunicationKind,
   BillingProvider,
   NormalizedBillingEvent,
@@ -217,13 +218,27 @@ export async function createPortal(
   return provider.createPortalSession({ customerId, origin });
 }
 
+export async function getBillingAccountSummary(
+  uid: string,
+  provider: BillingProvider = getBillingProvider(),
+): Promise<BillingAccountSummary | null> {
+  const snapshot = await adminDb().doc(`subscriptions/${uid}`).get();
+  if (!snapshot.exists) throw new BillingError("subscription-unavailable");
+  const subscription = readSubscription(snapshot.data() ?? {});
+  if (!subscription.stripeCustomerId || !subscription.stripeSubscriptionId)
+    return null;
+  return provider.getBillingAccountSummary({
+    customerId: subscription.stripeCustomerId,
+    subscriptionId: subscription.stripeSubscriptionId,
+  });
+}
+
 export async function updateSubscriptionCancellation(
   uid: string,
   cancelAtPeriodEnd: boolean,
   provider: BillingProvider = getBillingProvider(),
 ): Promise<void> {
-  const db = adminDb();
-  const subscriptionRef = db.doc(`subscriptions/${uid}`);
+  const subscriptionRef = adminDb().doc(`subscriptions/${uid}`);
   const snapshot = await subscriptionRef.get();
   if (!snapshot.exists) throw new BillingError("subscription-unavailable");
 
@@ -234,11 +249,6 @@ export async function updateSubscriptionCancellation(
   await provider.updateSubscriptionCancellation({
     subscriptionId: current.stripeSubscriptionId,
     cancelAtPeriodEnd,
-  });
-
-  await subscriptionRef.update({
-    cancelAtPeriodEnd,
-    updatedAt: FieldValue.serverTimestamp(),
   });
 }
 

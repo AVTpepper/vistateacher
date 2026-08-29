@@ -2,7 +2,6 @@ import {
   BadgeCheck,
   CalendarDays,
   Check,
-  CircleCheck,
   CreditCard,
   FlaskConical,
   Info,
@@ -13,8 +12,13 @@ import {
   BillingControls,
   type BillingView,
 } from "@/features/billing/billing-controls";
+import {
+  CheckoutStatusNotice,
+  type CheckoutStatus,
+} from "@/features/billing/checkout-status-notice";
 import { billingPlans } from "@/features/billing/plan-details";
 import type { PlanIntent } from "@/lib/billing/plan-intent";
+import type { BillingAccountSummary } from "@/lib/billing/provider";
 import { cn } from "@/lib/utils";
 
 export function BillingPanel({
@@ -22,11 +26,13 @@ export function BillingPanel({
   checkoutStatus = null,
   planIntent = null,
   testMode = false,
+  summary = null,
 }: {
   billing: BillingView;
-  checkoutStatus?: "success" | "processing" | "canceled" | null;
+  checkoutStatus?: CheckoutStatus | null;
   planIntent?: PlanIntent | null;
   testMode?: boolean;
+  summary?: BillingAccountSummary | null;
 }) {
   return (
     <div className="space-y-5">
@@ -101,47 +107,7 @@ export function BillingPanel({
           </div>
         </div>
       )}
-      {checkoutStatus && (
-        <div
-          role="status"
-          className={cn(
-            "flex items-start gap-3 rounded-lg border px-4 py-3 text-sm",
-            checkoutStatus === "success"
-              ? "border-success/30 bg-success/10"
-              : checkoutStatus === "processing"
-                ? "border-accent/30 bg-accent/10"
-                : "bg-muted/60",
-          )}
-        >
-          {checkoutStatus === "success" ? (
-            <CircleCheck
-              aria-hidden="true"
-              className="text-success mt-0.5 size-4 shrink-0"
-            />
-          ) : (
-            <Info
-              aria-hidden="true"
-              className="text-muted-foreground mt-0.5 size-4 shrink-0"
-            />
-          )}
-          <div>
-            <p className="font-bold">
-              {checkoutStatus === "success"
-                ? "Plus is active"
-                : checkoutStatus === "processing"
-                  ? "Confirming your payment"
-                  : "Checkout canceled"}
-            </p>
-            <p className="text-muted-foreground mt-0.5 text-xs leading-5">
-              {checkoutStatus === "success"
-                ? "Your payment was confirmed and VistaTeacher Plus is active."
-                : checkoutStatus === "processing"
-                  ? "Checkout completed, but VistaTeacher is still confirming the subscription. Refresh shortly; you won't be charged again."
-                  : "No payment was made. Your current plan is unchanged."}
-            </p>
-          </div>
-        </div>
-      )}
+      {checkoutStatus && <CheckoutStatusNotice status={checkoutStatus} />}
       <section className="surface-card p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -163,7 +129,39 @@ export function BillingPanel({
             <BadgeCheck className="text-primary size-5" />
           </span>
         </div>
-        <BillingControls billing={billing} />
+        <BillingControls
+          billing={billing}
+          preferredInterval={planIntent?.interval}
+        />
+        {summary && (
+          <dl className="bg-muted/45 mt-5 grid gap-4 rounded-lg border p-4 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-muted-foreground text-xs">Billing</dt>
+              <dd className="mt-1 font-bold capitalize">
+                {summary.interval ?? billing.billingInterval ?? "Not available"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground text-xs">Price</dt>
+              <dd className="mt-1 font-bold">
+                {summary.amount !== null && summary.currency
+                  ? new Intl.NumberFormat("en", {
+                      style: "currency",
+                      currency: summary.currency.toUpperCase(),
+                    }).format(summary.amount / 100)
+                  : "Available in Stripe"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground text-xs">Payment method</dt>
+              <dd className="mt-1 font-bold capitalize">
+                {summary.paymentMethod
+                  ? `${summary.paymentMethod.brand} ending ${summary.paymentMethod.last4}`
+                  : "Manage in Stripe"}
+              </dd>
+            </div>
+          </dl>
+        )}
       </section>
 
       <section aria-labelledby="plan-comparison-heading">

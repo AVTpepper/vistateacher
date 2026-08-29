@@ -28,6 +28,13 @@ export interface SubscriptionCancellationInput {
   cancelAtPeriodEnd: boolean;
 }
 
+export interface BillingAccountSummary {
+  amount: number | null;
+  currency: string | null;
+  interval: BillingInterval | null;
+  paymentMethod: { brand: string; last4: string } | null;
+}
+
 export type NormalizedBillingEvent =
   | {
       id: string;
@@ -105,6 +112,10 @@ export interface BillingProvider {
   updateSubscriptionCancellation(
     input: SubscriptionCancellationInput,
   ): Promise<void>;
+  getBillingAccountSummary(input: {
+    customerId: string;
+    subscriptionId: string;
+  }): Promise<BillingAccountSummary>;
   constructWebhookEvent(
     body: string,
     signature: string,
