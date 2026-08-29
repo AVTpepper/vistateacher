@@ -54,15 +54,28 @@ describe("resolveEffectivePlan", () => {
     expect(resolveEffectivePlan(record, now)).toBe("free");
   });
 
-  it("does not grant Plus for a past-due Stripe subscription", () => {
+  it("keeps Plus while Stripe retries a past-due subscription", () => {
     const record = subscription({
       plan: "plus",
       status: "past_due",
       currentPeriodEnd: new Date("2026-09-01T12:00:00.000Z"),
     });
 
-    expect(resolveEffectivePlan(record, now)).toBe("free");
+    expect(resolveEffectivePlan(record, now)).toBe("plus");
   });
+
+  it.each(["unpaid", "paused", "canceled", "incomplete"] as const)(
+    "does not grant Plus for a %s Stripe subscription",
+    (status) => {
+      const record = subscription({
+        plan: "plus",
+        status,
+        currentPeriodEnd: new Date("2026-09-01T12:00:00.000Z"),
+      });
+
+      expect(resolveEffectivePlan(record, now)).toBe("free");
+    },
+  );
 });
 
 describe("entitlement limits", () => {

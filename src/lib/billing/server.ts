@@ -35,8 +35,11 @@ export interface BillingState {
     | "active"
     | "trialing"
     | "past_due"
+    | "unpaid"
+    | "paused"
     | "canceled"
-    | "incomplete";
+    | "incomplete"
+    | "incomplete_expired";
   billingInterval: BillingInterval | null;
   currentPeriodEnd: Date | null;
   cancelAtPeriodEnd: boolean;
@@ -58,8 +61,11 @@ function readSubscription(
     "trialing",
     "active",
     "past_due",
+    "unpaid",
+    "paused",
     "canceled",
     "incomplete",
+    "incomplete_expired",
   ];
   const status = statusValues.includes(data.status) ? data.status : "free";
   return {
@@ -94,9 +100,16 @@ function billingState(
     subscription.trialConsumed &&
     subscription.trialEndsAt !== null &&
     subscription.trialEndsAt > now;
-  const stripeActive =
+  const blocksCheckout =
     subscription.plan === "plus" &&
-    (subscription.status === "active" || subscription.status === "trialing");
+    [
+      "active",
+      "trialing",
+      "past_due",
+      "unpaid",
+      "paused",
+      "incomplete",
+    ].includes(subscription.status);
   const lifecycle = trialActive
     ? "vista_trial"
     : subscription.stripeSubscriptionId
@@ -111,7 +124,7 @@ function billingState(
     cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
     trialEndsAt: subscription.trialEndsAt,
     canStartTrial: false,
-    canCheckout: !stripeActive,
+    canCheckout: !blocksCheckout,
     canManageBilling: subscription.stripeCustomerId !== null,
   };
 }
@@ -177,8 +190,8 @@ export async function createCheckout(
   if (!snapshot.exists) throw new BillingError("subscription-unavailable");
   const subscription = readSubscription(snapshot.data() ?? {});
   if (
-    subscription.plan === "plus" &&
-    (subscription.status === "active" || subscription.status === "trialing")
+    subscription.stripeSubscriptionId &&
+    !["canceled", "incomplete_expired"].includes(subscription.status)
   ) {
     throw new BillingError("already-subscribed");
   }
@@ -265,7 +278,7 @@ export async function reconcileBillingEvent(
       const prior = readSubscription(subscriptionSnapshot.data() ?? {});
       transaction.update(subscriptionRef, {
         plan: "plus",
-        status: "active",
+        status: "incomplete",
         stripeCustomerId: event.customerId,
         stripeSubscriptionId: event.subscriptionId,
         billingInterval: event.interval ?? prior.billingInterval,

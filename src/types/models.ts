@@ -2,7 +2,15 @@ export type UserRole = "educator" | "school_admin" | "platform_admin";
 export type UserStatus = "active" | "suspended" | "deleted";
 export type Plan = "free" | "plus";
 export type SubscriptionStatus =
-  "free" | "trialing" | "active" | "past_due" | "canceled" | "incomplete";
+  | "free"
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "unpaid"
+  | "paused"
+  | "canceled"
+  | "incomplete"
+  | "incomplete_expired";
 
 export interface SubscriptionRecord {
   plan: Plan;

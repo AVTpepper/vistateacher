@@ -19,14 +19,17 @@ export function normalizeStripeStatus(
     case "trialing":
       return "trialing";
     case "past_due":
-    case "unpaid":
-    case "paused":
       return "past_due";
+    case "unpaid":
+      return "unpaid";
+    case "paused":
+      return "paused";
     case "canceled":
       return "canceled";
     case "incomplete":
-    case "incomplete_expired":
       return "incomplete";
+    case "incomplete_expired":
+      return "incomplete_expired";
     default:
       return "incomplete";
   }

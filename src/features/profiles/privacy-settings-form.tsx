@@ -21,6 +21,8 @@ export function PrivacySettingsForm({
     effectivePlan: "free" | "plus";
     currentPeriodEnd: string | null;
     cancelAtPeriodEnd: boolean;
+    canManageBilling: boolean;
+    lifecycle: string;
   } | null;
 }) {
   const [settings, setSettings] = useState(initial);
@@ -186,6 +188,8 @@ function DeletionPanel({
     effectivePlan: "free" | "plus";
     currentPeriodEnd: string | null;
     cancelAtPeriodEnd: boolean;
+    canManageBilling: boolean;
+    lifecycle: string;
   } | null;
 }) {
   const [confirmation, setConfirmation] = useState("");
@@ -193,21 +197,24 @@ function DeletionPanel({
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const periodEndLabel = formatDate(billing?.currentPeriodEnd ?? null);
-  const billingMessage =
-    billing?.effectivePlan === "plus"
-      ? billing.cancelAtPeriodEnd
-        ? periodEndLabel
-          ? `Your Plus membership is already scheduled to end on ${periodEndLabel}.`
-          : "Your Plus membership is already scheduled to end at the end of this billing period."
-        : periodEndLabel
-          ? `If you continue, Plus billing will also be cancelled so access runs until ${periodEndLabel}.`
-          : "If you continue, Plus billing will also be cancelled so access runs until the end of this billing period."
-      : null;
+  const billingMessage = billing?.canManageBilling
+    ? billing.cancelAtPeriodEnd
+      ? periodEndLabel
+        ? `Your Plus membership is already scheduled to end on ${periodEndLabel}.`
+        : "Your Plus membership is already scheduled to end at the end of this billing period."
+      : periodEndLabel
+        ? `If you continue, Plus billing will also be cancelled so access runs until ${periodEndLabel}.`
+        : "If you continue, Plus billing will also be cancelled so access runs until the end of this billing period."
+    : null;
 
   async function confirmDeletion() {
     setPending(true);
     try {
-      if (billing?.effectivePlan === "plus" && !billing.cancelAtPeriodEnd) {
+      if (
+        billing?.canManageBilling &&
+        !billing.cancelAtPeriodEnd &&
+        !["canceled", "incomplete_expired"].includes(billing.lifecycle)
+      ) {
         const billingResponse = await fetch("/api/billing/subscription", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -240,7 +247,7 @@ function DeletionPanel({
       setComplete(true);
       setOpen(false);
       toast.success("Account deletion recorded.");
-      if (billing?.effectivePlan === "plus") {
+      if (billing?.canManageBilling) {
         toast.success(
           billing.cancelAtPeriodEnd
             ? "Plus billing is already set to end at the current billing boundary."

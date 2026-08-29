@@ -27,6 +27,8 @@ export default async function SettingsPage() {
               effectivePlan: billing.effectivePlan,
               currentPeriodEnd: billing.currentPeriodEnd?.toISOString() ?? null,
               cancelAtPeriodEnd: billing.cancelAtPeriodEnd,
+              canManageBilling: billing.canManageBilling,
+              lifecycle: billing.lifecycle,
             }
           : null
       }

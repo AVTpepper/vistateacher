@@ -15,11 +15,11 @@ describe("billing policy", () => {
     ["active", "active"],
     ["trialing", "trialing"],
     ["past_due", "past_due"],
-    ["unpaid", "past_due"],
-    ["paused", "past_due"],
+    ["unpaid", "unpaid"],
+    ["paused", "paused"],
     ["canceled", "canceled"],
     ["incomplete", "incomplete"],
-    ["incomplete_expired", "incomplete"],
+    ["incomplete_expired", "incomplete_expired"],
   ] as const)("normalizes Stripe %s subscriptions", (input, expected) => {
     expect(normalizeStripeStatus(input)).toBe(expected);
   });

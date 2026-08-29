@@ -35,7 +35,11 @@ export const PLAN_ENTITLEMENTS = {
 
 export type PlanEntitlements = (typeof PLAN_ENTITLEMENTS)[Plan];
 
-const ENTITLED_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
+const ENTITLED_SUBSCRIPTION_STATUSES = new Set([
+  "active",
+  "trialing",
+  "past_due",
+]);
 
 export function resolveEffectivePlan(
   subscription: SubscriptionRecord | null,
@@ -46,7 +50,9 @@ export function resolveEffectivePlan(
   const hasActiveSubscription =
     subscription.plan === "plus" &&
     ENTITLED_SUBSCRIPTION_STATUSES.has(subscription.status) &&
-    (!subscription.currentPeriodEnd || subscription.currentPeriodEnd > now);
+    (subscription.status === "past_due" ||
+      !subscription.currentPeriodEnd ||
+      subscription.currentPeriodEnd > now);
 
   const hasActiveVistaTrial =
     subscription.trialConsumed &&

@@ -16,8 +16,11 @@ export interface BillingView {
     | "active"
     | "trialing"
     | "past_due"
+    | "unpaid"
+    | "paused"
     | "canceled"
-    | "incomplete";
+    | "incomplete"
+    | "incomplete_expired";
   billingInterval: BillingInterval | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
@@ -158,16 +161,23 @@ function LifecycleMessage({
     trialing: `Your Plus membership is active${periodEnd ? ` through ${periodEnd}` : ""}.`,
     past_due:
       "Your latest payment needs attention. Update it in the billing portal.",
+    unpaid:
+      "Payment could not be recovered. Update your payment method to restore Plus.",
+    paused: "Your Plus membership is paused. Manage billing to restore access.",
     canceled:
       "Your paid membership has ended. You can choose Plus again at any time.",
     incomplete:
       "Your Plus setup is incomplete. Resume checkout or manage billing.",
+    incomplete_expired:
+      "Your previous checkout expired. You can choose Plus again when you’re ready.",
   };
   return (
     <p
       className={cn(
         "text-sm leading-6 font-semibold",
-        billing.lifecycle === "past_due" && "text-destructive",
+        ["past_due", "unpaid", "paused", "incomplete"].includes(
+          billing.lifecycle,
+        ) && "text-destructive",
       )}
     >
       {messages[billing.lifecycle]}
