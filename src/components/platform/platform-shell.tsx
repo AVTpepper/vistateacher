@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AlertTriangle,
   BookOpen,
   Compass,
   Home,
@@ -13,8 +14,9 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
+import { doc, onSnapshot } from "firebase/firestore";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -22,6 +24,7 @@ import { LogoutButton } from "@/features/auth/logout-button";
 import { NotificationMenu } from "@/features/notifications/notification-menu";
 import { PresenceHeartbeat } from "@/features/presence/presence-heartbeat";
 import { GlobalSearch } from "@/features/search/global-search";
+import { refreshFirebaseClientAuth } from "@/lib/firebase/client-auth";
 import { cn } from "@/lib/utils";
 import type { Plan } from "@/types/models";
 import type { UserRole } from "@/types/models";
@@ -57,14 +60,99 @@ interface PlatformShellProps {
 
 export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [displayedPlan, setDisplayedPlan] = useState<Plan>(plan);
+  const [billingNotice, setBillingNotice] = useState<{
+    message: string;
+    urgent: boolean;
+  } | null>(null);
   const mobileDrawerRef = useRef<HTMLElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const contentScrollRef = useRef<HTMLDivElement>(null);
   const profileHref = account.onboarded ? "/profile" : "/onboarding";
   const immersiveMessages = pathname.startsWith("/messages");
   const closeMobileMenu = () => setMobileOpen(false);
+
+  useEffect(() => setDisplayedPlan(plan), [plan]);
+
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    let receivedInitialSnapshot = false;
+    let priorSignature = "";
+    void refreshFirebaseClientAuth()
+      .then((client) => {
+        if (cancelled) return;
+        unsubscribe = onSnapshot(
+          doc(client.db, `subscriptions/${account.uid}`),
+          (snapshot) => {
+            const data = snapshot.data();
+            const status = String(data?.status ?? "free");
+            const cancelAtPeriodEnd = data?.cancelAtPeriodEnd === true;
+            const periodEnd = data?.currentPeriodEnd?.toDate?.() as
+              Date | undefined;
+            const trialEnd = data?.trialEndsAt?.toDate?.() as Date | undefined;
+            const hasTrial = Boolean(trialEnd && trialEnd > new Date());
+            const hasPaidAccess =
+              data?.plan === "plus" &&
+              (["active", "trialing"].includes(status)
+                ? !periodEnd || periodEnd > new Date()
+                : status === "past_due");
+            const nextPlan: Plan = hasTrial || hasPaidAccess ? "plus" : "free";
+            setDisplayedPlan(nextPlan);
+
+            const endLabel = periodEnd
+              ? new Intl.DateTimeFormat("en", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  timeZone: "UTC",
+                }).format(periodEnd)
+              : null;
+            setBillingNotice(
+              status === "past_due"
+                ? {
+                    message:
+                      "Your payment needs attention. Plus remains active while Stripe retries it.",
+                    urgent: true,
+                  }
+                : ["unpaid", "paused"].includes(status)
+                  ? {
+                      message:
+                        "Plus access is interrupted. Update your payment method to restore it.",
+                      urgent: true,
+                    }
+                  : status === "incomplete"
+                    ? {
+                        message:
+                          "Your Plus setup is incomplete. Finish billing setup to activate access.",
+                        urgent: true,
+                      }
+                    : cancelAtPeriodEnd
+                      ? {
+                          message: `Plus renewal is off${endLabel ? `; access continues through ${endLabel}` : " until the current period ends"}.`,
+                          urgent: false,
+                        }
+                      : null,
+            );
+
+            const signature = `${status}:${cancelAtPeriodEnd}:${nextPlan}:${periodEnd?.toISOString() ?? ""}`;
+            if (receivedInitialSnapshot && signature !== priorSignature) {
+              router.refresh();
+            }
+            priorSignature = signature;
+            receivedInitialSnapshot = true;
+          },
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, [account.uid, router]);
 
   useLayoutEffect(() => {
     contentScrollRef.current?.scrollTo({ left: 0, top: 0, behavior: "auto" });
@@ -314,12 +402,14 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                     <span
                       className={cn(
                         "mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                        plan === "plus"
+                        displayedPlan === "plus"
                           ? "bg-accent/15 text-accent-readable"
                           : "bg-muted text-muted-foreground",
                       )}
                     >
-                      {plan === "plus" ? "Plus Plan" : "Community Plan"}
+                      {displayedPlan === "plus"
+                        ? "Plus Plan"
+                        : "Community Plan"}
                     </span>
                   </div>
                   <Link
@@ -416,6 +506,21 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
           </div>
         </nav>
       </header>
+      {billingNotice && (
+        <Link
+          href="/settings/billing"
+          className={cn(
+            "flex min-h-11 shrink-0 items-center justify-center gap-2 px-4 py-2 text-center text-xs font-bold",
+            billingNotice.urgent
+              ? "bg-destructive text-destructive-foreground"
+              : "bg-accent text-accent-foreground",
+          )}
+        >
+          <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
+          <span>{billingNotice.message}</span>
+          <span className="underline">Review billing</span>
+        </Link>
+      )}
       <div
         ref={contentScrollRef}
         id="platform-scroll-container"

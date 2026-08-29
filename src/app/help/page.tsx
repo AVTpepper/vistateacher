@@ -26,6 +26,22 @@ const questions = [
     "Can payment verify my educator status?",
     "No. Subscription status and educator verification are independent.",
   ],
+  [
+    "When does Plus renew?",
+    "Plus renews automatically each month or year on the date shown in Plan & billing. An upcoming-renewal email is sent before Stripe attempts the charge.",
+  ],
+  [
+    "What happens if a payment fails?",
+    "Plus remains available while Stripe retries a past-due payment. VistaTeacher will show an account banner and send an essential billing email so you can update the payment method before access is interrupted.",
+  ],
+  [
+    "Where are invoices and receipts?",
+    "Open Plan & billing, then choose Payment methods, invoices & receipts to continue securely to Stripe. VistaTeacher also emails a receipt after each paid invoice.",
+  ],
+  [
+    "How do cancellation and refunds work?",
+    "Turning off renewal keeps Plus active through the paid billing period. Refund requests are reviewed case by case through support, subject to rights required by applicable law.",
+  ],
 ];
 
 export default function HelpPage() {

@@ -45,7 +45,12 @@ export interface DashboardActionItem {
   title: string;
   detail: string;
   href: string;
-  kind: "resource-draft" | "lesson-draft" | "notification" | "resource-tip";
+  kind:
+    | "resource-draft"
+    | "lesson-draft"
+    | "notification"
+    | "resource-tip"
+    | "billing";
 }
 
 export interface DashboardData {
@@ -302,6 +307,45 @@ export async function getDashboardData(
     )
     .slice(0, 3);
   const firstName = profile.displayName.trim().split(/\s+/)[0] ?? "Educator";
+  const billingAction: DashboardActionItem | null = subscription
+    ? subscription.status === "past_due"
+      ? {
+          id: "billing_payment_due",
+          kind: "billing",
+          title: "Update your Plus payment",
+          detail:
+            "Plus remains active while Stripe retries the payment. Review your payment method to prevent interruption.",
+          href: "/settings/billing/manage",
+        }
+      : ["unpaid", "paused"].includes(subscription.status)
+        ? {
+            id: "billing_access_interrupted",
+            kind: "billing",
+            title: "Restore VistaTeacher Plus",
+            detail:
+              "Your paid access is interrupted. Update billing to restore Plus benefits.",
+            href: "/settings/billing/manage",
+          }
+        : subscription.status === "incomplete"
+          ? {
+              id: "billing_incomplete",
+              kind: "billing",
+              title: "Finish setting up Plus",
+              detail:
+                "Your subscription setup is incomplete. Review billing to finish activation.",
+              href: "/settings/billing/manage",
+            }
+          : subscription.cancelAtPeriodEnd
+            ? {
+                id: "billing_cancellation_scheduled",
+                kind: "billing",
+                title: "Plus renewal is turned off",
+                detail:
+                  "Your Plus benefits remain available through the current billing period. You can restore renewal before access ends.",
+                href: "/settings/billing/manage",
+              }
+            : null
+    : null;
 
   return {
     viewer: {
@@ -395,6 +439,6 @@ export async function getDashboardData(
     topResources: ownedResources
       .sort((left, right) => right.downloadCount - left.downloadCount)
       .slice(0, 4),
-    actionItems,
+    actionItems: billingAction ? [billingAction, ...actionItems] : actionItems,
   };
 }

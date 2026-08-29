@@ -154,7 +154,7 @@ pnpm exec firebase apphosting:secrets:set OPENAI_API_KEY --project YOUR_PROJECT_
 
 - [ ] Add the generated App Hosting hostname to Firebase Authentication > Settings > Authorized domains.
 - [ ] Configure the Google provider's authorized domain/redirect settings if requested by Firebase.
-- [ ] Register `https://GENERATED_HOST/api/billing/webhook` in Stripe and subscribe to checkout completion, subscription lifecycle, invoice paid, and payment failed events.
+- [ ] Register `https://GENERATED_HOST/api/billing/webhook` in Stripe TEST mode and subscribe to checkout completion, subscription lifecycle, invoice paid, payment failed, invoice upcoming, and charge refunded events.
 - [ ] Save the resulting signing secret as `STRIPE_WEBHOOK_SECRET` and roll out again.
 - [ ] Complete the staging smoke tests in [docs/manual-testing.md](docs/manual-testing.md).
 

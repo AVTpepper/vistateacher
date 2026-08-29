@@ -179,8 +179,40 @@ export default async function PricingPage({
       </div>
       <p className="text-muted-foreground mt-6 text-sm">
         Paid memberships are processed securely by Stripe and can be managed
-        from account settings.
+        from account settings. Plus renews automatically at the selected
+        interval until renewal is turned off.
       </p>
+      <section
+        className="mt-12 border-t pt-10"
+        aria-labelledby="billing-faq-heading"
+      >
+        <h2 id="billing-faq-heading" className="font-serif text-3xl">
+          Billing questions
+        </h2>
+        <div className="mt-6 grid gap-6 md:grid-cols-3">
+          {[
+            [
+              "Cancel without losing paid time",
+              "Turn off renewal from Plan & billing. Plus remains active through the current billing period.",
+            ],
+            [
+              "Receipts and payment methods",
+              "Receipts are emailed after payment. Invoices and payment methods remain available through Stripe’s secure portal.",
+            ],
+            [
+              "Refund support",
+              "Refund requests are reviewed case by case through support, subject to applicable law.",
+            ],
+          ].map(([title, description]) => (
+            <div key={title}>
+              <h3 className="font-bold">{title}</h3>
+              <p className="text-muted-foreground mt-2 text-sm leading-6">
+                {description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
     </ContentPage>
   );
 }

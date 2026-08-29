@@ -14,7 +14,7 @@ Create secrets with `firebase apphosting:secrets:set SECRET_NAME`. If a secret w
 ## External Services
 
 - Enable Firebase Email/Password and Google authentication providers and add the production domain to authorized domains.
-- Register `https://PRODUCTION_ORIGIN/api/billing/webhook` in the matching Stripe environment with `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, and `invoice.paid`.
+- Register `https://PRODUCTION_ORIGIN/api/billing/webhook` in the matching Stripe environment with `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`, `invoice.upcoming`, and `charge.refunded`.
 - Keep `STRIPE_MODE=TEST` with an `sk_test_...` secret key, test Price IDs, and the test endpoint signing secret while validating the integration. The application rejects a mode/key mismatch.
 - To accept real payments, change `STRIPE_MODE` to `LIVE` and replace all four Stripe secrets together: `STRIPE_SECRET_KEY` (`sk_live_...`), `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PLUS_MONTHLY`, and `STRIPE_PRICE_PLUS_YEARLY`. Test and live webhook signing secrets are different.
 - Confirm monthly and yearly Stripe Price IDs belong to the same Stripe environment and account as `STRIPE_SECRET_KEY`.

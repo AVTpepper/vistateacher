@@ -30,7 +30,11 @@ export default function TermsPage() {
           ],
           [
             "Subscriptions",
-            "Paid features, renewal terms, and cancellation details are shown before checkout. Payment never grants educator verification or moderation privileges.",
+            "Plus renews automatically at the monthly or yearly interval selected before checkout until you turn off renewal. The current price, billing interval, renewal or end date, and cancellation controls are available in Plan & billing. Payment never grants educator verification or moderation privileges.",
+          ],
+          [
+            "Payments, cancellation, and refunds",
+            "Stripe processes payments and provides invoices and receipts. Turning off renewal prevents the next charge while Plus remains available through the current paid period. Refund requests are reviewed case by case through support, subject to any non-waivable rights under applicable law. Failed payments may be retried and can eventually interrupt paid access if they are not resolved.",
           ],
           [
             "Service availability",

@@ -146,6 +146,8 @@ Use `plus@vista.local` for Plus workflows. Automated/local AI uses `AI_PROVIDER=
 - [ ] Complete monthly and yearly Checkout with `4242 4242 4242 4242`, a future expiry such as `12/34`, any three-digit CVC, and any valid postal code.
 - [ ] Confirm the webhook changes the account to Plus; the success redirect alone must not grant access.
 - [ ] Confirm a successful paid invoice sends the account email a receipt with the amount, invoice reference, and Stripe-hosted invoice link.
+- [ ] In Stripe test mode, trigger payment failed, invoice upcoming, cancellation, renewal restoration, membership ended, and charge refunded events; confirm each produces one essential email and one live in-app notification.
+- [ ] Confirm a past-due account keeps Plus during retries, cannot create a duplicate subscription, and is directed to payment recovery.
 - [ ] Cancel Checkout and confirm the user returns to authenticated billing with their current plan unchanged.
 - [ ] Open Customer Portal and verify cancellation/reactivation states reconcile through webhooks.
 

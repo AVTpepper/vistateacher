@@ -4,6 +4,7 @@ import {
   Bell,
   BookOpen,
   Clock3,
+  CreditCard,
   Download,
   Eye,
   Heart,
@@ -267,7 +268,12 @@ export function DashboardExperience({
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {dashboard.actionItems.map((item) => {
-              const Icon = item.kind === "notification" ? Bell : WandSparkles;
+              const Icon =
+                item.kind === "notification"
+                  ? Bell
+                  : item.kind === "billing"
+                    ? CreditCard
+                    : WandSparkles;
               return (
                 <Link
                   key={item.id}
