@@ -59,7 +59,7 @@ export function ProfileTabProvider({
     setActiveTab(tab);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", tab);
-    url.hash = "";
+    url.hash = "profile-content";
     window.history.pushState(null, "", url);
   }, []);
 

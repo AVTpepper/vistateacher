@@ -871,8 +871,12 @@ describe("Firestore rules", () => {
       cancelAtPeriodEnd: false,
     };
 
-    await expect(reconcileBillingEvent(currentEvent)).resolves.toBe(true);
-    await expect(reconcileBillingEvent(currentEvent)).resolves.toBe(false);
+    await expect(reconcileBillingEvent(currentEvent)).resolves.toMatchObject({
+      applied: true,
+    });
+    await expect(reconcileBillingEvent(currentEvent)).resolves.toMatchObject({
+      applied: false,
+    });
     await expect(
       reconcileBillingEvent({
         ...currentEvent,
@@ -880,7 +884,7 @@ describe("Firestore rules", () => {
         createdAt: new Date("2026-08-04T11:59:59.000Z"),
         status: "canceled",
       }),
-    ).resolves.toBe(false);
+    ).resolves.toMatchObject({ applied: false });
 
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const [subscription, current, stale] = await Promise.all([
@@ -908,7 +912,9 @@ describe("Firestore rules", () => {
       interval: "year" as const,
     };
 
-    await expect(reconcileBillingEvent(event)).resolves.toBe(true);
+    await expect(reconcileBillingEvent(event)).resolves.toMatchObject({
+      applied: true,
+    });
 
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const [subscription, storedEvent] = await Promise.all([

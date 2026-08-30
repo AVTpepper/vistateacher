@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { EditTextDialog } from "@/components/ui/edit-dialog";
 import {
   LimitUpgradeDialog,
   type UpgradePromptReason,
@@ -295,16 +296,22 @@ export function MessagesExperience({
     toast.success(blocked ? "Educator blocked." : "Educator unblocked.");
   }
 
-  async function editMessage(message: DirectMessage) {
-    if (!activeId) return;
-    const nextContent = window.prompt("Edit message", message.content);
-    if (!nextContent) return;
+  async function editMessage(
+    message: DirectMessage,
+    nextContent: string,
+  ): Promise<void> {
+    if (!activeId) throw new Error("Conversation unavailable.");
     const response = await fetch(`/api/messages/${activeId}/${message.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: nextContent }),
     });
-    if (!response.ok) return toast.error("We couldn't edit that message.");
+    const result = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    if (!response.ok) {
+      throw new Error(result?.error ?? "We couldn't edit that message.");
+    }
     toast.success("Message updated.");
   }
 
@@ -571,7 +578,9 @@ export function MessagesExperience({
                       message={message}
                       mine={message.senderId === viewer.uid}
                       participant={active.participant}
-                      onEdit={() => void editMessage(message)}
+                      onEdit={(nextContent) =>
+                        editMessage(message, nextContent)
+                      }
                       onDelete={() => removeMessage(message)}
                     />
                   ))}
@@ -724,7 +733,7 @@ function MessageBubble({
   message: DirectMessage;
   mine: boolean;
   participant: ConversationSummary["participant"];
-  onEdit: () => void;
+  onEdit: (value: string) => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
   return (
@@ -796,13 +805,23 @@ function MessageBubble({
           </span>
           {mine && !message.deletedAt && (
             <span className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={onEdit}
-                className="hover:text-foreground min-h-11 px-1 font-semibold"
-              >
-                Edit
-              </button>
+              <EditTextDialog
+                title="Edit message"
+                description="Update your message."
+                label="Message"
+                value={message.content}
+                maxLength={5_000}
+                rows={3}
+                onSave={onEdit}
+                trigger={
+                  <button
+                    type="button"
+                    className="hover:text-foreground min-h-11 px-1 font-semibold"
+                  >
+                    Edit
+                  </button>
+                }
+              />
               <DeleteConfirmDialog itemName="message" onConfirm={onDelete}>
                 <button
                   type="button"

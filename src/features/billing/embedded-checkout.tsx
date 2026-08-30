@@ -30,12 +30,12 @@ export function EmbeddedCheckoutPanel({
   const [stripePromise] = useState(() => loadStripe(publishableKey));
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const requestKey = `${interval}:${attempt}`;
 
   useEffect(() => {
     const controller = new AbortController();
-    setClientSecret(null);
-    setError(null);
     void (async () => {
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
@@ -53,8 +53,11 @@ export function EmbeddedCheckoutPanel({
         );
       }
       setClientSecret(result.clientSecret);
+      setLoadedKey(requestKey);
+      setError(null);
     })().catch((caught) => {
       if (controller.signal.aborted) return;
+      setLoadedKey(requestKey);
       setError(
         caught instanceof Error
           ? caught.message
@@ -62,11 +65,11 @@ export function EmbeddedCheckoutPanel({
       );
     });
     return () => controller.abort();
-  }, [attempt, interval]);
+  }, [attempt, interval, requestKey]);
 
   const options = useMemo(
-    () => (clientSecret ? { clientSecret } : null),
-    [clientSecret],
+    () => (loadedKey === requestKey && clientSecret ? { clientSecret } : null),
+    [clientSecret, loadedKey, requestKey],
   );
 
   return (

@@ -12,7 +12,18 @@ import { getProfilePosts } from "@/lib/feed/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { getProfileView } from "@/lib/profiles/server";
 
-export const metadata: Metadata = { title: "Educator profile" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ uid: string }>;
+}): Promise<Metadata> {
+  const { uid } = await params;
+  const snapshot = await adminDb().doc(`users/${uid}`).get();
+  const data = snapshot.data();
+  const displayName =
+    typeof data?.displayName === "string" ? data.displayName : "Educator";
+  return { title: `${displayName} | VistaTeacher` };
+}
 
 export default async function PublicEducatorPage({
   params,

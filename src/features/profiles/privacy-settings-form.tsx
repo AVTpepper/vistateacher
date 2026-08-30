@@ -301,14 +301,14 @@ function DeletionPanel({
                 </div>
               )}
               <ul className="text-muted-foreground mt-4 space-y-2 text-sm leading-6">
-                <li>â€¢ Your account will be marked for deletion.</li>
+                <li>• Your account will be marked for deletion.</li>
                 <li>
-                  â€¢ Your profile, settings, and private access will be removed
+                  • Your profile, settings, and private access will be removed
                   from normal use.
                 </li>
                 <li>
-                  â€¢ If you are on Plus, billing will end at the current
-                  billing boundary.
+                  • If you are on Plus, billing will end at the current billing
+                  boundary.
                 </li>
               </ul>
               <Input

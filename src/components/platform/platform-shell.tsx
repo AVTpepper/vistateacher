@@ -64,6 +64,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [displayedPlan, setDisplayedPlan] = useState<Plan>(plan);
+  const [previousPlan, setPreviousPlan] = useState<Plan>(plan);
   const [billingNotice, setBillingNotice] = useState<{
     message: string;
     urgent: boolean;
@@ -75,7 +76,10 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   const immersiveMessages = pathname.startsWith("/messages");
   const closeMobileMenu = () => setMobileOpen(false);
 
-  useEffect(() => setDisplayedPlan(plan), [plan]);
+  if (plan !== previousPlan) {
+    setPreviousPlan(plan);
+    setDisplayedPlan(plan);
+  }
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;

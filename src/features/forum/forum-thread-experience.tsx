@@ -23,7 +23,9 @@ import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { EditTextDialog } from "@/components/ui/edit-dialog";
 import { MentionText } from "@/features/mentions/mention-text";
 import { MentionTextarea } from "@/features/mentions/mention-textarea";
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
@@ -50,18 +52,15 @@ export function ForumThreadExperience({
   const [pending, setPending] = useState(false);
   const { thread, replies } = data;
 
-  async function saveThreadEdit() {
-    const nextTitle = window.prompt("Edit discussion title", thread.title);
-    if (!nextTitle) return;
-    const nextContent = window.prompt(
-      "Edit discussion content",
-      thread.content,
-    );
-    if (!nextContent) return;
-    const nextTags = window.prompt(
-      "Edit tags (comma-separated)",
-      thread.tags.join(", "),
-    );
+  async function saveThreadEdit({
+    title: nextTitle,
+    content: nextContent,
+    tags: nextTags,
+  }: {
+    title: string;
+    content: string;
+    tags: string;
+  }): Promise<void> {
     const response = await fetch(`/api/forum/${thread.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -75,20 +74,31 @@ export function ForumThreadExperience({
           .slice(0, 5),
       }),
     });
-    if (!response.ok) return toast.error("We couldn't update this discussion.");
+    const result = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    if (!response.ok) {
+      throw new Error(result?.error ?? "We couldn't update this discussion.");
+    }
     toast.success("Discussion updated.");
     router.refresh();
   }
 
-  async function saveReplyEdit(replyId: string, currentContent: string) {
-    const nextContent = window.prompt("Edit comment", currentContent);
-    if (!nextContent) return;
+  async function saveReplyEdit(
+    replyId: string,
+    nextContent: string,
+  ): Promise<void> {
     const response = await fetch(`/api/forum/${thread.id}/replies/${replyId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: nextContent }),
     });
-    if (!response.ok) return toast.error("We couldn't update that comment.");
+    const result = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    if (!response.ok) {
+      throw new Error(result?.error ?? "We couldn't update that comment.");
+    }
     setData((current) => ({
       ...current,
       replies: current.replies.map((item) =>
@@ -365,11 +375,7 @@ export function ForumThreadExperience({
             {thread.canModerate && (
               <>
                 {thread.ownedByViewer && !thread.locked && (
-                  <IconButton
-                    label="Edit discussion"
-                    icon={MessageSquare}
-                    onClick={() => void saveThreadEdit()}
-                  />
+                  <ThreadEditDialog thread={thread} onSave={saveThreadEdit} />
                 )}
                 <IconButton
                   label={
@@ -427,13 +433,13 @@ export function ForumThreadExperience({
               onLike={(liked) => void toggleLike(item.id, liked)}
               onAccept={() => void accept(item.id)}
               onDelete={() => deleteReply(item.id)}
-              onEdit={() => void saveReplyEdit(item.id, item.content)}
+              onEdit={(nextContent) => saveReplyEdit(item.id, nextContent)}
               onLikeResponse={(replyId, liked) =>
                 void toggleLike(replyId, liked)
               }
               onDeleteResponse={(replyId) => deleteReply(replyId)}
-              onEditResponse={(replyId, content) =>
-                void saveReplyEdit(replyId, content)
+              onEditResponse={(replyId, content, nextContent) =>
+                saveReplyEdit(replyId, nextContent)
               }
               onReply={(content, mentions) =>
                 submitComment(item.id, content, mentions)
@@ -513,10 +519,14 @@ function CommentCard({
   onLike: (liked: boolean) => void;
   onAccept: () => void;
   onDelete: () => Promise<void>;
-  onEdit: () => void;
+  onEdit: (nextContent: string) => Promise<void>;
   onLikeResponse: (replyId: string, liked: boolean) => void;
   onDeleteResponse: (replyId: string) => Promise<void>;
-  onEditResponse: (replyId: string, content: string) => void;
+  onEditResponse: (
+    replyId: string,
+    content: string,
+    nextContent: string,
+  ) => Promise<void>;
   onReply: (content: string, mentions: MentionTarget[]) => Promise<boolean>;
   pending: boolean;
   threadId: string;
@@ -583,10 +593,24 @@ function CommentCard({
               )}
               <ForumReportDialog threadId={threadId} replyId={reply.id} />
               {reply.canModerate && (
-                <IconButton
-                  label="Edit comment"
-                  icon={MessageSquare}
-                  onClick={onEdit}
+                <EditTextDialog
+                  title="Edit comment"
+                  description="Update your forum comment."
+                  label="Comment"
+                  value={reply.content}
+                  maxLength={5_000}
+                  rows={4}
+                  onSave={onEdit}
+                  trigger={
+                    <button
+                      type="button"
+                      aria-label="Edit comment"
+                      title="Edit comment"
+                      className="text-muted-foreground hover:bg-muted hover:text-foreground grid size-8 place-items-center rounded-lg"
+                    >
+                      <MessageSquare aria-hidden="true" className="size-4" />
+                    </button>
+                  }
                 />
               )}
               {reply.canModerate && (
@@ -668,8 +692,12 @@ function CommentCard({
                   reply={responseItem}
                   onLike={(liked) => onLikeResponse(responseItem.id, liked)}
                   onDelete={() => onDeleteResponse(responseItem.id)}
-                  onEdit={() =>
-                    onEditResponse(responseItem.id, responseItem.content)
+                  onEdit={(nextContent) =>
+                    onEditResponse(
+                      responseItem.id,
+                      responseItem.content,
+                      nextContent,
+                    )
                   }
                   threadId={threadId}
                 />
@@ -692,7 +720,7 @@ function CommentResponse({
   reply: ForumReply;
   onLike: (liked: boolean) => void;
   onDelete: () => Promise<void>;
-  onEdit: () => void;
+  onEdit: (nextContent: string) => Promise<void>;
   threadId: string;
 }) {
   return (
@@ -725,10 +753,24 @@ function CommentResponse({
             <div className="flex items-center gap-1">
               <ForumReportDialog threadId={threadId} replyId={reply.id} />
               {reply.ownedByViewer && (
-                <IconButton
-                  label="Edit comment"
-                  icon={MessageSquare}
-                  onClick={onEdit}
+                <EditTextDialog
+                  title="Edit comment"
+                  description="Update your forum reply."
+                  label="Reply"
+                  value={reply.content}
+                  maxLength={5_000}
+                  rows={4}
+                  onSave={onEdit}
+                  trigger={
+                    <button
+                      type="button"
+                      aria-label="Edit comment"
+                      title="Edit comment"
+                      className="text-muted-foreground hover:bg-muted hover:text-foreground grid size-8 place-items-center rounded-lg"
+                    >
+                      <MessageSquare aria-hidden="true" className="size-3.5" />
+                    </button>
+                  }
                 />
               )}
               {reply.canModerate && (
@@ -852,6 +894,135 @@ function ForumReportDialog({
           >
             {pending ? "Submitting..." : "Submit report"}
           </button>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function ThreadEditDialog({
+  thread,
+  onSave,
+}: {
+  thread: ForumThreadDetail["thread"];
+  onSave: (values: {
+    title: string;
+    content: string;
+    tags: string;
+  }) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState(thread.title);
+  const [content, setContent] = useState(thread.content);
+  const [tags, setTags] = useState(thread.tags.join(", "));
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function openDialog() {
+    setTitle(thread.title);
+    setContent(thread.content);
+    setTags(thread.tags.join(", "));
+    setError(null);
+    setOpen(true);
+  }
+
+  async function submit() {
+    if (!title.trim() || !content.trim() || pending) return;
+    setPending(true);
+    setError(null);
+    try {
+      await onSave({
+        title: title.trim(),
+        content: content.trim(),
+        tags,
+      });
+      setOpen(false);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "We couldn't update this discussion.",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Trigger asChild onClick={openDialog}>
+        <button
+          type="button"
+          aria-label="Edit discussion"
+          title="Edit discussion"
+          className="text-muted-foreground hover:bg-muted hover:text-foreground grid size-8 place-items-center rounded-lg"
+        >
+          <MessageSquare aria-hidden="true" className="size-4" />
+        </button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
+        <Dialog.Content className="bg-card fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border p-5 shadow-2xl">
+          <Dialog.Title className="font-serif text-2xl">
+            Edit discussion
+          </Dialog.Title>
+          <Dialog.Description className="text-muted-foreground mt-1 text-sm">
+            Update the title, content, and tags for this discussion.
+          </Dialog.Description>
+          <Dialog.Close
+            aria-label="Close edit discussion"
+            className="text-muted-foreground hover:bg-muted absolute top-2.5 right-2.5 grid size-11 place-items-center rounded-lg"
+          >
+            <X aria-hidden="true" className="size-4" />
+          </Dialog.Close>
+          <label className="mt-5 block text-sm font-bold">
+            <span>Title</span>
+            <input
+              autoFocus
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              maxLength={180}
+              className="resource-input mt-2"
+            />
+          </label>
+          <label className="mt-4 block text-sm font-bold">
+            <span>Content</span>
+            <textarea
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              maxLength={10_000}
+              rows={7}
+              className="resource-input mt-2 resize-y"
+            />
+          </label>
+          <label className="mt-4 block text-sm font-bold">
+            <span>Tags</span>
+            <input
+              value={tags}
+              onChange={(event) => setTags(event.target.value)}
+              maxLength={180}
+              className="resource-input mt-2"
+            />
+          </label>
+          {error && (
+            <p className="text-destructive mt-3 text-sm" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="mt-6 flex justify-end gap-2">
+            <Dialog.Close asChild>
+              <Button type="button" variant="outline" disabled={pending}>
+                Cancel
+              </Button>
+            </Dialog.Close>
+            <Button
+              type="button"
+              disabled={pending || !title.trim() || !content.trim()}
+              onClick={() => void submit()}
+            >
+              {pending ? "Saving..." : "Save changes"}
+            </Button>
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

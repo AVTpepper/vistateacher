@@ -3,9 +3,25 @@ import { notFound, redirect } from "next/navigation";
 
 import { PostCard } from "@/features/feed/post-card";
 import { requireCurrentAccount } from "@/lib/auth/session";
+import { adminDb } from "@/lib/firebase/admin";
 import { getPost, getPostComments } from "@/lib/feed/server";
 
-export const metadata: Metadata = { title: "Shared post" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ postId: string }>;
+}): Promise<Metadata> {
+  const { postId } = await params;
+  const snapshot = await adminDb().doc(`posts/${postId}`).get();
+  const data = snapshot.data();
+  const content = typeof data?.content === "string" ? data.content.trim() : "";
+  return {
+    title:
+      content.length > 60
+        ? `${content.slice(0, 57)}...`
+        : content || "Shared post",
+  };
+}
 
 export default async function PostPermalinkPage({
   params,

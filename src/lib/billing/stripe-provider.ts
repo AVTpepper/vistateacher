@@ -32,6 +32,15 @@ function originUrl(origin: string, path: string): string {
   return new URL(path, `${origin}/`).toString();
 }
 
+function toBillingInterval(
+  value: Stripe.Price.Recurring.Interval | null | undefined,
+): BillingInterval | null {
+  if (value === "month" || value === "year") {
+    return value as BillingInterval;
+  }
+  return null;
+}
+
 class StripeBillingProvider implements BillingProvider {
   private readonly client: Stripe;
   private readonly env: z.infer<typeof stripeEnvSchema>;
@@ -97,8 +106,7 @@ class StripeBillingProvider implements BillingProvider {
 
     const item = subscription.items.data[0];
     const interval = item?.price.recurring?.interval;
-    const billingInterval: BillingInterval | null =
-      interval === "month" ? "month" : interval === "year" ? "year" : null;
+    const billingInterval: BillingInterval | null = toBillingInterval(interval);
     const customerId =
       stripeId(subscription.customer) ?? stripeId(session.customer);
     if (!item || !billingInterval || !customerId) return null;
@@ -160,7 +168,7 @@ class StripeBillingProvider implements BillingProvider {
     return {
       amount: item?.price.unit_amount ?? null,
       currency: item?.price.currency ?? null,
-      interval: interval === "month" || interval === "year" ? interval : null,
+      interval: toBillingInterval(interval),
       paymentMethod:
         defaultMethod && "card" in defaultMethod && defaultMethod.card
           ? {

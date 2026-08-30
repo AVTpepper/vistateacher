@@ -1,11 +1,13 @@
 "use client";
 
-import { Download, Eye, LoaderCircle, Star, Trash2 } from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Download, Eye, LoaderCircle, Star, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import type { ResourceDetail } from "@/lib/resources/server";
 
@@ -51,22 +53,19 @@ export function ResourceDetailActions({
     router.refresh();
   }
 
-  async function editResourceMetadata() {
-    const title = window.prompt("Resource title", resource.title);
-    if (!title) return;
-    const description = window.prompt(
-      "Resource description",
-      resource.description,
-    );
-    if (!description) return;
-    const subject = window.prompt("Subject", resource.subject);
-    if (!subject) return;
-    const gradeLevel = window.prompt("Grade level", resource.gradeLevel);
-    if (!gradeLevel) return;
-    const tags = window.prompt(
-      "Tags (comma-separated)",
-      resource.tags.join(", "),
-    );
+  async function editResourceMetadata({
+    title,
+    description,
+    subject,
+    gradeLevel,
+    tags,
+  }: {
+    title: string;
+    description: string;
+    subject: string;
+    gradeLevel: string;
+    tags: string;
+  }): Promise<void> {
     const response = await fetch(`/api/resources/${resource.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -84,7 +83,12 @@ export function ResourceDetailActions({
           .slice(0, 8),
       }),
     });
-    if (!response.ok) return toast.error("We couldn't update this resource.");
+    const result = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    if (!response.ok) {
+      throw new Error(result?.error ?? "We couldn't update this resource.");
+    }
     toast.success("Resource updated.");
     router.refresh();
   }
@@ -157,13 +161,10 @@ export function ResourceDetailActions({
           </button>
         )}
         {resource.ownedByViewer && (
-          <button
-            type="button"
-            onClick={() => void editResourceMetadata()}
-            className="hover:bg-muted h-11 rounded-lg border px-3 text-xs font-bold"
-          >
-            Edit Metadata
-          </button>
+          <ResourceEditDialog
+            resource={resource}
+            onSave={editResourceMetadata}
+          />
         )}
         {resource.ownedByViewer && (
           <DeleteConfirmDialog itemName="resource" onConfirm={remove}>
@@ -224,5 +225,176 @@ export function ResourceDetailActions({
         </section>
       )}
     </>
+  );
+}
+
+function ResourceEditDialog({
+  resource,
+  onSave,
+}: {
+  resource: ResourceDetail;
+  onSave: (values: {
+    title: string;
+    description: string;
+    subject: string;
+    gradeLevel: string;
+    tags: string;
+  }) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState(resource.title);
+  const [description, setDescription] = useState(resource.description);
+  const [subject, setSubject] = useState(resource.subject);
+  const [gradeLevel, setGradeLevel] = useState(resource.gradeLevel);
+  const [tags, setTags] = useState(resource.tags.join(", "));
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function openDialog() {
+    setTitle(resource.title);
+    setDescription(resource.description);
+    setSubject(resource.subject);
+    setGradeLevel(resource.gradeLevel);
+    setTags(resource.tags.join(", "));
+    setError(null);
+    setOpen(true);
+  }
+
+  async function submit() {
+    if (
+      !title.trim() ||
+      !description.trim() ||
+      !subject.trim() ||
+      !gradeLevel.trim() ||
+      pending
+    ) {
+      return;
+    }
+    setPending(true);
+    setError(null);
+    try {
+      await onSave({
+        title: title.trim(),
+        description: description.trim(),
+        subject: subject.trim(),
+        gradeLevel: gradeLevel.trim(),
+        tags,
+      });
+      setOpen(false);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "We couldn't update this resource.",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Trigger asChild onClick={openDialog}>
+        <button
+          type="button"
+          className="hover:bg-muted h-11 rounded-lg border px-3 text-xs font-bold"
+        >
+          Edit Metadata
+        </button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
+        <Dialog.Content className="surface-card fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto p-5 shadow-2xl">
+          <Dialog.Title className="font-serif text-2xl">
+            Edit resource
+          </Dialog.Title>
+          <Dialog.Description className="text-muted-foreground mt-1 text-sm">
+            Update the metadata for this resource.
+          </Dialog.Description>
+          <Dialog.Close
+            aria-label="Close edit resource"
+            className="text-muted-foreground hover:bg-muted absolute top-2.5 right-2.5 grid size-11 place-items-center rounded-lg"
+          >
+            <X aria-hidden="true" className="size-4" />
+          </Dialog.Close>
+          <div className="mt-5 space-y-4">
+            <label className="block text-sm font-bold">
+              <span>Title</span>
+              <input
+                autoFocus
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                maxLength={140}
+                className="resource-input mt-2"
+              />
+            </label>
+            <label className="block text-sm font-bold">
+              <span>Description</span>
+              <textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                maxLength={2_000}
+                rows={5}
+                className="resource-input mt-2 resize-y"
+              />
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-bold">
+                <span>Subject</span>
+                <input
+                  value={subject}
+                  onChange={(event) => setSubject(event.target.value)}
+                  maxLength={60}
+                  className="resource-input mt-2"
+                />
+              </label>
+              <label className="block text-sm font-bold">
+                <span>Grade level</span>
+                <input
+                  value={gradeLevel}
+                  onChange={(event) => setGradeLevel(event.target.value)}
+                  maxLength={60}
+                  className="resource-input mt-2"
+                />
+              </label>
+            </div>
+            <label className="block text-sm font-bold">
+              <span>Tags</span>
+              <input
+                value={tags}
+                onChange={(event) => setTags(event.target.value)}
+                maxLength={240}
+                className="resource-input mt-2"
+              />
+            </label>
+          </div>
+          {error && (
+            <p className="text-destructive mt-3 text-sm" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="mt-6 flex justify-end gap-2">
+            <Dialog.Close asChild>
+              <Button type="button" variant="outline" disabled={pending}>
+                Cancel
+              </Button>
+            </Dialog.Close>
+            <Button
+              type="button"
+              disabled={
+                pending ||
+                !title.trim() ||
+                !description.trim() ||
+                !subject.trim() ||
+                !gradeLevel.trim()
+              }
+              onClick={() => void submit()}
+            >
+              {pending ? "Saving..." : "Save changes"}
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

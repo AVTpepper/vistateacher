@@ -238,8 +238,14 @@ export function ResourceLibrary({
         ))}
       </div>
       <p className="text-muted-foreground mb-4 text-sm">
-        {filtered.length} resources
+        {filtered.length} resource{filtered.length === 1 ? "" : "s"}
       </p>
+      {resources.length >= 100 && (
+        <p className="text-muted-foreground mb-4 text-xs" role="status">
+          Showing the first 100 available resources. Use search or filters to
+          narrow the catalog.
+        </p>
+      )}
       {filtered.length ? (
         <div
           className={

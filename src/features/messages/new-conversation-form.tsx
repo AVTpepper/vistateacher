@@ -33,10 +33,7 @@ export function NewConversationForm({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (search.trim().length < 2) {
-      setEducators([]);
-      return;
-    }
+    if (search.trim().length < 2) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       const response = await fetch(
@@ -169,7 +166,11 @@ export function NewConversationForm({
               inputMode="search"
               enterKeyHint="search"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                const next = event.target.value;
+                setSearch(next);
+                if (next.trim().length < 2) setEducators([]);
+              }}
               placeholder="Search educators..."
               className="input-shell bg-background h-11 w-full rounded-xl border px-3 text-sm"
             />
@@ -181,6 +182,7 @@ export function NewConversationForm({
                   onClick={() => {
                     setRecipient(educator);
                     setSearch("");
+                    setEducators([]);
                   }}
                   className="hover:bg-muted flex w-full items-center gap-3 rounded-lg p-3 text-left"
                 >

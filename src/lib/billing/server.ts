@@ -354,7 +354,7 @@ export async function reconcileBillingEvent(
     if (event.type === "checkout.completed" && applied) {
       transaction.update(subscriptionRef, {
         plan: "plus",
-        status: "incomplete",
+        status: "active",
         stripeCustomerId: event.customerId,
         stripeSubscriptionId: event.subscriptionId,
         billingInterval: event.interval ?? prior.billingInterval,

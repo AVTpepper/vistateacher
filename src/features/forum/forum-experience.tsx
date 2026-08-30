@@ -64,19 +64,16 @@ export function ForumExperience({
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query.trim());
-  const [searchPage, setSearchPage] = useState<ForumPage | null>(null);
-  const [searching, setSearching] = useState(false);
+  const [searchPage, setSearchPage] = useState<{
+    query: string;
+    page: ForumPage;
+  } | null>(null);
   const contentHeadingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    if (deferredQuery.length < 2) {
-      setSearchPage(null);
-      setSearching(false);
-      return;
-    }
+    if (deferredQuery.length < 2) return;
 
     const controller = new AbortController();
-    setSearching(true);
     const params = new URLSearchParams({ query: deferredQuery });
     if (selectedCategory) params.set("categoryId", selectedCategory.id);
     void fetch(`/api/forum?${params}`, { signal: controller.signal })
@@ -84,15 +81,15 @@ export function ForumExperience({
         if (!response.ok) throw new Error("Search failed");
         return (await response.json()) as ForumPage;
       })
-      .then(setSearchPage)
+      .then((page) => setSearchPage({ query: deferredQuery, page }))
       .catch((error: unknown) => {
         if (error instanceof Error && error.name !== "AbortError") {
-          setSearchPage({ threads: [], nextCursor: null });
+          setSearchPage({
+            query: deferredQuery,
+            page: { threads: [], nextCursor: null },
+          });
           toast.error("We couldn't search the forum.");
         }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setSearching(false);
       });
 
     return () => controller.abort();
@@ -122,8 +119,13 @@ export function ForumExperience({
   }
 
   const searchingForum = deferredQuery.length >= 2;
+  const searchMatchesRequest =
+    searchingForum && searchPage?.query === deferredQuery;
+  const searching = searchingForum && !searchMatchesRequest;
   const visiblePage = searchingForum
-    ? (searchPage ?? { threads: [], nextCursor: null })
+    ? searchMatchesRequest
+      ? searchPage.page
+      : { threads: [], nextCursor: null }
     : page;
   const showingThreads = showThreads || searchingForum;
 
