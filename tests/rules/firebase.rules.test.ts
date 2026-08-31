@@ -43,6 +43,8 @@ import {
   listIncompleteResources,
   reserveResourceUpload,
   reviewResource,
+  ResourceActionError,
+  updateResource,
 } from "@/lib/resources/server";
 import {
   acceptForumReply,
@@ -53,8 +55,11 @@ import {
   moderateForumThread,
   reportForumContent,
   setForumLiked,
+  updateForumReply,
+  updateForumThread,
 } from "@/lib/forum/server";
 import {
+  editMessage,
   MessageActionError,
   reportMessage,
   sendMessage,
@@ -823,6 +828,187 @@ describe("Firestore rules", () => {
     await expect(followEducator("follower", "educator")).rejects.toMatchObject({
       code: "limit-reached",
     } satisfies Partial<NetworkActionError>);
+  });
+
+  it("enforces ownership for resource, forum, and message edits", async () => {
+    await Promise.all([
+      seedActiveUser("edit-owner"),
+      seedActiveUser("edit-outsider"),
+    ]);
+    const createdAt = new Date("2026-08-04T12:00:00.000Z");
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await Promise.all([
+        setDoc(doc(db, "resources", "editable-resource"), {
+          authorId: "edit-owner",
+          title: "Original resource",
+          description: "An original classroom resource.",
+          type: "activity",
+          subject: "Science",
+          gradeLevel: "Grade 6",
+          tags: [],
+          accessTier: "free",
+          status: "active",
+          createdAt,
+          updatedAt: createdAt,
+        }),
+        setDoc(doc(db, "forumThreads", "editable-thread"), {
+          authorId: "edit-owner",
+          categoryId: "discussion",
+          title: "Original discussion title",
+          content: "Original discussion content with enough detail.",
+          tags: [],
+          locked: false,
+          createdAt,
+          updatedAt: createdAt,
+        }),
+        setDoc(
+          doc(
+            db,
+            "forumThreads",
+            "editable-thread",
+            "replies",
+            "editable-reply",
+          ),
+          {
+            authorId: "edit-owner",
+            content: "Original reply.",
+            createdAt,
+            updatedAt: createdAt,
+          },
+        ),
+        setDoc(doc(db, "conversations", "editable-conversation"), {
+          participantIds: ["edit-owner", "edit-outsider"],
+          lastMessageAt: createdAt,
+          lastMessagePreview: "Original message.",
+          createdAt,
+          updatedAt: createdAt,
+        }),
+        setDoc(
+          doc(
+            db,
+            "conversations",
+            "editable-conversation",
+            "messages",
+            "editable-message",
+          ),
+          {
+            senderId: "edit-owner",
+            content: "Original message.",
+            attachment: null,
+            createdAt,
+            updatedAt: createdAt,
+          },
+        ),
+      ]);
+    });
+
+    await expect(
+      updateResource("edit-outsider", {
+        resourceId: "editable-resource",
+        title: "Unauthorized resource",
+        description: "An unauthorized classroom resource.",
+        type: "activity",
+        subject: "Science",
+        gradeLevel: "Grade 6",
+        tags: [],
+        accessTier: "free",
+      }),
+    ).rejects.toMatchObject({
+      code: "not-owner",
+    } satisfies Partial<ResourceActionError>);
+    await expect(
+      updateForumThread("edit-outsider", {
+        threadId: "editable-thread",
+        title: "Unauthorized discussion title",
+        content: "Unauthorized discussion content with enough detail.",
+        tags: [],
+      }),
+    ).rejects.toMatchObject({
+      code: "not-owner",
+    } satisfies Partial<ForumActionError>);
+    await expect(
+      updateForumReply("edit-outsider", {
+        threadId: "editable-thread",
+        replyId: "editable-reply",
+        content: "Unauthorized reply.",
+      }),
+    ).rejects.toMatchObject({
+      code: "not-owner",
+    } satisfies Partial<ForumActionError>);
+    await expect(
+      editMessage(
+        "edit-outsider",
+        "editable-conversation",
+        "editable-message",
+        "Unauthorized message.",
+      ),
+    ).rejects.toMatchObject({
+      code: "not-owner",
+    } satisfies Partial<MessageActionError>);
+
+    await Promise.all([
+      updateResource("edit-owner", {
+        resourceId: "editable-resource",
+        title: "Updated resource",
+        description: "An updated classroom resource.",
+        type: "activity",
+        subject: "Science",
+        gradeLevel: "Grade 6",
+        tags: ["ecosystems"],
+        accessTier: "free",
+      }),
+      updateForumThread("edit-owner", {
+        threadId: "editable-thread",
+        title: "Updated discussion title",
+        content: "Updated discussion content with enough detail.",
+        tags: ["discussion"],
+      }),
+      updateForumReply("edit-owner", {
+        threadId: "editable-thread",
+        replyId: "editable-reply",
+        content: "Updated reply.",
+      }),
+      editMessage(
+        "edit-owner",
+        "editable-conversation",
+        "editable-message",
+        "Updated message.",
+      ),
+    ]);
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      const [resource, thread, reply, message, conversation] =
+        await Promise.all([
+          getDoc(doc(db, "resources", "editable-resource")),
+          getDoc(doc(db, "forumThreads", "editable-thread")),
+          getDoc(
+            doc(
+              db,
+              "forumThreads",
+              "editable-thread",
+              "replies",
+              "editable-reply",
+            ),
+          ),
+          getDoc(
+            doc(
+              db,
+              "conversations",
+              "editable-conversation",
+              "messages",
+              "editable-message",
+            ),
+          ),
+          getDoc(doc(db, "conversations", "editable-conversation")),
+        ]);
+      expect(resource.data()?.title).toBe("Updated resource");
+      expect(thread.data()?.title).toBe("Updated discussion title");
+      expect(reply.data()?.content).toBe("Updated reply.");
+      expect(message.data()?.content).toBe("Updated message.");
+      expect(conversation.data()?.lastMessagePreview).toBe("Updated message.");
+    });
   });
 
   it("starts the server-owned trial once and denies direct billing writes", async () => {

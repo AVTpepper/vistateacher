@@ -80,6 +80,22 @@ export function ForumThreadExperience({
     if (!response.ok) {
       throw new Error(result?.error ?? "We couldn't update this discussion.");
     }
+    const tags = nextTags
+      .split(",")
+      .map((tag) => tag.trim().toLocaleLowerCase("en-US"))
+      .filter(Boolean)
+      .slice(0, 5);
+    setData((current) => ({
+      ...current,
+      thread: {
+        ...current.thread,
+        title: nextTitle,
+        content: nextContent,
+        tags: [...new Set(tags)],
+        editedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    }));
     toast.success("Discussion updated.");
     router.refresh();
   }

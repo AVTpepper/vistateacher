@@ -34,17 +34,17 @@ test("renders the VistaTeacher marketing foundation", async ({ page }) => {
       name: "Begin with community. Add Plus for deeper tools.",
     }),
   ).toBeVisible();
-  await expect(page.getByText("$9")).toBeVisible();
+  await expect(page.getByText("$9 / month", { exact: true })).toBeVisible();
 
   const plusPlan = page
     .locator("section")
     .filter({ has: page.getByRole("heading", { name: "Plus", exact: true }) });
   await expect(
     plusPlan.getByRole("link", { name: "Choose Plus" }),
-  ).toHaveAttribute("href", "/sign-up?plan=plus");
+  ).toHaveAttribute("href", "/sign-up?plan=plus&interval=month");
 
   await plusPlan.getByRole("link", { name: "Choose Plus" }).click();
-  await expect(page).toHaveURL(/\/sign-up\?plan=plus$/);
+  await expect(page).toHaveURL(/\/sign-up\?plan=plus&interval=month$/);
   await expect(
     page.getByText(
       "Create your educator account to continue with VistaTeacher Plus.",
@@ -52,7 +52,7 @@ test("renders the VistaTeacher marketing foundation", async ({ page }) => {
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Sign in", exact: true }).last(),
-  ).toHaveAttribute("href", "/sign-in?plan=plus");
+  ).toHaveAttribute("href", "/sign-in?plan=plus&interval=month");
 });
 
 test("opens the marketing navigation on mobile", async ({ page }) => {

@@ -36,8 +36,8 @@ test("forum category URLs, validation, API errors, and creation remain stable", 
     page.getByRole("link", { name: /Student Engagement/ }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "Start a new discussion" }).click();
-  await page.getByRole("button", { name: "Post Discussion" }).click();
+  await page.getByRole("link", { name: "Start a new discussion" }).click();
+  await page.getByRole("button", { name: "Post discussion" }).click();
   await expect(
     page.getByText("Use at least 8 characters for the title."),
   ).toBeVisible();
@@ -62,11 +62,11 @@ test("forum category URLs, validation, API errors, and creation remain stable", 
     },
     { times: 1 },
   );
-  await page.getByRole("button", { name: "Post Discussion" }).click();
+  await page.getByRole("button", { name: "Post discussion" }).click();
   await expect(
     page.getByRole("alert").filter({ hasText: "Forum service unavailable." }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Post Discussion" }).click();
+  await page.getByRole("button", { name: "Post discussion" }).click();
   await expect(page).toHaveURL(/\/forum\/[^?]+$/, { timeout: 20_000 });
 });
 
@@ -75,8 +75,6 @@ test("common and phone image resource uploads complete and the mobile dialog sta
 }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium");
   await signIn(page);
-  await page.goto("/resources");
-
   for (const file of [
     {
       name: "classroom.jpg",
@@ -94,10 +92,8 @@ test("common and phone image resource uploads complete and the mobile dialog sta
       buffer: Buffer.from([0x00, 0x00, 0x00, 0x18]),
     },
   ]) {
-    await page.getByRole("button", { name: "Upload", exact: true }).click();
-    await page
-      .getByRole("button", { name: "Upload Resource", exact: true })
-      .click();
+    await page.goto("/resources/new");
+    await page.getByRole("button", { name: "Publish resource" }).click();
     await expect(
       page.getByText("Enter a title with at least 3 characters."),
     ).toBeVisible();
@@ -113,9 +109,7 @@ test("common and phone image resource uploads complete and the mobile dialog sta
     await expect(
       page.getByText(new RegExp(`${file.mimeType}.*bytes`)),
     ).toBeVisible();
-    await page
-      .getByRole("button", { name: "Upload Resource", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Publish resource" }).click();
     await expect(page.getByText("Resource published.").last()).toBeVisible({
       timeout: 30_000,
     });
@@ -128,14 +122,17 @@ test("post images fit without cropping and image, file, and web link attachments
 }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium");
   test.setTimeout(90_000);
+  const postContent = `Post attachment regression check ${testInfo.retry}`;
   await signIn(page);
   await page.goto("/app");
 
   await page.getByRole("button", { name: /What's on your mind/ }).click();
-  await page
-    .getByPlaceholder("Share a classroom win, challenge, or useful insight...")
-    .fill("Post attachment regression check");
-  await page.getByLabel("Choose an image to attach").setInputFiles({
+  const postEditor = page.getByPlaceholder(
+    "Share a classroom win, challenge, or useful insight...",
+  );
+  const composer = postEditor.locator("xpath=ancestor::section[1]");
+  await postEditor.fill(postContent);
+  await composer.getByLabel("Choose an image to attach").setInputFiles({
     name: "portrait.png",
     mimeType: "image/png",
     buffer: Buffer.from(
@@ -143,25 +140,27 @@ test("post images fit without cropping and image, file, and web link attachments
       "base64",
     ),
   });
-  await expect(page.getByText("Image ready to share")).toBeVisible();
+  await expect(composer.getByText("Image ready to share")).toBeVisible();
 
-  await page.getByLabel("Choose a file to attach").setInputFiles({
+  await composer.getByLabel("Choose a file to attach").setInputFiles({
     name: "lesson-notes.pdf",
     mimeType: "application/pdf",
     buffer: Buffer.from("%PDF-1.4\n%%EOF"),
   });
-  await expect(page.getByText(/lesson-notes\.pdf/)).toBeVisible();
+  await expect(composer.getByText(/lesson-notes\.pdf/)).toBeVisible();
 
-  await page.getByRole("button", { name: "Add web link" }).click();
-  await page.getByLabel("Web link", { exact: true }).fill("example.com/lesson");
-  await page.getByRole("button", { name: "Attach link" }).click();
-  await expect(page.getByText("https://example.com/lesson")).toBeVisible();
-  await page.getByRole("button", { name: "Post", exact: true }).last().click();
+  await composer.getByRole("button", { name: "Add web link" }).click();
+  await composer
+    .getByLabel("Web link", { exact: true })
+    .fill("example.com/lesson");
+  await composer.getByRole("button", { name: "Attach link" }).click();
+  await expect(composer.getByText("https://example.com/lesson")).toBeVisible();
+  await composer
+    .getByRole("button", { name: "Post", exact: true })
+    .last()
+    .click();
 
-  const post = page
-    .getByRole("article")
-    .filter({ hasText: "Post attachment regression check" })
-    .first();
+  const post = page.getByRole("article").filter({ hasText: postContent });
   await expect(post).toBeVisible({ timeout: 30_000 });
   await expect(
     post.getByRole("link", { name: "Open attached file lesson-notes.pdf" }),
@@ -177,17 +176,25 @@ test("post images fit without cropping and image, file, and web link attachments
   expect(
     await image.evaluate((element) => getComputedStyle(element).objectFit),
   ).toBe("contain");
-  await post
-    .getByRole("button", { name: "View shared image full screen" })
-    .click();
+  const openViewer = post.getByRole("button", {
+    name: "View shared image full screen",
+  });
+  const fullScreenImage = page.getByAltText("Shared post image, full screen");
+  const closeViewer = page.getByRole("button", {
+    name: "Close full-screen image",
+  });
   const viewer = page.getByRole("dialog", { name: "Shared post image" });
-  await expect(viewer).toBeVisible();
+  await expect(async () => {
+    if (!(await viewer.isVisible())) await openViewer.click();
+    await expect(viewer).toBeVisible();
+  }).toPass();
+  await expect(fullScreenImage).toBeVisible();
   const viewport = page.viewportSize();
   const viewerBox = await viewer.boundingBox();
   expect(viewerBox?.width).toBeGreaterThanOrEqual((viewport?.width ?? 1) - 2);
   expect(viewerBox?.height).toBeGreaterThanOrEqual((viewport?.height ?? 1) - 2);
-  await page.getByRole("button", { name: "Close full-screen image" }).click();
-  await expect(viewer).toBeHidden();
+  await closeViewer.click();
+  await expect(fullScreenImage).toBeHidden();
 });
 
 test("post permalinks preserve authentication destinations and expose profile links", async ({
@@ -202,7 +209,9 @@ test("post permalinks preserve authentication destinations and expose profile li
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/post\/demo-post$/);
   await expect(
-    page.getByText("What routines help students make their thinking visible?"),
+    page.getByText("What routines help students make their thinking visible?", {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "View Alex Rivera's profile" }).first(),
@@ -307,22 +316,18 @@ test("unsafe return destinations are ignored", async ({ page }, testInfo) => {
   await expect(page).toHaveURL(/\/dashboard$/);
 });
 
-test("mobile form controls remain at least 16px and dialogs fit the visual viewport", async ({
+test("mobile resource form controls remain at least 16px without page overflow", async ({
   page,
 }, testInfo) => {
   test.setTimeout(60_000);
   test.skip(!testInfo.project.name.startsWith("mobile"));
   await signIn(page);
-  await page.goto("/resources");
-  await page.getByRole("button", { name: "Upload", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  expect(
-    await dialog.evaluate(
-      (element) => element.getBoundingClientRect().height <= window.innerHeight,
-    ),
-  ).toBe(true);
-  for (const control of await dialog
+  await page.goto("/resources/new");
+  const form = page
+    .getByRole("button", { name: "Publish resource" })
+    .locator("xpath=ancestor::form[1]");
+  await expect(form).toBeVisible();
+  for (const control of await form
     .locator("input:not([type=file]), textarea, select")
     .all()) {
     expect(

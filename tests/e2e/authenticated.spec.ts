@@ -84,7 +84,14 @@ test("keeps message avatars fixed and focuses the rounded composer", async ({
   await signIn(page, "community@vista.local");
   await page.goto("/messages");
 
-  const activeConversation = page.getByLabel("Active conversation");
+  await page
+    .getByRole("button")
+    .filter({ hasText: "Maya Chen" })
+    .first()
+    .click();
+  const activeConversation = page.getByRole("region", {
+    name: "Conversation with Maya Chen",
+  });
   await expect(page.getByLabel("Platform footer navigation")).toHaveCount(0);
   expect(
     await activeConversation.evaluate(
@@ -214,6 +221,7 @@ test("signs in a seeded educator and protects platform workflows", async ({
     await expect(
       navigation.getByRole("button", { name: "Log out" }),
     ).toHaveCount(0);
+    await page.getByRole("button", { name: "Close menu" }).click();
   } else {
     const footerNavigation = page.getByLabel("Platform footer navigation");
     await expect(
@@ -228,10 +236,8 @@ test("signs in a seeded educator and protects platform workflows", async ({
   }
 
   await page.goto("/pricing");
-  const marketingMenu = page.getByRole("button", { name: "Open main menu" });
-  if (await marketingMenu.isVisible()) await marketingMenu.click();
   await expect(
-    page.getByRole("link", { name: "Dashboard", exact: true }),
+    page.getByRole("link", { name: /^VistaTeacher(?: home)?$/ }).first(),
   ).toHaveAttribute("href", "/dashboard");
   await expect(
     page.getByRole("link", { name: "Sign in", exact: true }),

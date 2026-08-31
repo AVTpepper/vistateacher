@@ -18,7 +18,7 @@ export async function generateMetadata({
   const data = snapshot.data();
   const displayName =
     typeof data?.displayName === "string" ? data.displayName : "Educator";
-  return { title: `${displayName} | VistaTeacher` };
+  return { title: displayName };
 }
 
 export default async function ProfilePage({
