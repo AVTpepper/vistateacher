@@ -1,3 +1,4 @@
+import { PLUS_PRICING } from "@/lib/billing/pricing";
 import "server-only";
 
 import Stripe from "stripe";
@@ -8,6 +9,7 @@ import type {
   BillingProvider,
   BillingAccountSummary,
   CheckoutSessionInput,
+  CheckoutSessionResult,
   NormalizedBillingEvent,
   PortalSessionInput,
   SubscriptionCancellationInput,
@@ -51,33 +53,75 @@ class StripeBillingProvider implements BillingProvider {
     this.client = new Stripe(this.env.STRIPE_SECRET_KEY);
   }
 
-  async createCheckoutSession(input: CheckoutSessionInput): Promise<string> {
+  async closeCheckoutForDeletion(sessionId: string): Promise<void> {
+    const session = await this.client.checkout.sessions.retrieve(sessionId);
+    if (session.status === "open")
+      await this.client.checkout.sessions.expire(sessionId);
+    else if (session.status === "complete" && session.subscription) {
+      await this.client.subscriptions.update(stripeId(session.subscription)!, {
+        cancel_at_period_end: true,
+      });
+    }
+  }
+
+  async expireOpenCheckout(sessionId: string): Promise<boolean> {
+    const session = await this.client.checkout.sessions.retrieve(sessionId);
+    if (session.status === "complete") return false;
+    if (session.status === "open")
+      await this.client.checkout.sessions.expire(sessionId);
+    return true;
+  }
+
+  async createCheckoutSession(
+    input: CheckoutSessionInput,
+  ): Promise<CheckoutSessionResult> {
     const priceId =
       input.interval === "month"
         ? (this.env.STRIPE_PRICE_PLUS_MONTHLY ?? this.env.STRIPE_PLUS_PRICE_ID)
         : this.env.STRIPE_PRICE_PLUS_YEARLY;
     if (!priceId) throw new Error("Stripe price is not configured.");
 
-    const session = await this.client.checkout.sessions.create({
-      ui_mode: "embedded_page",
-      mode: "subscription",
-      line_items: [{ price: priceId, quantity: 1 }],
-      customer: input.customerId ?? undefined,
-      customer_email: input.customerId ? undefined : input.email,
-      client_reference_id: input.uid,
-      metadata: { uid: input.uid, interval: input.interval },
-      subscription_data: {
+    const price = await this.client.prices.retrieve(priceId);
+    const expected = PLUS_PRICING[input.interval].amount;
+    if (
+      !price.active ||
+      price.currency !== PLUS_PRICING.currency ||
+      price.unit_amount !== expected ||
+      price.recurring?.interval !== input.interval ||
+      price.recurring.interval_count !== 1
+    ) {
+      throw new Error(
+        "The configured Plus price does not match the advertised plan.",
+      );
+    }
+    const session = await this.client.checkout.sessions.create(
+      {
+        expires_at: input.expiresAt,
+        ui_mode: "embedded_page",
+        mode: "subscription",
+        line_items: [{ price: priceId, quantity: 1 }],
+        customer: input.customerId ?? undefined,
+        customer_email: input.customerId ? undefined : input.email,
+        client_reference_id: input.uid,
         metadata: { uid: input.uid, interval: input.interval },
+        subscription_data: {
+          metadata: { uid: input.uid, interval: input.interval },
+        },
+        return_url: originUrl(
+          input.origin,
+          "/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}",
+        ),
+        allow_promotion_codes: true,
       },
-      return_url: originUrl(
-        input.origin,
-        "/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}",
-      ),
-      allow_promotion_codes: true,
-    });
+      { idempotencyKey: input.idempotencyKey },
+    );
     if (!session.client_secret)
       throw new Error("Stripe did not return a Checkout client secret.");
-    return session.client_secret;
+    return {
+      id: session.id,
+      clientSecret: session.client_secret,
+      expiresAt: session.expires_at,
+    };
   }
 
   async retrieveCompletedCheckout(

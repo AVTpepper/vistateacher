@@ -158,10 +158,7 @@ export function DashboardExperience({
       : [];
 
   return (
-    <div
-      data-testid="dashboard"
-      className="mx-auto w-full max-w-6xl min-w-0 space-y-5 px-4 py-6 lg:px-6"
-    >
+    <div data-testid="dashboard" className="page-container max-w-6xl space-y-5">
       <section className="bg-sidebar relative max-w-full min-w-0 overflow-hidden rounded-xl px-4 py-6 text-white sm:px-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <UserAvatar

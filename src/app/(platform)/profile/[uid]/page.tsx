@@ -57,7 +57,7 @@ export default async function ProfilePage({
     );
 
   return (
-    <div className="px-4 py-5 lg:px-6">
+    <div>
       <ProfileTabProvider initialTab={activeTab} key={uid}>
         <ProfileView
           data={data}

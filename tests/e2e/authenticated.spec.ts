@@ -112,13 +112,15 @@ test("keeps message avatars fixed and focuses the rounded composer", async ({
     [40, 40],
     [32, 32],
   ]);
-  expect(
-    await activeConversation
-      .getByText("I sent over the organizer we discussed.")
-      .evaluate((element) =>
-        Number.parseFloat(getComputedStyle(element).fontSize),
-      ),
-  ).toBeLessThanOrEqual(14);
+  await expect
+    .poll(() =>
+      activeConversation
+        .getByText("I sent over the organizer we discussed.")
+        .evaluate((element) =>
+          Number.parseFloat(getComputedStyle(element).fontSize),
+        ),
+    )
+    .toBeLessThanOrEqual(14);
 
   const message = page.getByLabel("Message", { exact: true });
   await message.click();
@@ -196,7 +198,7 @@ test("signs in a seeded educator and protects platform workflows", async ({
   ).toBeVisible();
   await page.goto("/app");
   await expect(
-    page.getByRole("button", { name: "Community feed" }),
+    page.getByRole("link", { name: "Community feed" }),
   ).toBeVisible();
   await expectNoPageOverflow(page);
   const mobileMenu = page.getByRole("button", { name: "Open menu" });
@@ -316,6 +318,7 @@ test("keeps authenticated educator routes responsive and accessible", async ({
     "/profile/plus-educator",
     "/settings",
     "/settings/profile",
+    "/settings/security",
     "/settings/billing",
     "/support",
     "/information",
@@ -405,7 +408,7 @@ test("keeps desktop platform navigation complete and within the viewport", async
     name: "Primary platform navigation",
   });
   await expect(navigation).toBeVisible();
-  await expect(navigation.getByRole("link").first()).toHaveText("Dashboard");
+  await expect(navigation.getByRole("link").first()).toHaveText(/Dashboard$/);
   expect(
     await navigation.evaluate(
       (element) => element.scrollWidth <= element.clientWidth,
@@ -420,6 +423,7 @@ test("keeps desktop platform navigation complete and within the viewport", async
     "Forum",
     "AI Lesson Builder",
     "Messages",
+    "Saved",
   ]) {
     await expect(navigation.getByRole("link", { name: label })).toBeVisible();
   }
@@ -427,10 +431,10 @@ test("keeps desktop platform navigation complete and within the viewport", async
   await page.getByRole("button", { name: "Open profile menu" }).click();
   const profileNavigation = page.getByLabel("Profile navigation");
   await expect(
-    profileNavigation.getByRole("link", { name: "Settings" }),
+    profileNavigation.getByRole("menuitem", { name: "Settings", exact: true }),
   ).toBeVisible();
   await expect(
-    profileNavigation.getByRole("button", { name: "Log out" }),
+    profileNavigation.getByRole("menuitem", { name: "Log out" }),
   ).toBeVisible();
 
   await page.keyboard.press("Escape");

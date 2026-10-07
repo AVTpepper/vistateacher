@@ -59,8 +59,17 @@ export async function POST(request: NextRequest) {
     );
     let profileExists = false;
     try {
-      profileExists = (await adminDb().doc(`users/${decoded.uid}`).get())
-        .exists;
+      const profile = await adminDb().doc(`users/${decoded.uid}`).get();
+      if (["deleted", "suspended"].includes(profile.data()?.status))
+        return NextResponse.json(
+          { error: "This account is unavailable." },
+          { status: 403 },
+        );
+      profileExists = profile.exists;
+      if (profileExists && decoded.email)
+        await adminDb()
+          .doc(`userPrivate/${decoded.uid}`)
+          .set({ email: decoded.email }, { merge: true });
     } catch (error) {
       console.error("Firestore profile lookup failed during sign-in", error);
     }

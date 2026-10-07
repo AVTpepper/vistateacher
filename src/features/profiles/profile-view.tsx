@@ -66,7 +66,7 @@ export function ProfileView({
   ];
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="page-container max-w-3xl">
       <div
         className="relative mb-4 h-44 overflow-hidden rounded-2xl"
         style={{ background: coverTheme.background }}

@@ -37,7 +37,7 @@ export default async function PostPermalinkPage({
   const comments = await getPostComments(account.uid, postId);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-5 lg:px-6">
+    <div className="page-container max-w-2xl">
       <h1 className="mb-4 font-serif text-3xl">Shared post</h1>
       <PostCard
         initialPost={post}

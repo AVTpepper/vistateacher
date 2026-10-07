@@ -17,7 +17,11 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/http/client";
 import { toast } from "sonner";
 
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
@@ -61,7 +65,7 @@ function linkHost(url: string) {
 }
 
 async function mutation(url: string, method: string, body?: unknown) {
-  return fetch(url, {
+  return requestJson(url, {
     method,
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
@@ -90,12 +94,12 @@ function ActivityFeedItem({ post }: { post: FeedPost }) {
   const activityLabel = `${activity.label.charAt(0).toLocaleLowerCase("en-US")}${activity.label.slice(1)}`;
 
   return (
-    <article className="border-primary/25 mx-2 flex max-w-full min-w-0 items-start gap-3 border-l-2 px-4 py-3 sm:mx-4">
+    <article className="border-primary/25 flex max-w-full min-w-0 items-start gap-3 rounded-xl border-l-2 py-4 pr-4 pl-3.5">
       <ProfileIdentityLink
         uid={post.author.uid}
         displayName={post.author.displayName}
         photoURL={post.author.photoURL}
-        avatarClassName="size-9 rounded-full text-[10px]"
+        avatarClassName="size-10 rounded-full text-xs"
         showName={false}
       />
       <div className="min-w-0 flex-1">
@@ -141,8 +145,12 @@ function InteractivePostCard({
   onDelete,
   onBookmarkRemoved,
 }: PostCardProps) {
+  const router = useRouter();
+  const locks = useRef(new Set<string>());
+  const [busy, setBusy] = useState<string[]>([]);
   const [post, setPost] = useState(initialPost);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(
     initialComments !== undefined,
   );
@@ -156,123 +164,156 @@ function InteractivePostCard({
   const [postDraft, setPostDraft] = useState(initialPost.content);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState("");
+  const [postEditMentions, setPostEditMentions] = useState(
+    initialPost.mentions,
+  );
+  const [commentEditMentions, setCommentEditMentions] = useState<
+    MentionTarget[]
+  >([]);
 
-  async function toggleLike() {
-    const previous = post;
-    const liked = !post.liked;
-    setPost((current) => ({
-      ...current,
-      liked,
-      likeCount: Math.max(0, current.likeCount + (liked ? 1 : -1)),
-    }));
-    const response = await mutation(
-      `/api/feed/${post.id}/like`,
-      liked ? "PUT" : "DELETE",
-    );
-    if (!response.ok) {
-      setPost(previous);
-      toast.error("We couldn't update that like.");
+  async function runAction(key: string, action: () => Promise<void>) {
+    if (locks.current.has(key)) return;
+    locks.current.add(key);
+    setBusy([...locks.current]);
+    try {
+      await action();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      locks.current.delete(key);
+      setBusy([...locks.current]);
     }
   }
 
+  async function toggleLike() {
+    await runAction("like", async () => {
+      const liked = !post.liked;
+      setPost((current) => ({
+        ...current,
+        liked,
+        likeCount: Math.max(0, current.likeCount + (liked ? 1 : -1)),
+      }));
+      try {
+        await mutation(`/api/feed/${post.id}/like`, liked ? "PUT" : "DELETE");
+      } catch (error) {
+        setPost((current) => ({
+          ...current,
+          liked: !liked,
+          likeCount: Math.max(0, current.likeCount + (liked ? -1 : 1)),
+        }));
+        throw error;
+      }
+    });
+  }
+
   async function toggleBookmark() {
-    const previous = post;
-    const bookmarked = !post.bookmarked;
-    setPost((current) => ({
-      ...current,
-      bookmarked,
-      bookmarkCount: Math.max(0, current.bookmarkCount + (bookmarked ? 1 : -1)),
-    }));
-    const response = await mutation(
-      `/api/feed/${post.id}/bookmark`,
-      bookmarked ? "PUT" : "DELETE",
-    );
-    if (!response.ok) {
-      setPost(previous);
-      toast.error("We couldn't update that saved post.");
-    } else if (!bookmarked) onBookmarkRemoved?.(post.id);
+    await runAction("bookmark", async () => {
+      const bookmarked = !post.bookmarked;
+      setPost((current) => ({
+        ...current,
+        bookmarked,
+        bookmarkCount: Math.max(
+          0,
+          current.bookmarkCount + (bookmarked ? 1 : -1),
+        ),
+      }));
+      try {
+        await mutation(
+          `/api/feed/${post.id}/bookmark`,
+          bookmarked ? "PUT" : "DELETE",
+        );
+      } catch (error) {
+        setPost((current) => ({
+          ...current,
+          bookmarked: !bookmarked,
+          bookmarkCount: Math.max(
+            0,
+            current.bookmarkCount + (bookmarked ? -1 : 1),
+          ),
+        }));
+        throw error;
+      }
+      if (!bookmarked) onBookmarkRemoved?.(post.id);
+    });
+  }
+
+  async function loadComments() {
+    if (locks.current.has("comments")) return;
+    setCommentsError(null);
+    await runAction("comments", async () => {
+      try {
+        const result = await requestJson<{ comments: FeedComment[] }>(
+          `/api/feed/${post.id}/comments`,
+        );
+        setComments(result.comments);
+      } catch (error) {
+        setCommentsError(
+          error instanceof Error ? error.message : "Comments couldn't load.",
+        );
+      }
+    });
   }
 
   async function openComments() {
     setCommentsOpen((open) => !open);
-    if (comments !== null) return;
-    const response = await fetch(`/api/feed/${post.id}/comments`);
-    const result = (await response.json().catch(() => null)) as {
-      comments?: FeedComment[];
-    } | null;
-    if (response.ok) setComments(result?.comments ?? []);
-    else {
-      setComments([]);
-      toast.error("We couldn't load the comments.");
-    }
+    if (!commentsOpen && comments === null) await loadComments();
   }
 
   async function addComment() {
     const content = comment.trim();
-    if (!content || commenting) return;
-    setCommenting(true);
-    const temporaryId = `pending-${crypto.randomUUID()}`;
-    const selectedMentions = commentMentions;
-    const optimistic: FeedComment = {
-      id: temporaryId,
-      author: {
-        uid: viewer.uid,
-        displayName: viewer.displayName,
-        photoURL: viewer.photoURL,
-        gradeLevel: "",
-        school: "",
-      },
-      content,
-      mentions: selectedMentions,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      editedAt: null,
-      ownedByViewer: true,
-    };
-    setComments((current) => [...(current ?? []), optimistic]);
-    setPost((current) => ({
-      ...current,
-      commentCount: current.commentCount + 1,
-    }));
-    setComment("");
-    setCommentMentions([]);
-    const response = await mutation(`/api/feed/${post.id}/comments`, "POST", {
-      content,
-      mentionUids: selectedMentions.map((mention) => mention.uid),
+    if (!content || locks.current.has("comment")) return;
+    await runAction("comment", async () => {
+      setCommenting(true);
+      const selectedMentions = commentMentions;
+      try {
+        const result = await requestJson<{ commentId: string }>(
+          `/api/feed/${post.id}/comments`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              content,
+              mentionUids: selectedMentions.map((mention) => mention.uid),
+            }),
+          },
+        );
+        if (!result.commentId)
+          throw new Error(
+            "Comment could not be confirmed. Refresh before retrying.",
+          );
+        const now = new Date().toISOString();
+        setComments((current) => [
+          ...(current ?? []),
+          {
+            id: result.commentId,
+            author: { ...viewer, gradeLevel: "", school: "" },
+            content,
+            mentions: selectedMentions,
+            createdAt: now,
+            updatedAt: now,
+            editedAt: null,
+            ownedByViewer: true,
+          },
+        ]);
+        setPost((current) => ({
+          ...current,
+          commentCount: current.commentCount + 1,
+        }));
+        setComment("");
+        setCommentMentions([]);
+      } finally {
+        setCommenting(false);
+      }
     });
-    const result = (await response.json().catch(() => null)) as {
-      commentId?: string;
-    } | null;
-    if (response.ok && result?.commentId) {
-      setComments(
-        (current) =>
-          current?.map((item) =>
-            item.id === temporaryId ? { ...item, id: result.commentId! } : item,
-          ) ?? [],
-      );
-    } else {
-      setComments(
-        (current) => current?.filter((item) => item.id !== temporaryId) ?? [],
-      );
-      setPost((current) => ({
-        ...current,
-        commentCount: Math.max(0, current.commentCount - 1),
-      }));
-      setComment(content);
-      setCommentMentions(selectedMentions);
-      toast.error("We couldn't add that comment.");
-    }
-    setCommenting(false);
   }
 
   async function removePost(): Promise<void> {
+    await mutation(`/api/feed/${post.id}`, "DELETE");
     setMenuOpen(false);
-    onDelete?.(post.id);
-    const response = await mutation(`/api/feed/${post.id}`, "DELETE");
-    if (!response.ok) {
-      onDelete?.(post.id, post);
-      toast.error("We couldn't delete that post.");
-      return;
+    if (onDelete) onDelete(post.id);
+    else {
+      router.replace("/app");
+      router.refresh();
     }
     toast.success("Post deleted.");
   }
@@ -280,68 +321,59 @@ function InteractivePostCard({
   async function savePostEdit() {
     const content = postDraft.trim();
     if (!content) return;
-    const response = await mutation(`/api/feed/${post.id}`, "PATCH", {
-      type: post.type,
-      content,
-      imageURLs: post.imageURLs,
-      fileAttachments: post.fileAttachments,
-      linkURLs: post.linkURLs,
-      tags: post.tags,
-      resourceId: post.resourceId,
+    await runAction("edit-post", async () => {
+      await mutation(`/api/feed/${post.id}`, "PATCH", {
+        type: post.type,
+        content,
+        imageURLs: post.imageURLs,
+        fileAttachments: post.fileAttachments,
+        linkURLs: post.linkURLs,
+        tags: post.tags,
+        resourceId: post.resourceId,
+        mentionUids: postEditMentions.map((mention) => mention.uid),
+      });
+      setPost((current) => ({
+        ...current,
+        content,
+        mentions: postEditMentions,
+        updatedAt: new Date().toISOString(),
+        editedAt: new Date().toISOString(),
+      }));
+      setEditingPost(false);
+      toast.success("Post updated.");
     });
-    if (!response.ok) {
-      toast.error("We couldn't update that post.");
-      return;
-    }
-    setPost((current) => ({
-      ...current,
-      content,
-      updatedAt: new Date().toISOString(),
-      editedAt: new Date().toISOString(),
-    }));
-    setEditingPost(false);
-    toast.success("Post updated.");
   }
 
   async function saveCommentEdit(commentId: string) {
     const content = commentDraft.trim();
     if (!content) return;
-    const response = await mutation(
-      `/api/feed/${post.id}/comments/${commentId}`,
-      "PATCH",
-      { content },
-    );
-    if (!response.ok) {
-      toast.error("We couldn't update that comment.");
-      return;
-    }
-    setComments(
-      (current) =>
-        current?.map((item) =>
-          item.id === commentId
-            ? {
-                ...item,
-                content,
-                updatedAt: new Date().toISOString(),
-                editedAt: new Date().toISOString(),
-              }
-            : item,
-        ) ?? [],
-    );
-    setEditingCommentId(null);
-    setCommentDraft("");
-    toast.success("Comment updated.");
+    await runAction("edit-comment", async () => {
+      await mutation(`/api/feed/${post.id}/comments/${commentId}`, "PATCH", {
+        content,
+        mentionUids: commentEditMentions.map((mention) => mention.uid),
+      });
+      setComments(
+        (current) =>
+          current?.map((item) =>
+            item.id === commentId
+              ? {
+                  ...item,
+                  content,
+                  mentions: commentEditMentions,
+                  updatedAt: new Date().toISOString(),
+                  editedAt: new Date().toISOString(),
+                }
+              : item,
+          ) ?? [],
+      );
+      setEditingCommentId(null);
+      setCommentDraft("");
+      toast.success("Comment updated.");
+    });
   }
 
   async function removeComment(commentId: string): Promise<void> {
-    const response = await mutation(
-      `/api/feed/${post.id}/comments/${commentId}`,
-      "DELETE",
-    );
-    if (!response.ok) {
-      toast.error("We couldn't delete that comment.");
-      return;
-    }
+    await mutation(`/api/feed/${post.id}/comments/${commentId}`, "DELETE");
     setComments(
       (current) => current?.filter((item) => item.id !== commentId) ?? [],
     );
@@ -353,12 +385,13 @@ function InteractivePostCard({
 
   async function report() {
     setMenuOpen(false);
-    const response = await mutation(`/api/feed/${post.id}/report`, "POST", {
-      reason: "other",
-      details: "Reported from the feed.",
+    await runAction("report", async () => {
+      await mutation(`/api/feed/${post.id}/report`, "POST", {
+        reason: "other",
+        details: "Reported from the feed.",
+      });
+      toast.success("Report submitted for review.");
     });
-    if (response.ok) toast.success("Report submitted for review.");
-    else toast.error("This post could not be reported.");
   }
 
   async function share() {
@@ -370,11 +403,8 @@ function InteractivePostCard({
         await navigator.clipboard.writeText(url);
         toast.success("Post link copied.");
       }
-      const response = await mutation(`/api/feed/${post.id}/share`, "POST");
-      const result = (await response.json().catch(() => null)) as {
-        counted?: boolean;
-      } | null;
-      if (response.ok && result?.counted)
+      const result = await mutation(`/api/feed/${post.id}/share`, "POST");
+      if (result.counted)
         setPost((current) => ({
           ...current,
           shareCount: current.shareCount + 1,
@@ -424,60 +454,82 @@ function InteractivePostCard({
               : ""}
           </p>
         </div>
-        <div className="relative">
-          <button
-            type="button"
-            aria-label="Post options"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
-            className="text-muted-foreground hover:bg-muted grid size-11 place-items-center rounded-lg"
-          >
-            <MoreHorizontal aria-hidden="true" className="size-4" />
-          </button>
-          {menuOpen && (
-            <div className="bg-popover absolute top-12 right-0 z-20 w-40 overflow-hidden rounded-lg border py-1 shadow-lg">
-              <button
-                type="button"
-                onClick={() => void toggleBookmark()}
-                className="hover:bg-muted min-h-11 w-full px-3 py-2 text-left text-sm"
-              >
-                {post.bookmarked ? "Remove saved post" : "Save post"}
-              </button>
-              {!post.ownedByViewer && (
+        <DropdownMenu.Root
+          modal={false}
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+        >
+          <DropdownMenu.Trigger asChild>
+            <button
+              type="button"
+              aria-label="Post options"
+              aria-expanded={menuOpen}
+              className="text-muted-foreground hover:bg-muted grid size-11 place-items-center rounded-lg"
+            >
+              <MoreHorizontal aria-hidden="true" className="size-4" />
+            </button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              align="end"
+              sideOffset={8}
+              className="bg-popover z-40 w-48 rounded-xl border p-1 shadow-lg"
+            >
+              <DropdownMenu.Item asChild>
                 <button
                   type="button"
-                  onClick={() => void report()}
-                  className="hover:bg-muted w-full px-3 py-2 text-left text-sm"
+                  disabled={busy.includes("bookmark")}
+                  onClick={() => void toggleBookmark()}
+                  className="hover:bg-muted min-h-11 w-full px-3 py-2 text-left text-sm"
                 >
-                  Report
+                  {post.bookmarked ? "Remove saved post" : "Save post"}
                 </button>
+              </DropdownMenu.Item>
+              {!post.ownedByViewer && (
+                <DropdownMenu.Item asChild>
+                  <button
+                    type="button"
+                    onClick={() => void report()}
+                    className="hover:bg-muted w-full px-3 py-2 text-left text-sm"
+                  >
+                    Report
+                  </button>
+                </DropdownMenu.Item>
               )}
               {post.ownedByViewer && post.type !== "activity" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setPostDraft(post.content);
-                    setEditingPost(true);
-                  }}
-                  className="hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
-                >
-                  <Pencil aria-hidden="true" className="size-3.5" /> Edit
-                </button>
+                <DropdownMenu.Item asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setPostDraft(post.content);
+                      setPostEditMentions(post.mentions);
+                      setEditingPost(true);
+                    }}
+                    className="hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+                  >
+                    <Pencil aria-hidden="true" className="size-3.5" /> Edit
+                  </button>
+                </DropdownMenu.Item>
               )}
               {post.ownedByViewer && post.type !== "activity" && (
                 <DeleteConfirmDialog itemName="post" onConfirm={removePost}>
-                  <button
-                    type="button"
-                    className="text-destructive hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+                  <DropdownMenu.Item
+                    asChild
+                    onSelect={(event) => event.preventDefault()}
                   >
-                    <Trash2 aria-hidden="true" className="size-3.5" /> Delete
-                  </button>
+                    <button
+                      type="button"
+                      className="text-destructive hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+                    >
+                      <Trash2 aria-hidden="true" className="size-3.5" /> Delete
+                    </button>
+                  </DropdownMenu.Item>
                 </DeleteConfirmDialog>
               )}
-            </div>
-          )}
-        </div>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
       </header>
       <div className="px-4 pb-3">
         {post.type === "activity" && post.activity ? (
@@ -497,14 +549,19 @@ function InteractivePostCard({
           </Link>
         ) : editingPost ? (
           <div className="space-y-2">
-            <textarea
+            <MentionTextarea
+              aria-label="Edit post"
+              mentions={postEditMentions}
+              onMentionsChange={setPostEditMentions}
+              excludeUid={viewer.uid}
+              disabled={busy.includes("edit-post")}
               name="post-edit"
               autoComplete="off"
               autoCapitalize="sentences"
               spellCheck
               inputMode="text"
               value={postDraft}
-              onChange={(event) => setPostDraft(event.target.value)}
+              onValueChange={setPostDraft}
               maxLength={5000}
               rows={4}
               className="bg-muted w-full resize-y rounded-lg px-3 py-2 text-sm outline-none"
@@ -513,14 +570,16 @@ function InteractivePostCard({
               <button
                 type="button"
                 onClick={() => setEditingPost(false)}
-                className="h-8 rounded-lg border px-3 text-xs font-bold"
+                disabled={busy.includes("edit-post")}
+                className="h-11 rounded-xl border px-4 text-sm font-bold"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => void savePostEdit()}
-                className="bg-primary text-primary-foreground h-8 rounded-lg px-3 text-xs font-bold"
+                disabled={!postDraft.trim() || busy.includes("edit-post")}
+                className="bg-primary text-primary-foreground h-11 rounded-xl px-4 text-sm font-bold disabled:opacity-50"
               >
                 Save
               </button>
@@ -604,6 +663,7 @@ function InteractivePostCard({
       <div className="text-muted-foreground mx-4 flex flex-wrap items-center justify-between gap-2 border-b pb-2 text-xs">
         <button
           type="button"
+          disabled={busy.includes("like")}
           onClick={() => void toggleLike()}
           className="hover:bg-muted focus-visible:text-foreground min-h-11 rounded-lg px-2 transition-colors"
         >
@@ -631,7 +691,7 @@ function InteractivePostCard({
           onClick={() => void toggleLike()}
           className={cn(
             "hover:bg-muted flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold",
-            post.liked ? "text-destructive" : "text-muted-foreground",
+            post.liked ? "text-primary" : "text-muted-foreground",
           )}
         >
           <Heart
@@ -678,7 +738,18 @@ function InteractivePostCard({
       </div>
       {commentsOpen && (
         <div className="space-y-3 border-t px-4 py-3">
-          {comments === null ? (
+          {commentsError ? (
+            <div role="alert" className="space-y-2 text-sm">
+              <p>{commentsError}</p>
+              <Button
+                variant="outline"
+                disabled={busy.includes("comments")}
+                onClick={() => void loadComments()}
+              >
+                Retry comments
+              </Button>
+            </div>
+          ) : comments === null ? (
             <p className="text-muted-foreground text-xs">Loading comments...</p>
           ) : (
             comments.map((item) => (
@@ -714,16 +785,19 @@ function InteractivePostCard({
                   </div>
                   {editingCommentId === item.id ? (
                     <div className="mt-1 space-y-1">
-                      <textarea
+                      <MentionTextarea
+                        aria-label="Edit comment"
+                        mentions={commentEditMentions}
+                        onMentionsChange={setCommentEditMentions}
+                        excludeUid={viewer.uid}
+                        disabled={busy.includes("edit-comment")}
                         name="comment-edit"
                         autoComplete="off"
                         autoCapitalize="sentences"
                         spellCheck
                         inputMode="text"
                         value={commentDraft}
-                        onChange={(event) =>
-                          setCommentDraft(event.target.value)
-                        }
+                        onValueChange={setCommentDraft}
                         rows={2}
                         maxLength={1000}
                         className="bg-background w-full resize-none rounded-lg px-2 py-1.5 text-xs outline-none"
@@ -732,14 +806,19 @@ function InteractivePostCard({
                         <button
                           type="button"
                           onClick={() => setEditingCommentId(null)}
-                          className="text-muted-foreground px-2 text-[11px]"
+                          disabled={busy.includes("edit-comment")}
+                          className="text-muted-foreground min-h-11 rounded-lg px-3 text-xs"
                         >
                           Cancel
                         </button>
                         <button
                           type="button"
                           onClick={() => void saveCommentEdit(item.id)}
-                          className="text-primary px-2 text-[11px] font-bold"
+                          disabled={
+                            !commentDraft.trim() ||
+                            busy.includes("edit-comment")
+                          }
+                          className="text-primary min-h-11 rounded-lg px-3 text-xs font-bold disabled:opacity-50"
                         >
                           Save
                         </button>
@@ -760,8 +839,9 @@ function InteractivePostCard({
                         onClick={() => {
                           setEditingCommentId(item.id);
                           setCommentDraft(item.content);
+                          setCommentEditMentions(item.mentions);
                         }}
-                        className="text-muted-foreground text-[11px]"
+                        className="text-muted-foreground hover:bg-background min-h-11 rounded-lg px-3 text-xs"
                       >
                         Edit
                       </button>
@@ -771,7 +851,7 @@ function InteractivePostCard({
                       >
                         <button
                           type="button"
-                          className="text-destructive text-[11px]"
+                          className="text-destructive hover:bg-background min-h-11 rounded-lg px-3 text-xs"
                         >
                           Delete
                         </button>
@@ -798,6 +878,7 @@ function InteractivePostCard({
                 spellCheck
                 inputMode="text"
                 enterKeyHint="send"
+                disabled={commenting}
                 value={comment}
                 mentions={commentMentions}
                 onMentionsChange={setCommentMentions}
@@ -805,7 +886,11 @@ function InteractivePostCard({
                 maxLength={1_000}
                 onValueChange={setComment}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
+                  if (
+                    event.key === "Enter" &&
+                    !event.shiftKey &&
+                    !event.nativeEvent.isComposing
+                  ) {
                     event.preventDefault();
                     void addComment();
                   }
@@ -819,7 +904,7 @@ function InteractivePostCard({
                 onClick={() => void addComment()}
                 disabled={!comment.trim() || commenting}
                 aria-label="Send comment"
-                className="text-primary disabled:opacity-40"
+                className="text-primary grid size-11 shrink-0 place-items-center rounded-lg disabled:opacity-40"
               >
                 <Send aria-hidden="true" className="size-4" />
               </button>

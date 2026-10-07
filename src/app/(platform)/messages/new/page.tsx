@@ -19,7 +19,7 @@ export default async function NewConversationPage({
   ]);
 
   return (
-    <div className="px-4 py-5 lg:px-6">
+    <div className="page-container">
       <div className="mx-auto max-w-3xl">
         <Link
           href="/messages"

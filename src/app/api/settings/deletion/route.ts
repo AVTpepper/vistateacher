@@ -1,9 +1,13 @@
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import { hasTrustedOrigin } from "@/lib/auth/request";
 import { getRouteAccount } from "@/lib/auth/route-account";
-import { requestAccountDeletion } from "@/lib/profiles/server";
+import { SESSION_COOKIE_NAME } from "@/lib/auth/policy";
+import {
+  enqueueAccountDeletion,
+  processAccountDeletion,
+} from "@/lib/accounts/deletion";
 import { deletionRequestSchema } from "@/schemas/profile";
 
 export async function POST(request: NextRequest) {
@@ -28,6 +32,31 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
 
-  await requestAccountDeletion(account.uid);
-  return NextResponse.json({ ok: true });
+  try {
+    const receipt = await enqueueAccountDeletion(account.uid);
+    // Deliver the durable receipt before cleanup; interrupted jobs can be retried by administrators.
+    after(async () => {
+      await processAccountDeletion(account.uid);
+    });
+    const response = NextResponse.json(
+      { ok: true, receipt, status: "pending" },
+      { status: 202 },
+    );
+    response.cookies.set(SESSION_COOKIE_NAME, "", {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 0,
+      path: "/",
+    });
+    return response;
+  } catch (error) {
+    console.error("Could not request account deletion", error);
+    return NextResponse.json(
+      {
+        error:
+          "Deletion could not start. Your account is still available. Please try again.",
+      },
+      { status: 503 },
+    );
+  }
 }

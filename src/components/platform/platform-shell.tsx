@@ -3,6 +3,7 @@
 import {
   AlertTriangle,
   BookOpen,
+  Bookmark,
   Compass,
   Home,
   LayoutDashboard,
@@ -16,9 +17,10 @@ import {
 } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { LogoutButton } from "@/features/auth/logout-button";
 import { NotificationMenu } from "@/features/notifications/notification-menu";
@@ -30,19 +32,36 @@ import type { Plan } from "@/types/models";
 import type { UserRole } from "@/types/models";
 
 const primaryNavigation = [
-  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { label: "Feed", icon: Home, href: "/app" },
-  { label: "Discover", icon: Compass, href: "/discover" },
-  { label: "Network", icon: UsersRound, href: "/network" },
-  { label: "Resources", icon: BookOpen, href: "/resources" },
-  { label: "Forum", icon: MessageSquare, href: "/forum" },
+  {
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    href: "/dashboard",
+    group: "Overview",
+  },
+  { label: "Feed", icon: Home, href: "/app", group: "Community" },
+  { label: "Discover", icon: Compass, href: "/discover", group: "Community" },
+  { label: "Network", icon: UsersRound, href: "/network", group: "Community" },
+  { label: "Forum", icon: MessageSquare, href: "/forum", group: "Community" },
+  { label: "Messages", icon: Mail, href: "/messages", group: "Community" },
+  {
+    label: "Saved",
+    icon: Bookmark,
+    href: "/app?view=saved",
+    group: "Community",
+  },
+  {
+    label: "Resources",
+    icon: BookOpen,
+    href: "/resources",
+    group: "Teaching tools",
+  },
   {
     label: "AI Lesson Builder",
     icon: Sparkles,
     href: "/ai-lessons",
+    group: "Teaching tools",
     plus: true,
   },
-  { label: "Messages", icon: Mail, href: "/messages" },
 ] as const;
 
 interface PlatformShellProps {
@@ -60,6 +79,13 @@ interface PlatformShellProps {
 
 export function PlatformShell({ account, plan, children }: PlatformShellProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isNavigationActive = (href: string) =>
+    href === "/app?view=saved"
+      ? pathname === "/app" && searchParams.get("view") === "saved"
+      : href === "/app"
+        ? pathname === "/app" && searchParams.get("view") !== "saved"
+        : pathname === href || pathname.startsWith(`${href}/`);
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -219,39 +245,46 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
         aria-label="Platform navigation"
         className="grid max-h-[calc(100dvh-5rem)] gap-1 overflow-y-auto"
       >
-        {primaryNavigation.map(({ label, icon: Icon, href, ...item }) => {
-          const active =
-            pathname === href ||
-            (href !== "/app" && pathname.startsWith(`${href}/`));
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              onClick={closeMobileMenu}
-              className={cn(
-                "relative flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
-                active
-                  ? "border-accent bg-accent/15 border-r-[3px] text-white"
-                  : "text-white/75 hover:bg-white/8 hover:text-white",
-              )}
-            >
-              <Icon
-                aria-hidden="true"
-                className={cn(
-                  "size-4.5 shrink-0",
-                  active && "text-accent-readable",
+        {primaryNavigation.map(
+          ({ label, icon: Icon, href, group, ...item }, index) => {
+            const active = isNavigationActive(href);
+            return (
+              <Fragment key={href}>
+                {(index === 0 ||
+                  primaryNavigation[index - 1].group !== group) && (
+                  <p className="mt-3 px-3 pb-1 text-xs font-bold tracking-wide text-white/80 uppercase">
+                    {group}
+                  </p>
                 )}
-              />
-              <span className="min-w-0 flex-1 truncate">{label}</span>
-              {"plus" in item && item.plus && (
-                <span className="bg-accent/20 rounded px-1.5 py-0.5 text-[9px] font-bold text-[#ffc4bc]">
-                  Plus
-                </span>
-              )}
-            </Link>
-          );
-        })}
+                <Link
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  onClick={closeMobileMenu}
+                  className={cn(
+                    "relative flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
+                    active
+                      ? "border-accent bg-accent/15 border-r-[3px] text-white"
+                      : "text-white/75 hover:bg-white/8 hover:text-white",
+                  )}
+                >
+                  <Icon
+                    aria-hidden="true"
+                    className={cn(
+                      "size-4.5 shrink-0",
+                      active && "text-sidebar-foreground",
+                    )}
+                  />
+                  <span className="min-w-0 flex-1 truncate">{label}</span>
+                  {"plus" in item && item.plus && (
+                    <span className="bg-accent/20 rounded px-1.5 py-0.5 text-[9px] font-bold text-[#ffc4bc]">
+                      Plus
+                    </span>
+                  )}
+                </Link>
+              </Fragment>
+            );
+          },
+        )}
         {account.role === "platform_admin" && (
           <Link
             href="/admin"
@@ -366,56 +399,55 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             uid={account.uid}
             onOpen={() => setUserMenuOpen(false)}
           />
-          <div className="relative">
-            <button
-              type="button"
-              aria-label="Open profile menu"
-              aria-controls="profile-navigation"
-              aria-expanded={userMenuOpen}
-              aria-haspopup="true"
-              onClick={() => setUserMenuOpen((value) => !value)}
-              className="grid size-11 place-items-center rounded-xl ring-2 ring-white/25 transition-colors hover:ring-white/60"
-            >
-              <UserAvatar
-                name={account.displayName}
-                photoURL={account.photoURL}
-                className="size-9 rounded-xl text-xs"
-              />
-            </button>
-            {userMenuOpen && (
-              <>
-                <button
-                  type="button"
-                  aria-label="Close profile menu"
-                  onClick={() => setUserMenuOpen(false)}
-                  tabIndex={-1}
-                  className="fixed inset-0 z-40"
+          <DropdownMenu.Root
+            modal={false}
+            open={userMenuOpen}
+            onOpenChange={setUserMenuOpen}
+          >
+            <DropdownMenu.Trigger asChild>
+              <button
+                type="button"
+                aria-label="Open profile menu"
+                aria-controls="profile-navigation"
+                aria-expanded={userMenuOpen}
+                aria-haspopup="true"
+                className="grid size-11 place-items-center rounded-xl ring-2 ring-white/25 transition-colors hover:ring-white/60"
+              >
+                <UserAvatar
+                  name={account.displayName}
+                  photoURL={account.photoURL}
+                  className="size-9 rounded-xl text-xs"
                 />
-                <div
-                  id="profile-navigation"
-                  aria-label="Profile navigation"
-                  className="bg-card text-card-foreground border-border absolute top-12 right-0 z-50 w-60 overflow-hidden rounded-xl border py-1 shadow-xl"
-                >
-                  <div className="border-border border-b px-4 py-3">
-                    <p className="truncate text-sm font-bold">
-                      {account.displayName}
-                    </p>
-                    <p className="text-muted-foreground mt-0.5 truncate text-xs">
-                      {account.subject}
-                    </p>
-                    <span
-                      className={cn(
-                        "mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                        displayedPlan === "plus"
-                          ? "bg-accent/15 text-accent-readable"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {displayedPlan === "plus"
-                        ? "Plus Plan"
-                        : "Community Plan"}
-                    </span>
-                  </div>
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="end"
+                sideOffset={8}
+                id="profile-navigation"
+                aria-label="Profile navigation"
+                aria-labelledby={undefined}
+                className="bg-card text-card-foreground border-border z-50 w-60 overflow-hidden rounded-xl border py-1 shadow-xl"
+              >
+                <div className="border-border border-b px-4 py-3">
+                  <p className="truncate text-sm font-bold">
+                    {account.displayName}
+                  </p>
+                  <p className="text-muted-foreground mt-0.5 truncate text-xs">
+                    {account.subject}
+                  </p>
+                  <span
+                    className={cn(
+                      "mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      displayedPlan === "plus"
+                        ? "bg-accent/15 text-accent-readable"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {displayedPlan === "plus" ? "Plus Plan" : "Community Plan"}
+                  </span>
+                </div>
+                <DropdownMenu.Item asChild>
                   <Link
                     href={profileHref}
                     onClick={() => setUserMenuOpen(false)}
@@ -423,6 +455,8 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                   >
                     My Profile
                   </Link>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item asChild>
                   <Link
                     href="/dashboard"
                     onClick={() => setUserMenuOpen(false)}
@@ -430,6 +464,8 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                   >
                     Dashboard
                   </Link>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item asChild>
                   <Link
                     href="/resources"
                     onClick={() => setUserMenuOpen(false)}
@@ -437,6 +473,8 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                   >
                     My Resources
                   </Link>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item asChild>
                   <Link
                     href="/settings/billing"
                     onClick={() => setUserMenuOpen(false)}
@@ -444,7 +482,9 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                   >
                     Pricing &amp; Plans
                   </Link>
-                  {account.role === "platform_admin" && (
+                </DropdownMenu.Item>
+                {account.role === "platform_admin" && (
+                  <DropdownMenu.Item asChild>
                     <Link
                       href="/admin"
                       onClick={() => setUserMenuOpen(false)}
@@ -452,7 +492,9 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                     >
                       Administration
                     </Link>
-                  )}
+                  </DropdownMenu.Item>
+                )}
+                <DropdownMenu.Item asChild>
                   <Link
                     href="/settings/profile"
                     scroll={false}
@@ -468,23 +510,37 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                   >
                     Settings
                   </Link>
-                  <div className="border-border border-t">
-                    <LogoutButton appearance="menu" />
-                  </div>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item asChild>
+                  <Link
+                    href="/app?view=saved"
+                    className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
+                  >
+                    Saved posts
+                  </Link>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item asChild>
+                  <Link
+                    href="/settings/security"
+                    className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
+                  >
+                    Login &amp; security
+                  </Link>
+                </DropdownMenu.Item>
+                <div className="border-border border-t">
+                  <LogoutButton appearance="menu" />
                 </div>
-              </>
-            )}
-          </div>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
         </div>
         <nav
           aria-label="Primary platform navigation"
           className="border-sidebar-border hidden border-t lg:block"
         >
           <div className="mx-auto flex max-w-7xl items-center justify-center gap-1 overflow-x-auto px-6">
-            {primaryNavigation.map(({ label, href, ...item }) => {
-              const active =
-                pathname === href ||
-                (href !== "/app" && pathname.startsWith(`${href}/`));
+            {primaryNavigation.map(({ label, href, group, ...item }, index) => {
+              const active = isNavigationActive(href);
               return (
                 <Link
                   key={href}
@@ -492,9 +548,16 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "relative flex min-h-12 shrink-0 items-center gap-1.5 px-3 text-sm font-semibold transition-colors",
+                    index > 0 &&
+                      primaryNavigation[index - 1].group !== group &&
+                      "border-sidebar-border ml-2 border-l pl-4",
                     active ? "text-white" : "text-white/75 hover:text-white",
                   )}
                 >
+                  {(index === 0 ||
+                    primaryNavigation[index - 1].group !== group) && (
+                    <span className="sr-only">{group}: </span>
+                  )}
                   {label}
                   {"plus" in item && item.plus && (
                     <span className="text-[9px] font-bold text-[#ffaaa2]">

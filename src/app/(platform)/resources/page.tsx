@@ -23,7 +23,7 @@ export default async function ResourcesPage() {
     listIncompleteResources(account.uid),
   ]);
   return (
-    <div className="px-4 py-5 lg:px-6">
+    <div className="page-container">
       <ResourceLibrary
         resources={resources}
         incompleteResources={incompleteResources}

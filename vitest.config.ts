@@ -16,6 +16,8 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
+    // Keep discovery out of Next.js build output and its copied dependencies.
+    include: ["src/**/*.{test,spec}.{ts,tsx}", "next.config.test.ts"],
     exclude: ["tests/e2e/**", "tests/rules/**", "node_modules/**"],
     coverage: {
       reporter: ["text", "json", "html"],

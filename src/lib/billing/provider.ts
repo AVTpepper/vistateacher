@@ -11,11 +11,19 @@ export type BillingCommunicationKind =
   | "refund-issued";
 
 export interface CheckoutSessionInput {
+  idempotencyKey: string;
+  expiresAt: number;
   uid: string;
   email: string;
   interval: BillingInterval;
   customerId: string | null;
   origin: string;
+}
+
+export interface CheckoutSessionResult {
+  id: string;
+  clientSecret: string;
+  expiresAt: number;
 }
 
 export interface PortalSessionInput {
@@ -103,7 +111,11 @@ export type NormalizedBillingEvent =
     };
 
 export interface BillingProvider {
-  createCheckoutSession(input: CheckoutSessionInput): Promise<string>;
+  expireOpenCheckout(sessionId: string): Promise<boolean>;
+  closeCheckoutForDeletion(sessionId: string): Promise<void>;
+  createCheckoutSession(
+    input: CheckoutSessionInput,
+  ): Promise<CheckoutSessionResult>;
   retrieveCompletedCheckout(
     sessionId: string,
     expectedUid: string,

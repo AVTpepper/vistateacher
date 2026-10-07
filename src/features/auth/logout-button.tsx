@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { getFirebaseClient } from "@/lib/firebase/client";
 import { cn } from "@/lib/utils";
@@ -39,22 +40,35 @@ export function LogoutButton({
     }
   }
 
+  const trigger = (
+    <Button
+      className={cn(
+        "h-11 flex-1 px-2 text-xs",
+        appearance === "sidebar"
+          ? "text-white/75 hover:bg-white/8 hover:text-red-200"
+          : "text-destructive hover:bg-muted hover:text-destructive w-full justify-start rounded-none px-4 text-sm font-semibold",
+      )}
+      variant="ghost"
+      title="Sign out"
+    >
+      <LogOut aria-hidden="true" />
+      {!compact && "Log out"}
+    </Button>
+  );
   return (
     <AlertDialog.Root open={open} onOpenChange={setOpen}>
       <AlertDialog.Trigger asChild>
-        <Button
-          className={cn(
-            "h-11 flex-1 px-2 text-xs",
-            appearance === "sidebar"
-              ? "text-white/75 hover:bg-white/8 hover:text-red-200"
-              : "text-destructive hover:bg-muted hover:text-destructive w-full justify-start rounded-none px-4 text-sm font-semibold",
-          )}
-          variant="ghost"
-          title="Sign out"
-        >
-          <LogOut aria-hidden="true" />
-          {!compact && "Log out"}
-        </Button>
+        {appearance === "menu" ? (
+          <DropdownMenu.Item
+            asChild
+            disabled={pending}
+            onSelect={(event) => event.preventDefault()}
+          >
+            {trigger}
+          </DropdownMenu.Item>
+        ) : (
+          trigger
+        )}
       </AlertDialog.Trigger>
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/50" />

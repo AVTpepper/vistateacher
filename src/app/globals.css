@@ -50,8 +50,8 @@
   --card-foreground: #f4ebe3;
   --popover: #241d19;
   --popover-foreground: #f4ebe3;
-  --primary: #a9768c;
-  --primary-foreground: #f4ebe3;
+  --primary: #dab2c4;
+  --primary-foreground: #271721;
   --secondary: #c4d577;
   --secondary-foreground: #1a1510;
   --muted: #2a211c;
@@ -303,6 +303,39 @@ input[type="file"] {
     border-color 160ms ease,
     box-shadow 160ms ease,
     background-color 160ms ease;
+}
+
+/* Shared page gutters and form action alignment, independent of content width. */
+.page-container {
+  width: 100%;
+  min-width: 0;
+  margin-inline: auto;
+  padding: 1.5rem 1rem;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .page-container {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+  .form-actions > button,
+  .form-actions > a {
+    width: 100%;
+  }
 }
 
 .input-shell:focus-within {

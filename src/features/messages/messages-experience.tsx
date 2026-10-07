@@ -37,6 +37,7 @@ import {
 } from "@/features/billing/limit-upgrade-prompt";
 import { ReportMessageDialog } from "@/features/messages/report-message-dialog";
 import { getFirebaseClient } from "@/lib/firebase/client";
+import { requestJson } from "@/lib/http/client";
 import type {
   ConversationSummary,
   DirectMessage,
@@ -60,7 +61,7 @@ export function MessagesExperience({
 }) {
   const router = useRouter();
   const [conversations, setConversations] = useState(initialConversations);
-  const [activeId, setActiveId] = useState(initialConversationId);
+  const activeId = initialConversationId;
   const [messagePage, setMessagePage] = useState<MessagePage>(
     initialMessages ?? { messages: [], nextCursor: null },
   );
@@ -151,18 +152,23 @@ export function MessagesExperience({
   }, [activeId, messagePage.messages.length]);
 
   async function selectConversation(conversation: ConversationSummary) {
-    const response = await fetch(`/api/messages/${conversation.id}`);
-    const result = (await response
-      .json()
-      .catch(() => null)) as MessagePage | null;
-    if (!response.ok || !result)
-      return toast.error("We couldn't load this conversation.");
-    setActiveId(conversation.id);
-    setMessagePage(result);
-    setMobileChat(true);
-    router.replace(`/messages?conversation=${conversation.id}`, {
-      scroll: false,
-    });
+    if (conversation.id === activeId) {
+      setMobileChat(true);
+      return;
+    }
+    try {
+      await requestJson<MessagePage>(`/api/messages/${conversation.id}`);
+      // Render the new composer when navigation finishes, so its draft is not erased by a remount.
+      router.replace(`/messages?conversation=${conversation.id}`, {
+        scroll: false,
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "We couldn't load this conversation.",
+      );
+    }
   }
 
   async function loadOlder() {
@@ -316,13 +322,13 @@ export function MessagesExperience({
   }
 
   async function removeMessage(message: DirectMessage): Promise<void> {
-    if (!activeId) return;
+    if (!activeId)
+      throw new Error("Select the conversation before deleting a message.");
     const response = await fetch(`/api/messages/${activeId}/${message.id}`, {
       method: "DELETE",
     });
     if (!response.ok) {
-      toast.error("We couldn't delete that message.");
-      return;
+      throw new Error("We couldn't delete that message.");
     }
     toast.success("Message deleted.");
   }

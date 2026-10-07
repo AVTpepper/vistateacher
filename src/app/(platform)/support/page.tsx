@@ -30,7 +30,7 @@ export default async function SupportPage() {
 
   return (
     <div>
-      <div className="mx-auto max-w-5xl px-4 py-6 lg:px-6">
+      <div className="page-container max-w-5xl">
         <header className="max-w-2xl">
           <p className="text-primary font-mono text-[10px] font-bold uppercase">
             Support

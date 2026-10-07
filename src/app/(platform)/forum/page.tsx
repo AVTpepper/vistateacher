@@ -31,7 +31,7 @@ export default async function ForumPage({
       })
     : { threads: [], nextCursor: null };
   return (
-    <div className="px-4 py-5 lg:px-6">
+    <div className="page-container">
       <ForumExperience
         key={selectedCategory?.id ?? (showThreads ? "all" : "categories")}
         categories={categories}

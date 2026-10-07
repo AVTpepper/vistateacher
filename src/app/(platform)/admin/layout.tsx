@@ -8,7 +8,7 @@ export default async function AdminLayout({
 }) {
   await requirePlatformAdmin();
   return (
-    <div className="px-4 py-5 lg:px-6">
+    <div className="page-container">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>

@@ -17,19 +17,36 @@ export function DeleteConfirmDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleDelete() {
+    if (pending) return;
     setPending(true);
+    setError(null);
     try {
       await onConfirm();
       setOpen(false);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Deletion failed. Please try again.",
+      );
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (!pending) {
+          setOpen(next);
+          setError(null);
+        }
+      }}
+    >
       <Dialog.Trigger asChild>{children}</Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px]" />
@@ -41,9 +58,16 @@ export function DeleteConfirmDialog({
             This action cannot be undone. Please confirm you want to permanently
             delete this {itemName.toLowerCase()}.
           </Dialog.Description>
-          <div className="mt-6 flex justify-end gap-3">
+          {error && (
+            <p role="alert" className="text-destructive mt-4 text-sm">
+              {error}
+            </p>
+          )}
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Dialog.Close asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline" disabled={pending}>
+                Cancel
+              </Button>
             </Dialog.Close>
             <Button
               variant="destructive"
@@ -51,7 +75,7 @@ export function DeleteConfirmDialog({
               onClick={() => void handleDelete()}
             >
               <Trash2 className="size-4" />
-              Delete
+              {pending ? "Deleting..." : "Delete"}
             </Button>
           </div>
         </Dialog.Content>

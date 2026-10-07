@@ -48,3 +48,11 @@ The E2E command starts fresh Firebase emulators, seeds deterministic accounts, b
 5. Promote gradually while monitoring server errors, webhook failures, elevated administrator actions, and quota anomalies.
 
 Roll back to the previous healthy App Hosting rollout if authentication, trusted writes, billing reconciliation, or core route error rates regress. Rules and index deployments are independent; roll them back only after checking compatibility with the previous application version.
+
+## Account deletion and checkout operations
+
+Account deletion persists a job in `accountDeletions/{uid}` and returns an opaque receipt before cleanup runs through Next.js `after`. The receipt page polls coarse status without exposing account information. Cleanup cancels subscription renewal and expires checkout first, then blocks access, removes owned content, reactions, uploads, private records and Firebase identity. Billing and moderation/audit records and other participants' messages remain. Inspect `/admin/deletions` for failed or interrupted jobs; retry processing jobs only after their ten-minute lease expires. An interrupted request is not an automatic background retry: administrators must monitor this queue.
+
+Deploy the accompanying Firestore collection-group indexes and both security rule files before this application version. The rules require active profiles for authenticated data/file access, including previously issued tokens belonging to deleted accounts.
+
+Checkout reserves one durable idempotency key per account and reuses its Stripe session across tabs. Closing checkout expires an unpaid session; completed sessions remain protected from a duplicate purchase while webhooks reconcile. Configured Stripe prices must match the central USD pricing in `src/lib/billing/pricing.ts` ($9/month or $79/year); mismatches fail before checkout creation. Confirm both prices and webhook reconciliation in Stripe test mode before release.

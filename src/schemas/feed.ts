@@ -80,6 +80,7 @@ export const commentActionSchema = postActionSchema.extend({
 });
 
 export const updateCommentSchema = commentActionSchema.extend({
+  mentionUids: mentionUidsSchema,
   content: z.string().trim().min(1, "Write a comment.").max(1_000),
 });
 

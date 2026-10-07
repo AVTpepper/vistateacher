@@ -55,7 +55,7 @@ New temporary-access enrollment is disabled; the retired endpoint returns HTTP 4
 
 ## Privacy and Moderation
 
-Private contact data is fetched only when the viewer owns the profile or the educator has explicitly opted into public contact sharing. Account deletion requires an exact confirmation and records a server timestamp for review. Blocking is checked across follows, messaging, discovery, and notifications. Reports disclose only necessary target context. Reported-message review is narrowly scoped and creates an audit log.
+Private contact data is fetched only when the viewer owns the profile or the educator has explicitly opted into public contact sharing. Account deletion requires exact confirmation, cancels subscription renewal before removing access, and records a durable job with an opaque status receipt. Active profile checks in both Firestore and Storage rules block old tokens after deletion. Cleanup is repeatable, and administrators can resume failed jobs. Login email verification and password changes require Firebase reauthentication. Blocking is checked across follows, messaging, discovery, and notifications. Reports disclose only necessary target context. Reported-message review is narrowly scoped and creates an audit log.
 
 ## Operations
 

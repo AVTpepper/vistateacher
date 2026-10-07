@@ -40,10 +40,19 @@ export async function POST(request: NextRequest) {
     if (!(error instanceof BillingError)) throw error;
     return NextResponse.json(
       {
-        error: "Checkout is not available for this account.",
+        error:
+          error.code === "checkout-in-progress"
+            ? "You already have an open checkout with another billing interval. Close the previous checkout to switch intervals."
+            : "Checkout is not available for this account.",
         code: error.code,
       },
-      { status: error.code === "already-subscribed" ? 409 : 403 },
+      {
+        status: ["already-subscribed", "checkout-in-progress"].includes(
+          error.code,
+        )
+          ? 409
+          : 403,
+      },
     );
   }
 }

@@ -1,7 +1,10 @@
 "use client";
 
 import { FileText, LoaderCircle } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { requestJson } from "@/lib/http/client";
 import { toast } from "sonner";
 
 import { FeedComposer } from "@/features/feed/feed-composer";
@@ -12,6 +15,7 @@ import type { CreatePostInput, FeedView } from "@/schemas/feed";
 
 interface FeedExperienceProps {
   initialPage: FeedPage;
+  initialView?: FeedView;
   account: {
     uid: string;
     displayName: string;
@@ -36,27 +40,22 @@ async function loadFeed(view: FeedView, cursor?: string | null) {
   return result;
 }
 
-export function FeedExperience({ initialPage, account }: FeedExperienceProps) {
-  const [view, setView] = useState<FeedView>("all");
+export function FeedExperience({
+  initialPage,
+  initialView = "all",
+  account,
+}: FeedExperienceProps) {
+  const router = useRouter();
+  const view = initialView;
+  const [previousPage, setPreviousPage] = useState(initialPage);
   const [posts, setPosts] = useState(initialPage.posts);
   const [nextCursor, setNextCursor] = useState(initialPage.nextCursor);
   const [loading, setLoading] = useState(false);
 
-  async function selectView(nextView: FeedView) {
-    if (nextView === view || loading) return;
-    const previousView = view;
-    setView(nextView);
-    setLoading(true);
-    try {
-      const page = await loadFeed(nextView);
-      setPosts(page.posts);
-      setNextCursor(page.nextCursor);
-    } catch {
-      setView(previousView);
-      toast.error("We couldn't load that feed.");
-    } finally {
-      setLoading(false);
-    }
+  if (previousPage !== initialPage) {
+    setPreviousPage(initialPage);
+    setPosts(initialPage.posts);
+    setNextCursor(initialPage.nextCursor);
   }
 
   async function loadMore() {
@@ -104,35 +103,41 @@ export function FeedExperience({ initialPage, account }: FeedExperienceProps) {
       bookmarked: false,
       ownedByViewer: true,
     };
-    const previousPosts = posts;
-    const previousView = view;
-    setView("all");
-    setPosts((current) => [optimistic, ...(view === "all" ? current : [])]);
-    const response = await fetch("/api/feed", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
-    const result = (await response.json().catch(() => null)) as {
-      postId?: string;
-      error?: string;
-    } | null;
-    if (!response.ok || !result?.postId) {
-      setView(previousView);
-      setPosts(previousPosts);
-      toast.error(result?.error ?? "We couldn't publish that post.");
+    if (view === "all") setPosts((current) => [optimistic, ...current]);
+    let postId: string;
+    try {
+      const result = await requestJson<{ postId: string }>("/api/feed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!result.postId)
+        throw new Error(
+          "Post could not be confirmed. Refresh before retrying.",
+        );
+      postId = result.postId;
+    } catch (error) {
+      setPosts((current) => current.filter((post) => post.id !== temporaryId));
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "We couldn't publish that post.",
+      );
       return false;
     }
-    try {
-      const page = await loadFeed("all");
-      setPosts(page.posts);
-      setNextCursor(page.nextCursor);
-    } catch {
-      setPosts((current) =>
-        current.map((post) =>
-          post.id === temporaryId ? { ...post, id: result.postId! } : post,
-        ),
-      );
+    if (view !== "all") router.push("/app?view=all");
+    else {
+      try {
+        const page = await loadFeed("all");
+        setPosts(page.posts);
+        setNextCursor(page.nextCursor);
+      } catch {
+        setPosts((current) =>
+          current.map((post) =>
+            post.id === temporaryId ? { ...post, id: postId } : post,
+          ),
+        );
+      }
     }
     toast.success("Post published.");
     return true;
@@ -142,20 +147,20 @@ export function FeedExperience({ initialPage, account }: FeedExperienceProps) {
     <div className="mx-auto w-full max-w-2xl min-w-0 space-y-4">
       <div className="surface-card flex gap-1 p-1">
         {tabs.map((tab) => (
-          <button
-            type="button"
-            aria-pressed={view === tab.value}
+          <Link
+            href={`/app?view=${tab.value}`}
+            scroll={false}
+            aria-current={view === tab.value ? "page" : undefined}
             key={tab.value}
-            onClick={() => void selectView(tab.value)}
             className={cn(
-              "min-h-11 flex-1 rounded-lg text-sm font-semibold transition-colors",
+              "flex min-h-11 flex-1 items-center justify-center rounded-lg px-2 text-center text-sm font-semibold transition-colors",
               view === tab.value
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
             {tab.label}
-          </button>
+          </Link>
         ))}
       </div>
       <FeedComposer account={account} onCreate={create} />

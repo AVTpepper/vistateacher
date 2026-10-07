@@ -19,7 +19,7 @@ export default async function SharedLessonPage({
   const lesson = await getSharedLesson(lessonId, account.uid);
   if (!lesson) notFound();
   return (
-    <div className="px-4 py-5 lg:px-6">
+    <div className="page-container">
       <SharedLessonView lesson={lesson} />
     </div>
   );

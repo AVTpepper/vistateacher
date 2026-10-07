@@ -1878,6 +1878,7 @@ describe("Firestore rules", () => {
   });
 
   it("keeps lessons owner-only and subscriptions server-owned", async () => {
+    await seedActiveUser("owner");
     await testEnv.withSecurityRulesDisabled(async (context) => {
       await setDoc(doc(context.firestore(), "lessons", "lesson-one"), {
         ownerId: "owner",
@@ -1915,6 +1916,7 @@ describe("Firestore rules", () => {
   });
 
   it("allows only platform administrators to read audit logs", async () => {
+    await seedActiveUser("admin");
     await testEnv.withSecurityRulesDisabled(async (context) => {
       await setDoc(doc(context.firestore(), "auditLogs", "audit-one"), {
         action: "user.suspended",
@@ -2126,6 +2128,7 @@ describe("Storage rules", () => {
 
   it("limits post media and document writes to active owners and reads to signed-in users", async () => {
     await seedActiveUser("owner");
+    await seedActiveUser("other");
     const ownerStorage = testEnv
       .authenticatedContext("owner")
       .storage(storageBucketUrl);
@@ -2140,6 +2143,9 @@ describe("Storage rules", () => {
       }),
     );
     await assertSucceeds(getBytes(ref(otherStorage, postPath)));
+    await seedActiveUser("other", "deleted");
+    await assertFails(getBytes(ref(otherStorage, postPath)));
+    await seedActiveUser("other");
     const documentPath = "posts/owner/post-one/lesson-plan.pdf";
     await assertSucceeds(
       uploadBytes(ref(ownerStorage, documentPath), new Uint8Array([1]), {

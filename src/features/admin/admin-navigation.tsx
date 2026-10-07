@@ -17,6 +17,7 @@ const navigation = [
   ["Users", "/admin/users", UsersRound],
   ["Content", "/admin/content", Activity],
   ["Reports", "/admin/reports", Flag],
+  ["Deletions", "/admin/deletions", UsersRound],
   ["Verification", "/admin/verification", BadgeCheck],
 ] as const;
 

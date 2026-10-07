@@ -18,7 +18,7 @@ export default async function AiLessonsPage({
   const lesson = selectedId ? await getLesson(account.uid, selectedId) : null;
 
   return (
-    <div className="px-4 py-5 lg:px-6">
+    <div className="page-container">
       <LessonBuilderExperience
         initialWorkspace={workspace}
         initialLesson={lesson}

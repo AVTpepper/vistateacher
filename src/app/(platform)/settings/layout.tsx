@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, LockKeyhole, UserRound } from "lucide-react";
+import { CreditCard, LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef } from "react";
@@ -37,7 +37,7 @@ export default function SettingsLayout({
       : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 [overflow-anchor:none] lg:px-6">
+    <div className="page-container max-w-5xl [overflow-anchor:none]">
       <div className="mb-6">
         <p className="text-primary font-mono text-[10px] font-bold tracking-widest uppercase">
           Account
@@ -78,6 +78,21 @@ export default function SettingsLayout({
           >
             <LockKeyhole aria-hidden="true" className="size-4" />
             Privacy & account
+          </Link>
+          <Link
+            href="/settings/security"
+            scroll={false}
+            onClick={preserveScroll}
+            aria-current={isActive("/settings/security") ? "page" : undefined}
+            className={cn(
+              "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
+              isActive("/settings/security")
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-muted",
+            )}
+          >
+            <ShieldCheck aria-hidden="true" className="size-4" />
+            Login &amp; security
           </Link>
           <Link
             href="/settings/billing"

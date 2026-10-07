@@ -1006,6 +1006,10 @@ export function LessonBuilderExperience({
   }
 
   async function deleteLessonById(lessonId: string): Promise<void> {
+    if (working)
+      throw new Error(
+        "Wait for the current lesson action to finish, then try again.",
+      );
     setWorking(true);
     try {
       const response = await fetch(`/api/ai-lessons/${lessonId}`, {
@@ -1021,8 +1025,6 @@ export function LessonBuilderExperience({
         setEditing(false);
       }
       toast.success("Lesson deleted.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Delete failed.");
     } finally {
       setWorking(false);
     }

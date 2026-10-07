@@ -142,7 +142,7 @@ export function ForumExperience({
         <Link
           href={`/forum/new${selectedCategory ? `?category=${encodeURIComponent(selectedCategory.id)}` : ""}`}
           aria-label="Start a new discussion"
-          className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-bold"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-bold"
         >
           <PlusCircle aria-hidden="true" className="size-4" />
           <span className="hidden sm:inline">New Thread</span>

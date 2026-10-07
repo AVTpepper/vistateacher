@@ -3,17 +3,19 @@
 import { LoaderCircle, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { requestJson } from "@/lib/http/client";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField as Field } from "@/components/ui/form-field";
 import { ChoiceFieldset, Choice } from "@/components/ui/choice-field";
 import { ProfileCoverEditor } from "@/features/profiles/profile-cover-editor";
 import { ProfilePhotoEditor } from "@/features/profiles/profile-photo-editor";
 import type { CoverThemeId } from "@/lib/profiles/cover-themes";
 import {
   educationStages,
+  professionalRoles,
   subjectAreas,
   taughtLanguages,
 } from "@/lib/profiles/options";
@@ -34,6 +36,8 @@ export function ProfileEditForm({
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [selectedRoles, setSelectedRoles] = useState(initial.professionalRoles);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>(
     initial.subjects,
   );
@@ -61,13 +65,11 @@ export function ProfileEditForm({
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setFieldErrors({});
     const form = new FormData(event.currentTarget);
     const parsed = profileUpdateSchema.safeParse({
       displayName: form.get("displayName"),
-      professionalRoles: String(form.get("professionalRoles") ?? "")
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean),
+      professionalRoles: selectedRoles,
       gradeLevel: form.get("gradeLevel"),
       subjects: selectedSubjects,
       languages: selectedLanguages,
@@ -83,26 +85,39 @@ export function ProfileEditForm({
         .filter(Boolean),
     });
     if (!parsed.success) {
+      setFieldErrors(
+        Object.fromEntries(
+          parsed.error.issues.map((issue) => [
+            String(issue.path[0]),
+            issue.message,
+          ]),
+        ),
+      );
       setError(
         parsed.error.issues[0]?.message ?? "Review your profile details.",
       );
       return;
     }
 
+    if (pending) return;
     setPending(true);
-    const response = await fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(parsed.data),
-    });
-    setPending(false);
-    if (!response.ok) {
-      const result = (await response.json()) as { error?: string };
-      setError(result.error ?? "We couldn't save your profile.");
-      return;
+    try {
+      await requestJson("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.data),
+      });
+      toast.success("Profile updated.");
+      router.refresh();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "We couldn't save your profile.",
+      );
+    } finally {
+      setPending(false);
     }
-    toast.success("Profile updated.");
-    router.refresh();
   }
 
   return (
@@ -113,7 +128,11 @@ export function ProfileEditForm({
       />
       <ProfileCoverEditor initialCoverTheme={initialCoverTheme} plan={plan} />
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Display name" id="displayName">
+        <Field
+          label="Display name"
+          id="displayName"
+          error={fieldErrors.displayName}
+        >
           <Input
             id="displayName"
             name="displayName"
@@ -121,21 +140,35 @@ export function ProfileEditForm({
             required
           />
         </Field>
-        <Field
-          label="Professional roles"
-          id="professionalRoles"
-          hint="Separate up to four roles with commas."
+        <ChoiceFieldset
+          legend="Your role"
+          error={fieldErrors.professionalRoles}
+          hint="Choose up to four roles. Select the one that best describes your current work first."
         >
-          <Input
-            id="professionalRoles"
-            name="professionalRoles"
-            defaultValue={initial.professionalRoles.join(", ")}
-            required
-          />
-        </Field>
+          {[
+            ...new Set([...professionalRoles, ...initial.professionalRoles]),
+          ].map((role) => (
+            <Choice
+              key={role}
+              label={role}
+              checked={selectedRoles.includes(role)}
+              disabled={
+                !selectedRoles.includes(role) && selectedRoles.length >= 4
+              }
+              onChange={() =>
+                setSelectedRoles((current) =>
+                  current.includes(role)
+                    ? current.filter((value) => value !== role)
+                    : [...current, role],
+                )
+              }
+            />
+          ))}
+        </ChoiceFieldset>
         <Field
           label="Education stage"
           id="gradeLevel"
+          error={fieldErrors.gradeLevel}
           hint="Grade ranges are approximate and vary by country."
         >
           <select
@@ -160,6 +193,7 @@ export function ProfileEditForm({
         <div className="space-y-6 sm:col-span-2">
           <ChoiceFieldset
             legend="Subjects and areas of expertise"
+            error={fieldErrors.subjects}
             hint="Choose up to six. Leadership and whole-school expertise belong here too."
           >
             {subjectAreas.map((subject) => {
@@ -178,6 +212,7 @@ export function ProfileEditForm({
           {selectedSubjects.includes("Languages") && (
             <ChoiceFieldset
               legend="Languages you teach"
+              error={fieldErrors.languages}
               hint="Choose every language that applies."
             >
               {taughtLanguages.map((language) => {
@@ -195,7 +230,11 @@ export function ProfileEditForm({
             </ChoiceFieldset>
           )}
         </div>
-        <Field label="Years of experience" id="yearsOfExperience">
+        <Field
+          label="Years of experience"
+          id="yearsOfExperience"
+          error={fieldErrors.yearsOfExperience}
+        >
           <Input
             id="yearsOfExperience"
             name="yearsOfExperience"
@@ -206,10 +245,14 @@ export function ProfileEditForm({
             required
           />
         </Field>
-        <Field label="School or organization" id="school">
+        <Field
+          label="School or organization"
+          id="school"
+          error={fieldErrors.school}
+        >
           <Input id="school" name="school" defaultValue={initial.school} />
         </Field>
-        <Field label="Website" id="website">
+        <Field label="Website" id="website" error={fieldErrors.website}>
           <Input
             id="website"
             name="website"
@@ -219,10 +262,10 @@ export function ProfileEditForm({
             placeholder="your-school.org"
           />
         </Field>
-        <Field label="City" id="city">
+        <Field label="City" id="city" error={fieldErrors.city}>
           <Input id="city" name="city" defaultValue={initial.city} required />
         </Field>
-        <Field label="Country" id="country">
+        <Field label="Country" id="country" error={fieldErrors.country}>
           <Input
             id="country"
             name="country"
@@ -231,7 +274,12 @@ export function ProfileEditForm({
           />
         </Field>
       </div>
-      <Field label="Professional bio" id="bio" hint="Up to 500 characters.">
+      <Field
+        label="Professional bio"
+        id="bio"
+        error={fieldErrors.bio}
+        hint="Up to 500 characters."
+      >
         <textarea
           id="bio"
           name="bio"
@@ -244,6 +292,7 @@ export function ProfileEditForm({
       <Field
         label="Professional interests"
         id="interests"
+        error={fieldErrors.interests}
         hint="Separate interests with commas."
       >
         <Input
@@ -257,34 +306,16 @@ export function ProfileEditForm({
           {error}
         </p>
       )}
-      <Button type="submit" disabled={pending}>
-        {pending ? (
-          <LoaderCircle aria-hidden="true" className="animate-spin" />
-        ) : (
-          <Save aria-hidden="true" />
-        )}
-        Save changes
-      </Button>
+      <div className="form-actions">
+        <Button type="submit" disabled={pending}>
+          {pending ? (
+            <LoaderCircle aria-hidden="true" className="animate-spin" />
+          ) : (
+            <Save aria-hidden="true" />
+          )}
+          {pending ? "Saving..." : "Save changes"}
+        </Button>
+      </div>
     </form>
-  );
-}
-
-function Field({
-  label,
-  id,
-  hint,
-  children,
-}: {
-  label: string;
-  id: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-      {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
-    </div>
   );
 }

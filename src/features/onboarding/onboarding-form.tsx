@@ -3,12 +3,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField as Field } from "@/components/ui/form-field";
 import { ChoiceFieldset, Choice } from "@/components/ui/choice-field";
 import { safeReturnTo } from "@/lib/auth/return-to";
 import { planIntentHref, type PlanIntent } from "@/lib/billing/plan-intent";
@@ -33,6 +34,28 @@ export function OnboardingForm({
   returnTo?: string | null;
 }) {
   const router = useRouter();
+  const [step, setStep] = useState<1 | 2>(1);
+  async function nextStep() {
+    if (
+      await form.trigger(
+        [
+          "professionalRoles",
+          "displayName",
+          "gradeLevel",
+          "country",
+          "city",
+          "school",
+          "yearsOfExperience",
+        ],
+        { shouldFocus: true },
+      )
+    ) {
+      setStep(2);
+      requestAnimationFrame(() =>
+        document.getElementById("teaching-interests")?.focus(),
+      );
+    }
+  }
   const form = useForm<OnboardingInput, unknown, OnboardingValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
@@ -126,13 +149,30 @@ export function OnboardingForm({
   }
 
   return (
-    <form className="space-y-9" onSubmit={form.handleSubmit(submit)} noValidate>
-      <section aria-labelledby="professional-details" className="space-y-5">
+    <form
+      className="space-y-9"
+      onSubmit={(event) => {
+        if (step === 1) {
+          event.preventDefault();
+          void nextStep();
+        } else void form.handleSubmit(submit)(event);
+      }}
+      noValidate
+    >
+      <section
+        hidden={step !== 1}
+        aria-labelledby="professional-details"
+        className="space-y-5"
+      >
         <div>
           <p className="text-primary font-mono text-xs font-bold uppercase">
             Step 1 of 2
           </p>
-          <h2 id="professional-details" className="mt-2 font-serif text-2xl">
+          <h2
+            tabIndex={-1}
+            id="professional-details"
+            className="mt-2 font-serif text-2xl"
+          >
             Your professional context
           </h2>
         </div>
@@ -234,14 +274,19 @@ export function OnboardingForm({
       </section>
 
       <section
+        hidden={step !== 2}
         aria-labelledby="teaching-interests"
-        className="space-y-5 border-t pt-8"
+        className="space-y-5"
       >
         <div>
           <p className="text-accent-readable font-mono text-xs font-bold uppercase">
             Step 2 of 2
           </p>
-          <h2 id="teaching-interests" className="mt-2 font-serif text-2xl">
+          <h2
+            tabIndex={-1}
+            id="teaching-interests"
+            className="mt-2 font-serif text-2xl"
+          >
             Subjects and expertise
           </h2>
         </div>
@@ -303,46 +348,36 @@ export function OnboardingForm({
           {form.formState.errors.root.message}
         </p>
       )}
-      <Button
-        className="w-full sm:w-auto"
-        size="lg"
-        disabled={form.formState.isSubmitting}
-        type="submit"
-      >
-        {form.formState.isSubmitting ? (
-          <LoaderCircle aria-hidden="true" className="animate-spin" />
-        ) : (
-          <ArrowRight aria-hidden="true" />
+      <div className="form-actions">
+        {step === 2 && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={form.formState.isSubmitting}
+            onClick={() => {
+              setStep(1);
+              requestAnimationFrame(() =>
+                document.getElementById("professional-details")?.focus(),
+              );
+            }}
+          >
+            Back
+          </Button>
         )}
-        Complete profile
-      </Button>
+        <Button
+          className="w-full sm:w-auto"
+          size="lg"
+          disabled={form.formState.isSubmitting}
+          type="submit"
+        >
+          {form.formState.isSubmitting ? (
+            <LoaderCircle aria-hidden="true" className="animate-spin" />
+          ) : (
+            <ArrowRight aria-hidden="true" />
+          )}
+          {step === 1 ? "Next: subjects and expertise" : "Complete profile"}
+        </Button>
+      </div>
     </form>
-  );
-}
-
-function Field({
-  label,
-  id,
-  error,
-  hint,
-  children,
-}: {
-  label: string;
-  id: string;
-  error?: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-      {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
-      {error && (
-        <p className="text-destructive text-xs" role="alert">
-          {error}
-        </p>
-      )}
-    </div>
   );
 }

@@ -1,3 +1,4 @@
+import { PLUS_PRICING, PLUS_YEARLY_SAVING } from "@/lib/billing/pricing";
 export interface BillingPlanDetails {
   id: "free" | "plus";
   name: string;
@@ -26,9 +27,9 @@ export const billingPlans = [
   {
     id: "plus",
     name: "Plus",
-    price: "$9",
+    price: PLUS_PRICING.month.label,
     priceSuffix: " / month",
-    note: "$79 when billed yearly (save $29).",
+    note: `${PLUS_PRICING.year.label} when billed yearly (save ${PLUS_YEARLY_SAVING}).`,
     features: [
       "Unlimited connections and messages",
       "50 AI generations per month",

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { requestJson } from "@/lib/http/client";
 import { Button } from "@/components/ui/button";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import type { ResourceDetail } from "@/lib/resources/server";
@@ -23,31 +24,30 @@ export function ResourceDetailActions({
   const [downloading, setDownloading] = useState(false);
 
   async function submitReview() {
+    if (submitting) return;
     setSubmitting(true);
-    const response = await fetch(`/api/resources/${resource.id}/reviews`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rating, review }),
-    });
-    const result = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    setSubmitting(false);
-    if (!response.ok)
-      return toast.error(result?.error ?? "We couldn't save your review.");
-    setReview("");
-    toast.success("Review saved.");
-    router.refresh();
+    try {
+      await requestJson(`/api/resources/${resource.id}/reviews`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating, review }),
+      });
+      setReview("");
+      toast.success("Review saved.");
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "We couldn't save your review.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function remove(): Promise<void> {
-    const response = await fetch(`/api/resources/${resource.id}`, {
-      method: "DELETE",
-    });
-    if (!response.ok) {
-      toast.error("We couldn't delete this resource.");
-      return;
-    }
+    await requestJson(`/api/resources/${resource.id}`, { method: "DELETE" });
     toast.success("Resource deleted.");
     router.push("/resources");
     router.refresh();
@@ -94,13 +94,9 @@ export function ResourceDetailActions({
   }
 
   async function deleteMyReview(): Promise<void> {
-    const response = await fetch(`/api/resources/${resource.id}/reviews`, {
+    await requestJson(`/api/resources/${resource.id}/reviews`, {
       method: "DELETE",
     });
-    if (!response.ok) {
-      toast.error("We couldn't delete your review.");
-      return;
-    }
     toast.success("Review deleted.");
     router.refresh();
   }
@@ -189,6 +185,7 @@ export function ResourceDetailActions({
                 key={value}
                 onClick={() => setRating(value)}
                 aria-label={`${value} stars`}
+                aria-pressed={rating === value}
                 className="grid size-11 place-items-center"
               >
                 <Star
@@ -199,6 +196,8 @@ export function ResourceDetailActions({
             ))}
           </div>
           <textarea
+            aria-label="Your resource review"
+            disabled={submitting}
             value={review}
             onChange={(event) => setReview(event.target.value)}
             maxLength={1_000}
@@ -210,14 +209,14 @@ export function ResourceDetailActions({
             type="button"
             disabled={review.trim().length < 3 || submitting}
             onClick={() => void submitReview()}
-            className="bg-primary text-primary-foreground mt-3 h-9 rounded-lg px-4 text-sm font-bold disabled:opacity-50"
+            className="bg-primary text-primary-foreground mt-3 h-11 rounded-xl px-4 text-sm font-bold disabled:opacity-50"
           >
             {submitting ? "Saving..." : "Save review"}
           </button>
           <DeleteConfirmDialog itemName="review" onConfirm={deleteMyReview}>
             <button
               type="button"
-              className="text-destructive mt-2 block text-xs font-semibold"
+              className="text-destructive hover:bg-muted mt-2 block min-h-11 rounded-xl px-3 text-sm font-semibold"
             >
               Delete my review
             </button>

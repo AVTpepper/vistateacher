@@ -1,4 +1,5 @@
 "use client";
+import { PLUS_PRICING, plusPriceLabel } from "@/lib/billing/pricing";
 
 import {
   EmbeddedCheckout,
@@ -13,6 +14,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { requestJson } from "@/lib/http/client";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +30,27 @@ export function EmbeddedCheckoutPanel({
   publishableKey: string;
   testMode: boolean;
 }) {
+  const router = useRouter();
+  const [canceling, setCanceling] = useState(false);
+  async function cancelCheckout(retry = false) {
+    if (canceling) return;
+    setCanceling(true);
+    try {
+      await requestJson("/api/billing/checkout/cancel", { method: "POST" });
+      if (retry) {
+        setError(null);
+        setAttempt((value) => value + 1);
+      } else router.push("/settings/billing?checkout=canceled");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Checkout could not be canceled.",
+      );
+    } finally {
+      setCanceling(false);
+    }
+  }
   const [stripePromise] = useState(() => loadStripe(publishableKey));
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +104,7 @@ export function EmbeddedCheckoutPanel({
             VistaTeacher Plus
           </p>
           <p className="mt-3 font-serif text-4xl">
-            {interval === "month" ? "$9" : "$79"}
+            {PLUS_PRICING[interval].label}
             <span className="text-muted-foreground font-sans text-xs">
               {interval === "month" ? " / month" : " / year"}
             </span>
@@ -114,9 +138,8 @@ export function EmbeddedCheckoutPanel({
         </div>
         <div className="text-muted-foreground space-y-2 text-xs leading-5">
           <p>
-            {interval === "month" ? "$9 monthly" : "$79 yearly"}. Your
-            membership renews automatically until canceled. Stripe shows the
-            final amount before payment.
+            {plusPriceLabel(interval)}. Your membership renews automatically
+            until canceled. Stripe shows the final amount before payment.
           </p>
           <p>
             By subscribing, you agree to the{" "}
@@ -135,12 +158,14 @@ export function EmbeddedCheckoutPanel({
             </Link>
             .
           </p>
-          <Link
-            className="text-primary inline-block font-bold hover:underline"
-            href="/settings/billing?checkout=canceled"
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={canceling}
+            onClick={() => void cancelCheckout()}
           >
-            Cancel checkout
-          </Link>
+            {canceling ? "Canceling..." : "Cancel checkout"}
+          </Button>
         </div>
         {testMode && (
           <div className="border-accent/40 bg-accent/10 rounded-lg border p-4 text-xs">
@@ -163,15 +188,24 @@ export function EmbeddedCheckoutPanel({
           <div className="surface-card p-6 text-center sm:p-8" role="alert">
             <h2 className="font-serif text-2xl">Checkout couldn&apos;t load</h2>
             <p className="text-muted-foreground mx-auto mt-3 max-w-md text-sm leading-6">
-              {error} Your card has not been charged.
+              {error}
             </p>
-            <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
+            <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row sm:flex-wrap">
               <Button
                 type="button"
                 onClick={() => setAttempt((value) => value + 1)}
               >
                 <RotateCcw aria-hidden="true" />
                 Retry checkout
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={canceling}
+                onClick={() => void cancelCheckout(true)}
+                className="h-auto min-h-11 max-w-full py-3 whitespace-normal"
+              >
+                Close previous checkout and retry
               </Button>
               <Button asChild variant="outline">
                 <Link href="/settings/billing">Back to plans</Link>

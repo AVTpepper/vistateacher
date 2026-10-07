@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { cloneElement, isValidElement, type ReactNode } from "react";
 
 import { Label } from "@/components/ui/label";
 
@@ -30,7 +30,18 @@ export function FormField({
   const content =
     typeof children === "function"
       ? children({ describedBy, invalid: Boolean(error) })
-      : children;
+      : isValidElement<{
+            "aria-describedby"?: string;
+            "aria-invalid"?: boolean;
+          }>(children)
+        ? cloneElement(children, {
+            "aria-describedby":
+              [children.props["aria-describedby"], describedBy]
+                .filter(Boolean)
+                .join(" ") || undefined,
+            "aria-invalid": Boolean(error),
+          })
+        : children;
 
   return (
     <div className="space-y-2">

@@ -510,7 +510,16 @@ export async function updatePost(
     if (post.data()?.authorId !== uid) throw new FeedActionError("not-owner");
     if (!user.exists || user.data()?.status !== "active")
       throw new FeedActionError("inactive");
+    const mentions =
+      input.mentionUids === undefined
+        ? mentionsFromData(post.data()?.mentions).filter((mention) =>
+            input.content.includes(`@${mention.displayName}`),
+          )
+        : (await resolveMentions(transaction, input.mentionUids)).filter(
+            (mention) => input.content.includes(`@${mention.displayName}`),
+          );
     transaction.update(postRef, {
+      mentions,
       type: input.type,
       content: input.content,
       imageURLs: input.imageURLs,
@@ -520,6 +529,18 @@ export async function updatePost(
       resourceId: input.type === "resource" ? input.resourceId : null,
       editedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
+    });
+    const previousUids = new Set(
+      mentionsFromData(post.data()?.mentions).map((mention) => mention.uid),
+    );
+    writeMentionNotifications(transaction, {
+      mentions: mentions.filter((mention) => !previousUids.has(mention.uid)),
+      actorId: uid,
+      actorName: String(user.data()?.displayName ?? "An educator"),
+      entityId: input.postId,
+      entityKey: `post_${input.postId}`,
+      context: "post",
+      href: `/post/${input.postId}`,
     });
   });
 }
@@ -769,17 +790,41 @@ export async function updatePostComment(
   const postRef = db.doc(`posts/${input.postId}`);
   const commentRef = postRef.collection("comments").doc(input.commentId);
   await db.runTransaction(async (transaction) => {
-    const [post, comment] = await Promise.all([
+    const [post, comment, actor] = await Promise.all([
       assertVisiblePost(transaction, postRef),
       transaction.get(commentRef),
+      transaction.get(db.doc(`users/${uid}`)),
     ]);
     if (!post.exists || !comment.exists) throw new FeedActionError("not-found");
+    if (actor.data()?.status !== "active")
+      throw new FeedActionError("inactive");
     if (comment.data()?.authorId !== uid)
       throw new FeedActionError("not-owner");
+    const mentions =
+      input.mentionUids === undefined
+        ? mentionsFromData(comment.data()?.mentions).filter((mention) =>
+            input.content.includes(`@${mention.displayName}`),
+          )
+        : (await resolveMentions(transaction, input.mentionUids)).filter(
+            (mention) => input.content.includes(`@${mention.displayName}`),
+          );
     transaction.update(commentRef, {
+      mentions,
       content: input.content,
       editedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
+    });
+    const previousUids = new Set(
+      mentionsFromData(comment.data()?.mentions).map((mention) => mention.uid),
+    );
+    writeMentionNotifications(transaction, {
+      mentions: mentions.filter((mention) => !previousUids.has(mention.uid)),
+      actorId: uid,
+      actorName: String(actor.data()?.displayName ?? "An educator"),
+      entityId: input.postId,
+      entityKey: `comment_${input.commentId}`,
+      context: "comment",
+      href: `/post/${input.postId}#comment-${input.commentId}`,
     });
   });
 }

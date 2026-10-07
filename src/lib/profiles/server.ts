@@ -142,7 +142,8 @@ export async function getProfileView(
         ? getBillingState(viewerUid).catch(() => null)
         : Promise.resolve(null),
     ]);
-  if (!profileSnapshot.exists) return null;
+  if (!profileSnapshot.exists || profileSnapshot.data()?.status === "deleted")
+    return null;
 
   const profile = profileDocumentSchema.parse(profileSnapshot.data());
   if (profile.status === "deleted") return null;
@@ -258,11 +259,4 @@ export async function updatePrivateSettings(
     });
 }
 
-export async function requestAccountDeletion(uid: string): Promise<void> {
-  await adminDb()
-    .doc(`userPrivate/${uid}`)
-    .update({
-      accountDeletion: { requestedAt: FieldValue.serverTimestamp() },
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-}
+export { enqueueAccountDeletion as requestAccountDeletion } from "@/lib/accounts/deletion";

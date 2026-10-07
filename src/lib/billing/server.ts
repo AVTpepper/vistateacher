@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
@@ -19,6 +20,7 @@ type BillingErrorCode =
   | "account-unavailable"
   | "already-subscribed"
   | "billing-unavailable"
+  | "checkout-in-progress"
   | "customer-unavailable"
   | "subscription-unavailable"
   | "trial-unavailable";
@@ -188,22 +190,150 @@ export async function createCheckout(
   provider: BillingProvider = getBillingProvider(),
 ): Promise<string> {
   const db = adminDb();
-  const snapshot = await db.doc(`subscriptions/${uid}`).get();
-  if (!snapshot.exists) throw new BillingError("subscription-unavailable");
-  const subscription = readSubscription(snapshot.data() ?? {});
+  const checkoutRef = db.doc(`checkoutSessions/${uid}`);
+  const previous = (await checkoutRef.get()).data();
   if (
-    subscription.stripeSubscriptionId &&
-    !["canceled", "incomplete_expired"].includes(subscription.status)
+    previous?.sessionId &&
+    previous.expiresAt instanceof Timestamp &&
+    previous.expiresAt.toMillis() <= Date.now()
   ) {
-    throw new BillingError("already-subscribed");
+    // A completed payment must still block another purchase if webhook reconciliation is delayed.
+    if (!(await provider.expireOpenCheckout(String(previous.sessionId))))
+      throw new BillingError("already-subscribed");
   }
-  return provider.createCheckoutSession({
-    uid,
-    email,
-    interval,
-    customerId: subscription.stripeCustomerId,
-    origin,
+  const attempt = await db.runTransaction(async (transaction) => {
+    const [snapshot, checkout, user] = await transaction.getAll(
+      db.doc(`subscriptions/${uid}`),
+      checkoutRef,
+      db.doc(`users/${uid}`),
+    );
+    if (user.data()?.status !== "active")
+      throw new BillingError("account-unavailable");
+    if (!snapshot.exists) throw new BillingError("subscription-unavailable");
+    const subscription = readSubscription(snapshot.data() ?? {});
+    if (
+      subscription.stripeSubscriptionId &&
+      !["canceled", "incomplete_expired"].includes(subscription.status)
+    )
+      throw new BillingError("already-subscribed");
+    const current = checkout.data();
+    if (
+      current &&
+      current.expiresAt instanceof Timestamp &&
+      current.expiresAt.toMillis() > Date.now() &&
+      (current.sessionId ||
+        current.expiresAt.toMillis() > Date.now() + 30 * 60_000)
+    ) {
+      if (
+        current.canceling ||
+        current.interval !== interval ||
+        current.origin !== origin
+      )
+        throw new BillingError("checkout-in-progress");
+      return {
+        key: String(current.key),
+        expiresAt: Math.floor(current.expiresAt.toMillis() / 1000),
+        customerId: current.customerId ?? null,
+        email: String(current.email ?? email),
+        clientSecret:
+          typeof current.clientSecret === "string"
+            ? current.clientSecret
+            : null,
+      };
+    }
+    // A durable reservation plus Stripe's idempotency key protects across tabs and server restarts.
+    const expiresAt = Math.floor(Date.now() / 1000) + 35 * 60;
+    const key = `checkout-${randomUUID()}`;
+    transaction.set(checkoutRef, {
+      key,
+      interval,
+      origin,
+      email,
+      customerId: subscription.stripeCustomerId,
+      expiresAt: Timestamp.fromMillis(expiresAt * 1000),
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    return {
+      key,
+      expiresAt,
+      customerId: subscription.stripeCustomerId,
+      email,
+      clientSecret: null,
+    };
   });
+  if (attempt.clientSecret) return attempt.clientSecret;
+  const session = await provider.createCheckoutSession({
+    uid,
+    email: attempt.email,
+    interval,
+    origin,
+    customerId: attempt.customerId,
+    idempotencyKey: attempt.key,
+    expiresAt: attempt.expiresAt,
+  });
+  try {
+    await db.runTransaction(async (transaction) => {
+      const [current, user] = await transaction.getAll(
+        checkoutRef,
+        db.doc(`users/${uid}`),
+      );
+      if (
+        user.data()?.status !== "active" ||
+        current.data()?.canceling ||
+        current.data()?.key !== attempt.key
+      )
+        throw new BillingError("checkout-in-progress");
+      transaction.update(checkoutRef, {
+        sessionId: session.id,
+        clientSecret: session.clientSecret,
+        expiresAt: Timestamp.fromMillis(session.expiresAt * 1000),
+      });
+    });
+  } catch (error) {
+    if (
+      error instanceof BillingError &&
+      error.code === "checkout-in-progress"
+    ) {
+      const user = await db.doc(`users/${uid}`).get();
+      if (user.data()?.status !== "active")
+        await provider.closeCheckoutForDeletion(session.id);
+      else await provider.expireOpenCheckout(session.id);
+    }
+    throw error;
+  }
+  return session.clientSecret;
+}
+
+export async function cancelOpenCheckout(
+  uid: string,
+  provider: BillingProvider = getBillingProvider(),
+): Promise<void> {
+  const db = adminDb();
+  const ref = db.doc(`checkoutSessions/${uid}`);
+  const checkout = await db.runTransaction(async (transaction) => {
+    const current = await transaction.get(ref);
+    if (!current.exists) return null;
+    if (!current.data()?.sessionId)
+      throw new BillingError("checkout-in-progress");
+    transaction.update(ref, { canceling: true });
+    return { key: current.data()!.key, id: String(current.data()!.sessionId) };
+  });
+  if (!checkout) return;
+  try {
+    if (!(await provider.expireOpenCheckout(checkout.id)))
+      throw new BillingError("already-subscribed");
+    await db.runTransaction(async (transaction) => {
+      const current = await transaction.get(ref);
+      if (current.data()?.key === checkout.key) transaction.delete(ref);
+    });
+  } catch (error) {
+    await db.runTransaction(async (transaction) => {
+      const current = await transaction.get(ref);
+      if (current.data()?.key === checkout.key)
+        transaction.update(ref, { canceling: false });
+    });
+    throw error;
+  }
 }
 
 export async function createPortal(

@@ -86,7 +86,9 @@ Test once at desktop width and once around 390 px mobile width.
 - [ ] Search educators by name and apply subject, grade, location, and verification filters.
 - [ ] Follow and unfollow an educator; verify both profile counters update.
 - [ ] Verify the Community connection limit is enforced without changing counters incorrectly.
-- [ ] Submit an account deletion request only after exact confirmation.
+- [ ] Complete both onboarding steps, move Back without losing selections, and verify role choices also appear in profile editing.
+- [ ] Change a password with current-password confirmation and verify a new login email remains pending until verified.
+- [ ] In an emulator or dedicated test account, request deletion after typing DELETE, retain the status receipt, verify removed identity/uploads and canceled renewal, and retry an interrupted job from the administrator deletion queue.
 
 ## 6. Feed and Notifications
 
