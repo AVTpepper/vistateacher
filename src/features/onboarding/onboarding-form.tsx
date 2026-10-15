@@ -247,7 +247,7 @@ export function OnboardingForm({
         </p>
       )}
       <p className="text-muted-foreground text-sm leading-6">
-        That's all you need to get started. Add your location, organization,
+        That is all you need to get started. Add your location, organization,
         experience, and bio later in profile settings.
       </p>
       <div className="form-actions">

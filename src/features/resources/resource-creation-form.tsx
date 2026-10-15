@@ -248,7 +248,7 @@ export function ResourceCreationForm({
       <DraftStatus status={recovery.status} restored={recovery.restored} />
       {recovery.restored && (
         <p className="text-muted-foreground text-sm">
-          Select the file again before publishing. File contents aren't stored
+          Select the file again before publishing. File contents are not stored
           in recovery drafts.
         </p>
       )}

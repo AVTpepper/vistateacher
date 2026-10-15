@@ -34,6 +34,7 @@ export function NewConversationForm({
     },
   );
   const { recipient, content } = recovery.value;
+  const updateRecovery = recovery.setValue;
   const setRecipient = (recipient: ProfileSearchResult | null) =>
     recovery.setValue((current) => ({ ...current, recipient }));
   const setContent = (content: string) =>
@@ -80,7 +81,7 @@ export function NewConversationForm({
           result?.educator &&
           result.educator.uid !== viewerUid
         )
-          recovery.setValue((current) => ({
+          updateRecovery((current) => ({
             ...current,
             recipient: result.educator!,
           }));
@@ -97,7 +98,7 @@ export function NewConversationForm({
     recipient,
     recipientLoaded,
     viewerUid,
-    recovery.setValue,
+    updateRecovery,
   ]);
 
   async function saveDraft() {
