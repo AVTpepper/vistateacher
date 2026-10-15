@@ -173,6 +173,9 @@ test("post drafts recover after failed publication and refresh", async ({
   });
   await page.getByRole("button", { name: "Post", exact: true }).last().click();
   await expect(
+    page.getByText("Post published.", { exact: true }),
+  ).toBeVisible();
+  await expect(
     page
       .getByRole("article")
       .filter({ hasText: "Keep this unfinished classroom idea" }),
