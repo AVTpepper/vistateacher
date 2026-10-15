@@ -146,13 +146,14 @@ for (const educator of educators) {
     stripePriceId: educator.plan === "plus" ? "price_demo_plus_monthly" : null,
     billingInterval: educator.plan === "plus" ? "month" : null,
     currentPeriodEnd:
-      educator.plan === "plus" ? new Date("2026-09-04T12:00:00.000Z") : null,
+      educator.plan === "plus"
+        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        : null,
     cancelAtPeriodEnd: false,
     trialStartedAt: null,
     trialEndsAt: null,
     trialConsumed: false,
-    stripeEventCreatedAt:
-      educator.plan === "plus" ? new Date("2026-08-04T12:00:00.000Z") : null,
+    stripeEventCreatedAt: educator.plan === "plus" ? new Date() : null,
     updatedAt: FieldValue.serverTimestamp(),
   });
 }
