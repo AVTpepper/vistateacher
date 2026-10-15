@@ -21,7 +21,7 @@ import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField as Field } from "@/components/ui/form-field";
 import { hrefWithReturnTo, safeReturnTo } from "@/lib/auth/return-to";
 import { planIntentHref, type PlanIntent } from "@/lib/billing/plan-intent";
 import { getFirebaseClient } from "@/lib/firebase/client";
@@ -90,6 +90,7 @@ export function AuthForm({
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [providerPending, setProviderPending] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const schema =
     mode === "sign-up"
@@ -101,7 +102,7 @@ export function AuthForm({
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "", displayName: "" },
   });
-  const isPending = form.formState.isSubmitting;
+  const isPending = form.formState.isSubmitting || providerPending;
   const fieldErrors = form.formState.errors as FieldErrors<SignUpValues>;
   const watchedPassword = useWatch({
     control: form.control,
@@ -156,6 +157,7 @@ export function AuthForm({
   }
 
   async function submit(values: SignInValues | SignUpValues | ResetValues) {
+    if (providerPending) return;
     setFormError(null);
     const { auth } = getFirebaseClient();
 
@@ -203,6 +205,8 @@ export function AuthForm({
   }
 
   async function signInWithGoogle() {
+    if (isPending) return;
+    setProviderPending(true);
     setFormError(null);
     try {
       const credential = await signInWithPopup(
@@ -212,6 +216,8 @@ export function AuthForm({
       await completeProviderSignIn(credential.user);
     } catch (error) {
       setFormError(authErrorMessage(error));
+    } finally {
+      setProviderPending(false);
     }
   }
 
@@ -248,11 +254,7 @@ export function AuthForm({
         <Field
           id="password"
           label="Password"
-          error={
-            mode === "sign-up" && showPasswordRequirements
-              ? undefined
-              : fieldErrors.password?.message
-          }
+          error={fieldErrors.password?.message}
           action={
             mode === "sign-in" ? (
               <Link
@@ -267,50 +269,71 @@ export function AuthForm({
             ) : undefined
           }
         >
-          <div className="relative">
-            <Input
-              id="password"
-              className="pr-16"
-              type={showPassword ? "text" : "password"}
-              autoComplete={
-                mode === "sign-up" ? "new-password" : "current-password"
-              }
-              {...passwordRegistration}
-              onFocus={() => setIsPasswordFocused(true)}
-              onBlur={(event) => {
-                passwordRegistration.onBlur(event);
-                setIsPasswordFocused(false);
-              }}
-            />
-            <button
-              type="button"
-              aria-controls="password"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              aria-pressed={showPassword}
-              className="text-primary absolute inset-y-0 right-3 text-xs font-bold hover:underline"
-              onClick={() => setShowPassword((visible) => !visible)}
-            >
-              {showPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-          {showPasswordRequirements && (
-            <ul className="mt-2 space-y-1 text-xs" aria-live="polite">
-              {passwordRequirements.map((requirement) => (
-                <li
-                  key={requirement.label}
-                  className={`flex items-center gap-2 ${
-                    requirement.met ? "text-emerald-600" : "text-destructive"
-                  }`}
+          {({ describedBy, invalid }) => (
+            <>
+              <div className="relative">
+                <Input
+                  aria-invalid={invalid}
+                  aria-describedby={
+                    [
+                      describedBy,
+                      showPasswordRequirements
+                        ? "password-requirements"
+                        : undefined,
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
+                  id="password"
+                  className="pr-16"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete={
+                    mode === "sign-up" ? "new-password" : "current-password"
+                  }
+                  {...passwordRegistration}
+                  onFocus={() => setIsPasswordFocused(true)}
+                  onBlur={(event) => {
+                    passwordRegistration.onBlur(event);
+                    setIsPasswordFocused(false);
+                  }}
+                />
+                <button
+                  type="button"
+                  aria-controls="password"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                  className="text-primary absolute inset-y-0 right-3 text-xs font-bold hover:underline"
+                  onClick={() => setShowPassword((visible) => !visible)}
                 >
-                  {requirement.met ? (
-                    <Check aria-hidden="true" className="size-3.5" />
-                  ) : (
-                    <X aria-hidden="true" className="size-3.5" />
-                  )}
-                  <span>{requirement.label}</span>
-                </li>
-              ))}
-            </ul>
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+              {showPasswordRequirements && (
+                <ul
+                  id="password-requirements"
+                  className="mt-2 space-y-1 text-xs"
+                  aria-live="polite"
+                >
+                  {passwordRequirements.map((requirement) => (
+                    <li
+                      key={requirement.label}
+                      className={`flex items-center gap-2 ${
+                        requirement.met
+                          ? "text-success"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {requirement.met ? (
+                        <Check aria-hidden="true" className="size-3.5" />
+                      ) : (
+                        <X aria-hidden="true" className="size-3.5" />
+                      )}
+                      <span>{requirement.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </Field>
       )}
@@ -347,6 +370,7 @@ export function AuthForm({
             type="button"
             size="lg"
             variant="outline"
+            disabled={isPending}
             onClick={signInWithGoogle}
           >
             <span aria-hidden="true" className="text-base font-black">
@@ -357,34 +381,5 @@ export function AuthForm({
         </>
       )}
     </form>
-  );
-}
-
-function Field({
-  id,
-  label,
-  error,
-  action,
-  children,
-}: {
-  id: string;
-  label: string;
-  error?: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-4">
-        <Label htmlFor={id}>{label}</Label>
-        {action}
-      </div>
-      {children}
-      {error && (
-        <p className="text-destructive text-xs" role="alert">
-          {error}
-        </p>
-      )}
-    </div>
   );
 }
