@@ -42,6 +42,7 @@ export default async function NewForumThreadPage({
           </p>
         </header>
         <ForumCreationForm
+          viewerUid={account.uid}
           categories={categories}
           initialCategoryId={initialCategoryId}
           draft={draft}

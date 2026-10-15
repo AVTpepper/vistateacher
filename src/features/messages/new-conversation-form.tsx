@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { DraftStatus } from "@/components/ui/draft-status";
+import { useRecoveredDraft } from "@/lib/creation-drafts/use-recovered-draft";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
@@ -24,10 +26,18 @@ export function NewConversationForm({
 }) {
   const [search, setSearch] = useState("");
   const [educators, setEducators] = useState<ProfileSearchResult[]>([]);
-  const [recipient, setRecipient] = useState<ProfileSearchResult | null>(
-    initialRecipientUid ? null : (draft?.recipient ?? null),
+  const recovery = useRecoveredDraft<MessageCreationDraft>(
+    `message:${viewerUid}:${initialRecipientUid ?? "new"}`,
+    {
+      recipient: initialRecipientUid ? null : (draft?.recipient ?? null),
+      content: initialRecipientUid ? "" : (draft?.content ?? ""),
+    },
   );
-  const [content, setContent] = useState(draft?.content ?? "");
+  const { recipient, content } = recovery.value;
+  const setRecipient = (recipient: ProfileSearchResult | null) =>
+    recovery.setValue((current) => ({ ...current, recipient }));
+  const setContent = (content: string) =>
+    recovery.setValue((current) => ({ ...current, content }));
   const [recipientLoaded, setRecipientLoaded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -70,7 +80,10 @@ export function NewConversationForm({
           result?.educator &&
           result.educator.uid !== viewerUid
         )
-          setRecipient(result.educator);
+          recovery.setValue((current) => ({
+            ...current,
+            recipient: result.educator!,
+          }));
       } catch (error) {
         if (!(error instanceof DOMException && error.name === "AbortError"))
           toast.error("We couldn't load that educator.");
@@ -79,7 +92,13 @@ export function NewConversationForm({
       }
     })();
     return () => controller.abort();
-  }, [initialRecipientUid, recipient, recipientLoaded, viewerUid]);
+  }, [
+    initialRecipientUid,
+    recipient,
+    recipientLoaded,
+    viewerUid,
+    recovery.setValue,
+  ]);
 
   async function saveDraft() {
     setSaving(true);
@@ -97,22 +116,32 @@ export function NewConversationForm({
     event.preventDefault();
     if (!recipient || !content.trim() || submitting) return;
     setSubmitting(true);
-    const response = await fetch("/api/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ recipientId: recipient.uid, content }),
-    });
-    const result = (await response.json().catch(() => null)) as {
-      conversationId?: string;
-      error?: string;
-    } | null;
-    if (!response.ok || !result?.conversationId) {
-      toast.error(result?.error ?? "We couldn't start this conversation.");
+    try {
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipientId: recipient.uid, content }),
+      });
+      const result = (await response.json().catch(() => null)) as {
+        conversationId?: string;
+        error?: string;
+      } | null;
+      if (!response.ok || !result?.conversationId)
+        throw new Error(
+          result?.error ?? "We couldn't start this conversation.",
+        );
+      await deleteCreationDraft("message").catch(() => undefined);
+      recovery.clear();
+      window.location.assign(`/messages?conversation=${result.conversationId}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "We couldn't send your message. Try again.",
+      );
+    } finally {
       setSubmitting(false);
-      return;
     }
-    await deleteCreationDraft("message").catch(() => undefined);
-    window.location.assign(`/messages?conversation=${result.conversationId}`);
   }
 
   const visibleEducators = search.trim().length >= 2 ? educators : [];
@@ -123,7 +152,8 @@ export function NewConversationForm({
       className="surface-card space-y-5 p-5 sm:p-6"
       onSubmit={startConversation}
     >
-      {draft && (
+      <DraftStatus status={recovery.status} restored={recovery.restored} />
+      {draft && !initialRecipientUid && !recovery.restored && (
         <p className="bg-accent/10 text-accent-readable rounded-lg px-3 py-2 text-sm font-semibold">
           Your saved draft has been restored.
         </p>

@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { DraftStatus } from "@/components/ui/draft-status";
+import { useRecoveredDraft } from "@/lib/creation-drafts/use-recovered-draft";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -41,9 +43,11 @@ const emptyForm = {
 };
 
 export function ResourceCreationForm({
+  viewerUid,
   sourceDraft,
   draft,
 }: {
+  viewerUid: string;
   sourceDraft?: IncompleteResource;
   draft: ResourceCreationDraft | null;
 }) {
@@ -61,7 +65,9 @@ export function ResourceCreationForm({
   const [progress, setProgress] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(() =>
+  const draftResourceId = sourceDraft?.id ?? draft?.draftResourceId ?? null;
+  const recovery = useRecoveredDraft(
+    `resource:${viewerUid}:${draftResourceId ?? "new"}`,
     draft
       ? {
           title: draft.title,
@@ -81,7 +87,7 @@ export function ResourceCreationForm({
           }
         : emptyForm,
   );
-  const draftResourceId = sourceDraft?.id ?? draft?.draftResourceId ?? null;
+  const { value: form, setValue: setForm } = recovery;
 
   function chooseFile(nextFile: File | undefined) {
     if (!nextFile) return;
@@ -206,6 +212,7 @@ export function ResourceCreationForm({
       if (!finalize.ok)
         throw new Error(result?.error ?? "We couldn't finish this upload.");
       await deleteCreationDraft("resource").catch(() => undefined);
+      recovery.clear();
       toast.success("Resource published.");
       router.push(`/resources/${resourceId}`);
       router.refresh();
@@ -238,7 +245,14 @@ export function ResourceCreationForm({
       onSubmit={submit}
       noValidate
     >
-      {draft && (
+      <DraftStatus status={recovery.status} restored={recovery.restored} />
+      {recovery.restored && (
+        <p className="text-muted-foreground text-sm">
+          Select the file again before publishing. File contents aren't stored
+          in recovery drafts.
+        </p>
+      )}
+      {draft && !recovery.restored && (
         <div className="bg-accent/10 text-accent-readable rounded-lg px-3 py-2 text-sm font-semibold">
           Your saved draft has been restored. Select the file again before
           publishing.

@@ -47,6 +47,8 @@ export default async function NewResourcePage({
           </p>
         </header>
         <ResourceCreationForm
+          key={sourceDraft?.id ?? "new"}
+          viewerUid={account.uid}
           sourceDraft={sourceDraft}
           draft={compatibleSavedDraft}
         />

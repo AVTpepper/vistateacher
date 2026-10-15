@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { DraftStatus } from "@/components/ui/draft-status";
+import { useRecoveredDraft } from "@/lib/creation-drafts/use-recovered-draft";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -19,10 +21,12 @@ import type { MentionTarget } from "@/lib/mentions/types";
 import type { ForumCreationDraft } from "@/schemas/creation-draft";
 
 export function ForumCreationForm({
+  viewerUid,
   categories,
   initialCategoryId,
   draft,
 }: {
+  viewerUid: string;
   categories: ForumCategory[];
   initialCategoryId: string;
   draft: ForumCreationDraft | null;
@@ -31,15 +35,18 @@ export function ForumCreationForm({
   const titleRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const categoryRef = useRef<HTMLSelectElement>(null);
-  const [form, setForm] = useState({
+  const recovery = useRecoveredDraft<ForumCreationDraft>(`forum:${viewerUid}`, {
     categoryId: draft?.categoryId || initialCategoryId,
     title: draft?.title ?? "",
     content: draft?.content ?? "",
     tags: draft?.tags ?? "",
+    mentions: draft?.mentions ?? [],
   });
-  const [mentions, setMentions] = useState<MentionTarget[]>(
-    draft?.mentions ?? [],
-  );
+  const { mentions, ...form } = recovery.value;
+  const setForm = (next: typeof form) =>
+    recovery.setValue((current) => ({ ...current, ...next }));
+  const setMentions = (mentions: MentionTarget[]) =>
+    recovery.setValue((current) => ({ ...current, mentions }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -105,6 +112,7 @@ export function ForumCreationForm({
         return;
       }
       await deleteCreationDraft("forum").catch(() => undefined);
+      recovery.clear();
       router.push(`/forum/${result.threadId}`);
       router.refresh();
     } catch {
@@ -125,7 +133,8 @@ export function ForumCreationForm({
       onSubmit={submit}
       noValidate
     >
-      {draft && (
+      <DraftStatus status={recovery.status} restored={recovery.restored} />
+      {draft && !recovery.restored && (
         <p className="bg-accent/10 text-accent-readable rounded-lg px-3 py-2 text-sm font-semibold">
           Your saved draft has been restored.
         </p>
