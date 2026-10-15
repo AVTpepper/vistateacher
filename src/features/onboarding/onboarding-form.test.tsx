@@ -6,11 +6,15 @@ const navigation = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
 
 async function fillEssentials() {
-  fireEvent.click(screen.getByLabelText("Classroom teacher"));
+  fireEvent.change(screen.getByLabelText("Primary role"), {
+    target: { value: "Classroom teacher" },
+  });
   fireEvent.change(screen.getByLabelText("Education stage"), {
     target: { value: "Primary / Elementary School" },
   });
-  fireEvent.click(screen.getByLabelText("Science"));
+  fireEvent.change(screen.getByLabelText("Main subject or expertise"), {
+    target: { value: "Science" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Get started" }));
 }
 
@@ -21,12 +25,10 @@ describe("short onboarding", () => {
   });
 
   it("completes with essential details and preserves a return destination", async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({ next: "/dashboard" }),
-      });
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ next: "/dashboard" }),
+    });
     vi.stubGlobal("fetch", fetch);
     render(
       <OnboardingForm displayName="Ada Teacher" returnTo="/post/classroom" />,
@@ -60,7 +62,9 @@ describe("short onboarding", () => {
     );
     await fillEssentials();
     await screen.findByRole("alert");
-    expect(screen.getByLabelText("Science")).toBeChecked();
+    expect(screen.getByLabelText("Main subject or expertise")).toHaveValue(
+      "Science",
+    );
     fireEvent.click(screen.getByRole("button", { name: "Get started" }));
     await waitFor(() =>
       expect(navigation.push).toHaveBeenCalledWith(

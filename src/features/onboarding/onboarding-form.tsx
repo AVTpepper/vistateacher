@@ -7,6 +7,7 @@ import { useForm, useWatch } from "react-hook-form";
 import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { FormField as Field } from "@/components/ui/form-field";
 import { ChoiceFieldset, Choice } from "@/components/ui/choice-field";
@@ -44,7 +45,7 @@ export function OnboardingForm({
       country: "",
       city: "",
       school: "",
-      yearsOfExperience: 0,
+      yearsOfExperience: null,
       bio: "",
       interests: [],
     },
@@ -55,16 +56,6 @@ export function OnboardingForm({
     useWatch({ control: form.control, name: "professionalRoles" }) ?? [];
   const selectedLanguages =
     useWatch({ control: form.control, name: "languages" }) ?? [];
-
-  function toggleRole(role: (typeof professionalRoles)[number]) {
-    const next = selectedRoles.includes(role)
-      ? selectedRoles.filter((value) => value !== role)
-      : [...selectedRoles, role];
-    form.setValue("professionalRoles", next, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-  }
 
   function toggleSubject(subject: (typeof subjectAreas)[number]) {
     const next = selectedSubjects.includes(subject)
@@ -127,144 +118,199 @@ export function OnboardingForm({
 
   return (
     <form className="space-y-9" onSubmit={form.handleSubmit(submit)} noValidate>
-      <section aria-labelledby="professional-details" className="space-y-5">
-        <div>
-          <h2
-            tabIndex={-1}
-            id="professional-details"
-            className="mt-2 font-serif text-2xl"
-          >
-            Your professional context
-          </h2>
-        </div>
-        <ChoiceFieldset
-          legend="Your role"
-          hint="Choose up to four roles. Select the one that best describes your current work first."
-          error={form.formState.errors.professionalRoles?.message}
-        >
-          {professionalRoles.map((role) => {
-            const checked = selectedRoles.includes(role);
-            return (
-              <Choice
-                key={role}
-                label={role}
-                checked={checked}
-                disabled={!checked && selectedRoles.length >= 4}
-                onChange={() => toggleRole(role)}
-              />
-            );
-          })}
-        </ChoiceFieldset>
-        <div className="grid gap-5 sm:grid-cols-2">
+      <fieldset
+        disabled={form.formState.isSubmitting}
+        className="min-w-0 space-y-9"
+      >
+        <section aria-labelledby="professional-details" className="space-y-5">
+          <div>
+            <h2
+              tabIndex={-1}
+              id="professional-details"
+              className="mt-2 font-serif text-2xl"
+            >
+              Your professional context
+            </h2>
+          </div>
           <Field
-            label="Full name"
-            id="displayName"
-            error={form.formState.errors.displayName?.message}
+            id="primary-role"
+            label="Primary role"
+            error={form.formState.errors.professionalRoles?.message}
+            hint="You can add more roles later in profile settings."
           >
-            <Input
-              id="displayName"
-              autoComplete="name"
-              {...form.register("displayName")}
-            />
-          </Field>
-          <Field
-            label="Education stage"
-            id="gradeLevel"
-            error={form.formState.errors.gradeLevel?.message}
-            hint="Grade ranges are approximate and vary by country."
-          >
-            <select
-              id="gradeLevel"
-              className="border-accent bg-input/60 h-11 w-full rounded-md border px-3 text-sm"
-              {...form.register("gradeLevel")}
+            <Select
+              id="primary-role"
+              value={selectedRoles[0] ?? ""}
+              onChange={(event) =>
+                form.setValue(
+                  "professionalRoles",
+                  [event.target.value as (typeof professionalRoles)[number]],
+                  { shouldDirty: true, shouldValidate: true },
+                )
+              }
             >
               <option value="" disabled>
-                Choose your education stage
+                Choose your role
               </option>
-              {educationStages.map(({ value, label, guidance }) => (
-                <option key={value} value={value}>
-                  {label} ({guidance})
+              {professionalRoles.map((role) => (
+                <option key={role} value={role}>
+                  {role}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
-        </div>
-      </section>
-
-      <section aria-labelledby="teaching-interests" className="space-y-5">
-        <div>
-          <h2
-            tabIndex={-1}
-            id="teaching-interests"
-            className="mt-2 font-serif text-2xl"
-          >
-            Subjects and expertise
-          </h2>
-        </div>
-        <ChoiceFieldset
-          legend="Subjects and areas of expertise"
-          hint="Choose up to six. Leadership and whole-school expertise belong here too."
-          error={form.formState.errors.subjects?.message}
-        >
-          {subjectAreas.map((subject) => {
-            const checked = selectedSubjects.includes(subject);
-            return (
-              <Choice
-                key={subject}
-                label={subject}
-                checked={checked}
-                disabled={!checked && selectedSubjects.length >= 6}
-                onChange={() => toggleSubject(subject)}
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field
+              label="Full name"
+              id="displayName"
+              error={form.formState.errors.displayName?.message}
+            >
+              <Input
+                id="displayName"
+                autoComplete="name"
+                {...form.register("displayName")}
               />
-            );
-          })}
-        </ChoiceFieldset>
-        {selectedSubjects.includes("Languages") && (
-          <ChoiceFieldset
-            legend="Languages you teach"
-            hint="Choose every language that applies."
-            error={form.formState.errors.languages?.message}
-          >
-            {taughtLanguages.map((language) => {
-              const checked = selectedLanguages.includes(language);
-              return (
-                <Choice
-                  key={language}
-                  label={language}
-                  checked={checked}
-                  disabled={!checked && selectedLanguages.length >= 8}
-                  onChange={() => toggleLanguage(language)}
-                />
-              );
-            })}
-          </ChoiceFieldset>
-        )}
-      </section>
+            </Field>
+            <Field
+              label="Education stage"
+              id="gradeLevel"
+              error={form.formState.errors.gradeLevel?.message}
+              hint="Grade ranges are approximate and vary by country."
+            >
+              <select
+                id="gradeLevel"
+                className="border-accent bg-input/60 h-11 w-full rounded-md border px-3 text-sm"
+                {...form.register("gradeLevel")}
+              >
+                <option value="" disabled>
+                  Choose your education stage
+                </option>
+                {educationStages.map(({ value, label, guidance }) => (
+                  <option key={value} value={value}>
+                    {label} ({guidance})
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </section>
 
-      {form.formState.errors.root?.message && (
-        <p className="text-destructive text-sm" role="alert">
-          {form.formState.errors.root.message}
-        </p>
-      )}
-      <p className="text-muted-foreground text-sm leading-6">
-        That is all you need to get started. Add your location, organization,
-        experience, and bio later in profile settings.
-      </p>
-      <div className="form-actions">
-        <Button
-          className="w-full sm:w-auto"
-          size="lg"
-          disabled={form.formState.isSubmitting}
-          type="submit"
-        >
-          {form.formState.isSubmitting ? (
-            <LoaderCircle aria-hidden="true" className="animate-spin" />
-          ) : (
-            <ArrowRight aria-hidden="true" />
+        <section aria-labelledby="teaching-interests" className="space-y-5">
+          <div>
+            <h2
+              tabIndex={-1}
+              id="teaching-interests"
+              className="mt-2 font-serif text-2xl"
+            >
+              Subjects and expertise
+            </h2>
+          </div>
+          <Field
+            id="primary-subject"
+            label="Main subject or expertise"
+            error={form.formState.errors.subjects?.message}
+          >
+            <Select
+              id="primary-subject"
+              value={selectedSubjects[0] ?? ""}
+              onChange={(event) => {
+                const subject = event.target
+                  .value as (typeof subjectAreas)[number];
+                const next = [
+                  subject,
+                  ...selectedSubjects
+                    .slice(1)
+                    .filter((item) => item !== subject),
+                ];
+                form.setValue("subjects", next, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+                if (!next.includes("Languages")) form.setValue("languages", []);
+              }}
+            >
+              <option value="" disabled>
+                Choose your main subject or expertise
+              </option>
+              {subjectAreas.map((subject) => (
+                <option key={subject} value={subject}>
+                  {subject}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <details className="rounded-lg border p-4">
+            <summary className="min-h-6 cursor-pointer text-sm font-semibold">
+              Add more subjects (optional)
+            </summary>
+            <div className="mt-4">
+              <ChoiceFieldset
+                legend="Additional subjects and expertise"
+                hint="Choose up to six. Leadership and whole-school expertise belong here too."
+                error={form.formState.errors.subjects?.message}
+              >
+                {subjectAreas.map((subject) => {
+                  const checked = selectedSubjects.includes(subject);
+                  return (
+                    <Choice
+                      key={subject}
+                      label={subject}
+                      checked={checked}
+                      disabled={!checked && selectedSubjects.length >= 6}
+                      onChange={() => toggleSubject(subject)}
+                    />
+                  );
+                })}
+              </ChoiceFieldset>
+            </div>
+          </details>
+          {selectedSubjects.includes("Languages") && (
+            <ChoiceFieldset
+              legend="Languages you teach"
+              hint="Choose every language that applies."
+              error={form.formState.errors.languages?.message}
+            >
+              {taughtLanguages.map((language) => {
+                const checked = selectedLanguages.includes(language);
+                return (
+                  <Choice
+                    key={language}
+                    label={language}
+                    checked={checked}
+                    disabled={!checked && selectedLanguages.length >= 8}
+                    onChange={() => toggleLanguage(language)}
+                  />
+                );
+              })}
+            </ChoiceFieldset>
           )}
-          Get started
-        </Button>
-      </div>
+        </section>
+
+        {form.formState.errors.root?.message && (
+          <p className="text-destructive text-sm" role="alert">
+            {form.formState.errors.root.message}
+          </p>
+        )}
+        <p className="text-muted-foreground text-sm leading-6">
+          That is all you need to get started. Add your location, organization,
+          experience, and bio later in profile settings.
+        </p>
+        <div className="form-actions">
+          <Button
+            className="w-full sm:w-auto"
+            size="lg"
+            disabled={form.formState.isSubmitting}
+            type="submit"
+          >
+            {form.formState.isSubmitting ? (
+              <LoaderCircle aria-hidden="true" className="animate-spin" />
+            ) : (
+              <ArrowRight aria-hidden="true" />
+            )}
+            Get started
+          </Button>
+        </div>
+      </fieldset>
     </form>
   );
 }

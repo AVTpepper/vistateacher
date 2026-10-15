@@ -37,7 +37,7 @@ export const profileUpdateSchema = z.object({
   country: z.union([z.literal(""), z.string().trim().min(2).max(80)]),
   city: z.union([z.literal(""), z.string().trim().min(2).max(80)]),
   school: z.string().trim().max(120),
-  yearsOfExperience: z.number().int().min(0).max(60),
+  yearsOfExperience: z.number().int().min(0).max(60).nullable(),
   bio: z.string().trim().max(500),
   website: optionalUrl,
   interests: z.array(z.string().trim().min(2).max(40)).max(8),

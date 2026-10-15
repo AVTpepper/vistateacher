@@ -44,7 +44,7 @@ export const onboardingSchema = z
       .union([z.literal(""), z.string().trim().min(2).max(80)])
       .default(""),
     school: z.string().trim().max(120).default(""),
-    yearsOfExperience: z.number().int().min(0).max(60).default(0),
+    yearsOfExperience: z.number().int().min(0).max(60).nullable().default(null),
     bio: z.string().trim().max(500).default(""),
     interests: z.array(z.string().trim().min(2).max(40)).max(8).default([]),
   })

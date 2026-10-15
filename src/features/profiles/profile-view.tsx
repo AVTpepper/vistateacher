@@ -297,7 +297,10 @@ export function ProfileView({
           { label: "Location", value: location },
           {
             label: "Experience",
-            value: `${profile.yearsOfExperience} years`,
+            value:
+              profile.yearsOfExperience === null
+                ? "Not added"
+                : `${profile.yearsOfExperience} years`,
           },
           {
             label: "Plan",

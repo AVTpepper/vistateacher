@@ -64,6 +64,7 @@ describe("onboarding schema", () => {
     expect(parsed.country).toBe("");
     expect(parsed.city).toBe("");
     expect(parsed.bio).toBe("");
+    expect(parsed.yearsOfExperience).toBeNull();
   });
 
   it("rejects missing subjects and unrealistic experience", () => {
