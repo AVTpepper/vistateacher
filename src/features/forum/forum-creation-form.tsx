@@ -140,125 +140,129 @@ export function ForumCreationForm({
       onSubmit={submit}
       noValidate
     >
-      <DraftStatus status={recovery.status} restored={recovery.restored} />
-      {draft && !recovery.restored && (
-        <p className="bg-accent/10 text-accent-readable rounded-lg px-3 py-2 text-sm font-semibold">
-          Your saved draft has been restored.
-        </p>
-      )}
-      <FormField
-        id="thread-category"
-        label="Category"
-        required
-        error={errors.categoryId}
-      >
-        {({ describedBy, invalid }) => (
-          <Select
-            ref={categoryRef}
-            id="thread-category"
-            value={form.categoryId}
-            aria-describedby={describedBy}
-            aria-invalid={invalid}
-            onChange={(event) => {
-              setForm({ ...form, categoryId: event.target.value });
-              setErrors((current) => ({ ...current, categoryId: "" }));
-            }}
-          >
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </Select>
+      <fieldset disabled={busy} className="min-w-0 space-y-5">
+        <DraftStatus status={recovery.status} restored={recovery.restored} />
+        {draft && !recovery.restored && (
+          <p className="bg-accent/10 text-accent-readable rounded-lg px-3 py-2 text-sm font-semibold">
+            Your saved draft has been restored.
+          </p>
         )}
-      </FormField>
-      <FormField
-        id="thread-title"
-        label="Title"
-        required
-        hint="At least 8 characters."
-        error={errors.title}
-      >
-        {({ describedBy, invalid }) => (
-          <Input
-            ref={titleRef}
-            id="thread-title"
-            value={form.title}
-            aria-describedby={describedBy}
-            aria-invalid={invalid}
-            maxLength={180}
-            placeholder="Give your discussion a clear title..."
-            onChange={(event) => {
-              setForm({ ...form, title: event.target.value });
-              setErrors((current) => ({ ...current, title: "" }));
-            }}
-          />
-        )}
-      </FormField>
-      <FormField
-        id="thread-content"
-        label="Your post"
-        required
-        hint="At least 20 characters."
-        error={errors.content}
-      >
-        {({ describedBy, invalid }) => (
-          <MentionTextarea
-            ref={contentRef}
-            id="thread-content"
-            value={form.content}
-            aria-describedby={describedBy}
-            aria-invalid={invalid}
-            maxLength={10_000}
-            rows={9}
-            placeholder="Share your question, experience, or discussion prompt..."
-            className="resize-y"
-            mentions={mentions}
-            onMentionsChange={setMentions}
-            onValueChange={(value) => {
-              setForm({ ...form, content: value });
-              setErrors((current) => ({ ...current, content: "" }));
-            }}
-          />
-        )}
-      </FormField>
-      <FormField
-        id="thread-tags"
-        label="Tags"
-        hint="Optional. Separate up to five tags with commas."
-      >
-        {({ describedBy }) => (
-          <Input
-            id="thread-tags"
-            value={form.tags}
-            aria-describedby={describedBy}
-            maxLength={180}
-            placeholder="discussion, student voice"
-            onChange={(event) => setForm({ ...form, tags: event.target.value })}
-          />
-        )}
-      </FormField>
-      {serverError && (
-        <p className="text-destructive text-sm" role="alert">
-          {serverError}
-        </p>
-      )}
-      <div className="flex flex-wrap justify-end gap-2 border-t pt-5">
-        <Button asChild type="button" variant="ghost">
-          <Link href="/forum">Cancel</Link>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={busy}
-          onClick={() => void saveDraft()}
+        <FormField
+          id="thread-category"
+          label="Category"
+          required
+          error={errors.categoryId}
         >
-          {saving ? "Saving..." : "Save as draft"}
-        </Button>
-        <Button type="submit" disabled={busy}>
-          {submitting ? "Posting discussion..." : "Post discussion"}
-        </Button>
-      </div>
+          {({ describedBy, invalid }) => (
+            <Select
+              ref={categoryRef}
+              id="thread-category"
+              value={form.categoryId}
+              aria-describedby={describedBy}
+              aria-invalid={invalid}
+              onChange={(event) => {
+                setForm({ ...form, categoryId: event.target.value });
+                setErrors((current) => ({ ...current, categoryId: "" }));
+              }}
+            >
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </Select>
+          )}
+        </FormField>
+        <FormField
+          id="thread-title"
+          label="Title"
+          required
+          hint="At least 8 characters."
+          error={errors.title}
+        >
+          {({ describedBy, invalid }) => (
+            <Input
+              ref={titleRef}
+              id="thread-title"
+              value={form.title}
+              aria-describedby={describedBy}
+              aria-invalid={invalid}
+              maxLength={180}
+              placeholder="Give your discussion a clear title..."
+              onChange={(event) => {
+                setForm({ ...form, title: event.target.value });
+                setErrors((current) => ({ ...current, title: "" }));
+              }}
+            />
+          )}
+        </FormField>
+        <FormField
+          id="thread-content"
+          label="Your post"
+          required
+          hint="At least 20 characters."
+          error={errors.content}
+        >
+          {({ describedBy, invalid }) => (
+            <MentionTextarea
+              ref={contentRef}
+              id="thread-content"
+              value={form.content}
+              aria-describedby={describedBy}
+              aria-invalid={invalid}
+              maxLength={10_000}
+              rows={9}
+              placeholder="Share your question, experience, or discussion prompt..."
+              className="resize-y"
+              mentions={mentions}
+              onMentionsChange={setMentions}
+              onValueChange={(value) => {
+                setForm({ ...form, content: value });
+                setErrors((current) => ({ ...current, content: "" }));
+              }}
+            />
+          )}
+        </FormField>
+        <FormField
+          id="thread-tags"
+          label="Tags"
+          hint="Optional. Separate up to five tags with commas."
+        >
+          {({ describedBy }) => (
+            <Input
+              id="thread-tags"
+              value={form.tags}
+              aria-describedby={describedBy}
+              maxLength={180}
+              placeholder="discussion, student voice"
+              onChange={(event) =>
+                setForm({ ...form, tags: event.target.value })
+              }
+            />
+          )}
+        </FormField>
+        {serverError && (
+          <p className="text-destructive text-sm" role="alert">
+            {serverError}
+          </p>
+        )}
+        <div className="flex flex-wrap justify-end gap-2 border-t pt-5">
+          <Button asChild type="button" variant="ghost">
+            <Link href="/forum">Cancel</Link>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={() => void saveDraft()}
+          >
+            {saving ? "Saving..." : "Save as draft"}
+          </Button>
+          <Button type="submit" disabled={busy}>
+            {submitting ? "Posting discussion..." : "Post discussion"}
+          </Button>
+        </div>
+      </fieldset>
     </form>
   );
 }

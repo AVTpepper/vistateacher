@@ -249,241 +249,243 @@ export function ResourceCreationForm({
       onSubmit={submit}
       noValidate
     >
-      <DraftStatus status={recovery.status} restored={recovery.restored} />
-      {recovery.restored && (
-        <p className="text-muted-foreground text-sm">
-          Select the file again before publishing. File contents are not stored
-          in recovery drafts.
-        </p>
-      )}
-      {draft && !recovery.restored && (
-        <div className="bg-accent/10 text-accent-readable rounded-lg px-3 py-2 text-sm font-semibold">
-          Your saved draft has been restored. Select the file again before
-          publishing.
-        </div>
-      )}
-      <FormField
-        id="resource-title"
-        label="Resource title"
-        required
-        error={errors.title}
-      >
-        {({ describedBy, invalid }) => (
-          <Input
-            ref={titleRef}
-            id="resource-title"
-            value={form.title}
-            maxLength={140}
-            aria-describedby={describedBy}
-            aria-invalid={invalid}
-            placeholder="Fraction comparison cards"
-            onChange={(event) => {
-              setForm({ ...form, title: event.currentTarget.value });
-              setErrors((current) => ({ ...current, title: "" }));
-            }}
-          />
-        )}
-      </FormField>
-      <FormField
-        id="resource-description"
-        label="Description"
-        required
-        hint="At least 10 characters."
-        error={errors.description}
-      >
-        {({ describedBy, invalid }) => (
-          <Textarea
-            ref={descriptionRef}
-            id="resource-description"
-            value={form.description}
-            maxLength={2_000}
-            rows={5}
-            aria-describedby={describedBy}
-            aria-invalid={invalid}
-            placeholder="Describe what is included and how to use it..."
-            className="resize-y"
-            onChange={(event) => {
-              setForm({ ...form, description: event.currentTarget.value });
-              setErrors((current) => ({ ...current, description: "" }));
-            }}
-          />
-        )}
-      </FormField>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="resource-type" label="Type" required>
-          <Select
-            id="resource-type"
-            value={form.type}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                type: event.currentTarget.value as ResourceType,
-              })
-            }
-          >
-            <option value="lesson-plan">Lesson plan</option>
-            <option value="worksheet">Worksheet</option>
-            <option value="unit-plan">Unit plan</option>
-            <option value="video">Video</option>
-            <option value="activity">Activity</option>
-          </Select>
-        </FormField>
-        <FormField
-          id="resource-subject"
-          label="Subject"
-          required
-          error={errors.subject}
-        >
-          {({ describedBy, invalid }) => (
-            <Input
-              ref={subjectRef}
-              id="resource-subject"
-              value={form.subject}
-              maxLength={60}
-              aria-describedby={describedBy}
-              aria-invalid={invalid}
-              placeholder="Mathematics"
-              onChange={(event) => {
-                setForm({ ...form, subject: event.currentTarget.value });
-                setErrors((current) => ({ ...current, subject: "" }));
-              }}
-            />
-          )}
-        </FormField>
-        <FormField
-          id="resource-grade"
-          label="Grade level"
-          required
-          error={errors.gradeLevel}
-        >
-          {({ describedBy, invalid }) => (
-            <Input
-              ref={gradeLevelRef}
-              id="resource-grade"
-              value={form.gradeLevel}
-              maxLength={60}
-              aria-describedby={describedBy}
-              aria-invalid={invalid}
-              placeholder="Grades 3-5"
-              onChange={(event) => {
-                setForm({ ...form, gradeLevel: event.currentTarget.value });
-                setErrors((current) => ({ ...current, gradeLevel: "" }));
-              }}
-            />
-          )}
-        </FormField>
-        <FormField
-          id="resource-tags"
-          label="Tags"
-          hint="Optional. Separate up to eight tags with commas."
-        >
-          {({ describedBy }) => (
-            <Input
-              id="resource-tags"
-              value={form.tags}
-              maxLength={240}
-              aria-describedby={describedBy}
-              placeholder="Fractions, hands-on, centers"
-              onChange={(event) =>
-                setForm({ ...form, tags: event.currentTarget.value })
-              }
-            />
-          )}
-        </FormField>
-      </div>
-      <FormField
-        id="resource-file"
-        label="Resource file"
-        required
-        hint="PDF, DOCX, PPTX, JPEG, PNG, WebP, HEIC, HEIF, or MP4 up to 25 MB."
-        error={errors.file ?? fileError}
-      >
-        {({ describedBy, invalid }) => (
-          <button
-            ref={fileButtonRef}
-            id="resource-file"
-            type="button"
-            aria-describedby={describedBy}
-            data-invalid={invalid || undefined}
-            onClick={() => inputRef.current?.click()}
-            className="hover:border-primary/40 focus-visible:border-ring data-invalid:border-destructive w-full rounded-xl border-2 border-dashed p-6 text-center transition-colors"
-          >
-            {file ? (
-              <FileCheck2
-                aria-hidden="true"
-                className="text-success mx-auto size-6"
-              />
-            ) : (
-              <Upload
-                aria-hidden="true"
-                className="text-muted-foreground mx-auto size-6"
-              />
-            )}
-            <span className="mt-2 block text-sm font-semibold break-all">
-              {file?.name ?? "Choose a file"}
-            </span>
-            {file && (
-              <span className="text-muted-foreground mt-1 block text-xs">
-                {resourceFileContentType(file.name)} ·{" "}
-                {formatFileSize(file.size)}
-              </span>
-            )}
-          </button>
-        )}
-      </FormField>
-      <input
-        ref={inputRef}
-        type="file"
-        className="sr-only"
-        tabIndex={-1}
-        accept={RESOURCE_FILE_ACCEPT}
-        onChange={(event) => {
-          chooseFile(event.target.files?.[0]);
-          setErrors((current) => ({ ...current, file: "" }));
-          event.target.value = "";
-        }}
-      />
-      {submitting && (
-        <div className="space-y-2" aria-live="polite">
+      <fieldset disabled={submitting || saving} className="min-w-0 space-y-5">
+        <DraftStatus status={recovery.status} restored={recovery.restored} />
+        {recovery.restored && (
           <p className="text-muted-foreground text-sm">
-            Uploading {file?.name}: {progress}%
+            Select the file again before publishing. File contents are not
+            stored in recovery drafts.
           </p>
-          <div
-            className="bg-muted h-2 overflow-hidden rounded-full"
-            role="progressbar"
-            aria-label="Upload progress"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress}
-          >
-            <div
-              className="bg-primary h-full transition-[width]"
-              style={{ width: `${progress}%` }}
-            />
+        )}
+        {draft && !recovery.restored && (
+          <div className="bg-accent/10 text-accent-readable rounded-lg px-3 py-2 text-sm font-semibold">
+            Your saved draft has been restored. Select the file again before
+            publishing.
           </div>
-        </div>
-      )}
-      {serverError && (
-        <p className="text-destructive text-sm" role="alert">
-          {serverError}
-        </p>
-      )}
-      <div className="flex flex-wrap justify-end gap-2 border-t pt-5">
-        <Button asChild type="button" variant="ghost">
-          <Link href="/resources">Cancel</Link>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={busy}
-          onClick={() => void saveDraft()}
+        )}
+        <FormField
+          id="resource-title"
+          label="Resource title"
+          required
+          error={errors.title}
         >
-          {saving ? "Saving..." : "Save as draft"}
-        </Button>
-        <Button type="submit" disabled={busy}>
-          {submitting ? `Uploading ${progress}%` : "Publish resource"}
-        </Button>
-      </div>
+          {({ describedBy, invalid }) => (
+            <Input
+              ref={titleRef}
+              id="resource-title"
+              value={form.title}
+              maxLength={140}
+              aria-describedby={describedBy}
+              aria-invalid={invalid}
+              placeholder="Fraction comparison cards"
+              onChange={(event) => {
+                setForm({ ...form, title: event.currentTarget.value });
+                setErrors((current) => ({ ...current, title: "" }));
+              }}
+            />
+          )}
+        </FormField>
+        <FormField
+          id="resource-description"
+          label="Description"
+          required
+          hint="At least 10 characters."
+          error={errors.description}
+        >
+          {({ describedBy, invalid }) => (
+            <Textarea
+              ref={descriptionRef}
+              id="resource-description"
+              value={form.description}
+              maxLength={2_000}
+              rows={5}
+              aria-describedby={describedBy}
+              aria-invalid={invalid}
+              placeholder="Describe what is included and how to use it..."
+              className="resize-y"
+              onChange={(event) => {
+                setForm({ ...form, description: event.currentTarget.value });
+                setErrors((current) => ({ ...current, description: "" }));
+              }}
+            />
+          )}
+        </FormField>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField id="resource-type" label="Type" required>
+            <Select
+              id="resource-type"
+              value={form.type}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  type: event.currentTarget.value as ResourceType,
+                })
+              }
+            >
+              <option value="lesson-plan">Lesson plan</option>
+              <option value="worksheet">Worksheet</option>
+              <option value="unit-plan">Unit plan</option>
+              <option value="video">Video</option>
+              <option value="activity">Activity</option>
+            </Select>
+          </FormField>
+          <FormField
+            id="resource-subject"
+            label="Subject"
+            required
+            error={errors.subject}
+          >
+            {({ describedBy, invalid }) => (
+              <Input
+                ref={subjectRef}
+                id="resource-subject"
+                value={form.subject}
+                maxLength={60}
+                aria-describedby={describedBy}
+                aria-invalid={invalid}
+                placeholder="Mathematics"
+                onChange={(event) => {
+                  setForm({ ...form, subject: event.currentTarget.value });
+                  setErrors((current) => ({ ...current, subject: "" }));
+                }}
+              />
+            )}
+          </FormField>
+          <FormField
+            id="resource-grade"
+            label="Grade level"
+            required
+            error={errors.gradeLevel}
+          >
+            {({ describedBy, invalid }) => (
+              <Input
+                ref={gradeLevelRef}
+                id="resource-grade"
+                value={form.gradeLevel}
+                maxLength={60}
+                aria-describedby={describedBy}
+                aria-invalid={invalid}
+                placeholder="Grades 3-5"
+                onChange={(event) => {
+                  setForm({ ...form, gradeLevel: event.currentTarget.value });
+                  setErrors((current) => ({ ...current, gradeLevel: "" }));
+                }}
+              />
+            )}
+          </FormField>
+          <FormField
+            id="resource-tags"
+            label="Tags"
+            hint="Optional. Separate up to eight tags with commas."
+          >
+            {({ describedBy }) => (
+              <Input
+                id="resource-tags"
+                value={form.tags}
+                maxLength={240}
+                aria-describedby={describedBy}
+                placeholder="Fractions, hands-on, centers"
+                onChange={(event) =>
+                  setForm({ ...form, tags: event.currentTarget.value })
+                }
+              />
+            )}
+          </FormField>
+        </div>
+        <FormField
+          id="resource-file"
+          label="Resource file"
+          required
+          hint="PDF, DOCX, PPTX, JPEG, PNG, WebP, HEIC, HEIF, or MP4 up to 25 MB."
+          error={errors.file ?? fileError}
+        >
+          {({ describedBy, invalid }) => (
+            <button
+              ref={fileButtonRef}
+              id="resource-file"
+              type="button"
+              aria-describedby={describedBy}
+              data-invalid={invalid || undefined}
+              onClick={() => inputRef.current?.click()}
+              className="hover:border-primary/40 focus-visible:border-ring data-invalid:border-destructive w-full rounded-xl border-2 border-dashed p-6 text-center transition-colors"
+            >
+              {file ? (
+                <FileCheck2
+                  aria-hidden="true"
+                  className="text-success mx-auto size-6"
+                />
+              ) : (
+                <Upload
+                  aria-hidden="true"
+                  className="text-muted-foreground mx-auto size-6"
+                />
+              )}
+              <span className="mt-2 block text-sm font-semibold break-all">
+                {file?.name ?? "Choose a file"}
+              </span>
+              {file && (
+                <span className="text-muted-foreground mt-1 block text-xs">
+                  {resourceFileContentType(file.name)} ·{" "}
+                  {formatFileSize(file.size)}
+                </span>
+              )}
+            </button>
+          )}
+        </FormField>
+        <input
+          ref={inputRef}
+          type="file"
+          className="sr-only"
+          tabIndex={-1}
+          accept={RESOURCE_FILE_ACCEPT}
+          onChange={(event) => {
+            chooseFile(event.target.files?.[0]);
+            setErrors((current) => ({ ...current, file: "" }));
+            event.target.value = "";
+          }}
+        />
+        {submitting && (
+          <div className="space-y-2" aria-live="polite">
+            <p className="text-muted-foreground text-sm">
+              Uploading {file?.name}: {progress}%
+            </p>
+            <div
+              className="bg-muted h-2 overflow-hidden rounded-full"
+              role="progressbar"
+              aria-label="Upload progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progress}
+            >
+              <div
+                className="bg-primary h-full transition-[width]"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
+        {serverError && (
+          <p className="text-destructive text-sm" role="alert">
+            {serverError}
+          </p>
+        )}
+        <div className="flex flex-wrap justify-end gap-2 border-t pt-5">
+          <Button asChild type="button" variant="ghost">
+            <Link href="/resources">Cancel</Link>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={() => void saveDraft()}
+          >
+            {saving ? "Saving..." : "Save as draft"}
+          </Button>
+          <Button type="submit" disabled={busy}>
+            {submitting ? `Uploading ${progress}%` : "Publish resource"}
+          </Button>
+        </div>
+      </fieldset>
     </form>
   );
 }

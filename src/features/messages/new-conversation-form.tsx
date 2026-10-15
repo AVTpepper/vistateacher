@@ -157,129 +157,134 @@ export function NewConversationForm({
       className="surface-card space-y-5 p-5 sm:p-6"
       onSubmit={startConversation}
     >
-      <DraftStatus status={recovery.status} restored={recovery.restored} />
-      {draft && !initialRecipientUid && !recovery.restored && (
-        <p className="bg-accent/10 text-accent-readable rounded-lg px-3 py-2 text-sm font-semibold">
-          Your saved draft has been restored.
-        </p>
-      )}
-      <div>
-        <label
-          htmlFor="educator-search"
-          className="mb-2 block text-sm font-bold"
-        >
-          To
-        </label>
-        {recipient ? (
-          <button
-            type="button"
-            onClick={() => setRecipient(null)}
-            className="bg-muted hover:bg-muted/70 flex w-full items-center gap-3 rounded-xl p-3 text-left"
-          >
-            <UserAvatar
-              name={recipient.displayName}
-              photoURL={recipient.photoURL}
-              className="size-10 rounded-full text-xs"
-            />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-bold">
-                {recipient.displayName}
-              </span>
-              <span className="text-muted-foreground block truncate text-xs">
-                {recipient.gradeLevel} · {recipient.school}
-              </span>
-            </span>
-            <span className="text-primary text-xs font-bold">Change</span>
-          </button>
-        ) : (
-          <>
-            <input
-              id="educator-search"
-              type="search"
-              name="educator-search"
-              autoComplete="off"
-              inputMode="search"
-              enterKeyHint="search"
-              value={search}
-              onChange={(event) => {
-                const next = event.target.value;
-                setSearch(next);
-                if (next.trim().length < 2) setEducators([]);
-              }}
-              placeholder="Search educators..."
-              className="input-shell bg-background h-11 w-full rounded-xl border px-3 text-sm"
-            />
-            <div className="mt-2 max-h-64 overflow-y-auto">
-              {visibleEducators.map((educator) => (
-                <button
-                  key={educator.uid}
-                  type="button"
-                  onClick={() => {
-                    setRecipient(educator);
-                    setSearch("");
-                    setEducators([]);
-                  }}
-                  className="hover:bg-muted flex w-full items-center gap-3 rounded-lg p-3 text-left"
-                >
-                  <UserAvatar
-                    name={educator.displayName}
-                    photoURL={educator.photoURL}
-                    className="size-9 rounded-full text-xs"
-                  />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-bold">
-                      {educator.displayName}
-                    </span>
-                    <span className="text-muted-foreground block truncate text-xs">
-                      {educator.gradeLevel} · {educator.school}
-                    </span>
-                  </span>
-                </button>
-              ))}
-              {search.trim().length >= 2 && visibleEducators.length === 0 && (
-                <p className="text-muted-foreground px-2 py-4 text-sm">
-                  No educators found.
-                </p>
-              )}
-            </div>
-          </>
+      <fieldset disabled={busy} className="min-w-0 space-y-5">
+        <DraftStatus status={recovery.status} restored={recovery.restored} />
+        {draft && !initialRecipientUid && !recovery.restored && (
+          <p className="bg-accent/10 text-accent-readable rounded-lg px-3 py-2 text-sm font-semibold">
+            Your saved draft has been restored.
+          </p>
         )}
-      </div>
-      <div>
-        <label htmlFor="new-message" className="mb-2 block text-sm font-bold">
-          Message
-        </label>
-        <textarea
-          id="new-message"
-          name="new-message"
-          autoComplete="off"
-          autoCapitalize="sentences"
-          spellCheck
-          inputMode="text"
-          value={content}
-          onChange={(event) => setContent(event.target.value)}
-          maxLength={5_000}
-          rows={9}
-          placeholder="Write your message..."
-          className="bg-background w-full resize-y rounded-xl border px-3 py-3 text-base md:text-sm"
-        />
-      </div>
-      <div className="flex flex-wrap justify-end gap-2 border-t pt-5">
-        <Button asChild type="button" variant="ghost">
-          <Link href="/messages">Cancel</Link>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={busy}
-          onClick={() => void saveDraft()}
-        >
-          {saving ? "Saving..." : "Save as draft"}
-        </Button>
-        <Button type="submit" disabled={busy || !recipient || !content.trim()}>
-          {submitting ? "Sending..." : "Send message"}
-        </Button>
-      </div>
+        <div>
+          <label
+            htmlFor="educator-search"
+            className="mb-2 block text-sm font-bold"
+          >
+            To
+          </label>
+          {recipient ? (
+            <button
+              type="button"
+              onClick={() => setRecipient(null)}
+              className="bg-muted hover:bg-muted/70 flex w-full items-center gap-3 rounded-xl p-3 text-left"
+            >
+              <UserAvatar
+                name={recipient.displayName}
+                photoURL={recipient.photoURL}
+                className="size-10 rounded-full text-xs"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold">
+                  {recipient.displayName}
+                </span>
+                <span className="text-muted-foreground block truncate text-xs">
+                  {recipient.gradeLevel} · {recipient.school}
+                </span>
+              </span>
+              <span className="text-primary text-xs font-bold">Change</span>
+            </button>
+          ) : (
+            <>
+              <input
+                id="educator-search"
+                type="search"
+                name="educator-search"
+                autoComplete="off"
+                inputMode="search"
+                enterKeyHint="search"
+                value={search}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setSearch(next);
+                  if (next.trim().length < 2) setEducators([]);
+                }}
+                placeholder="Search educators..."
+                className="input-shell bg-background h-11 w-full rounded-xl border px-3 text-sm"
+              />
+              <div className="mt-2 max-h-64 overflow-y-auto">
+                {visibleEducators.map((educator) => (
+                  <button
+                    key={educator.uid}
+                    type="button"
+                    onClick={() => {
+                      setRecipient(educator);
+                      setSearch("");
+                      setEducators([]);
+                    }}
+                    className="hover:bg-muted flex w-full items-center gap-3 rounded-lg p-3 text-left"
+                  >
+                    <UserAvatar
+                      name={educator.displayName}
+                      photoURL={educator.photoURL}
+                      className="size-9 rounded-full text-xs"
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-bold">
+                        {educator.displayName}
+                      </span>
+                      <span className="text-muted-foreground block truncate text-xs">
+                        {educator.gradeLevel} · {educator.school}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+                {search.trim().length >= 2 && visibleEducators.length === 0 && (
+                  <p className="text-muted-foreground px-2 py-4 text-sm">
+                    No educators found.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        <div>
+          <label htmlFor="new-message" className="mb-2 block text-sm font-bold">
+            Message
+          </label>
+          <textarea
+            id="new-message"
+            name="new-message"
+            autoComplete="off"
+            autoCapitalize="sentences"
+            spellCheck
+            inputMode="text"
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            maxLength={5_000}
+            rows={9}
+            placeholder="Write your message..."
+            className="bg-background w-full resize-y rounded-xl border px-3 py-3 text-base md:text-sm"
+          />
+        </div>
+        <div className="flex flex-wrap justify-end gap-2 border-t pt-5">
+          <Button asChild type="button" variant="ghost">
+            <Link href="/messages">Cancel</Link>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={() => void saveDraft()}
+          >
+            {saving ? "Saving..." : "Save as draft"}
+          </Button>
+          <Button
+            type="submit"
+            disabled={busy || !recipient || !content.trim()}
+          >
+            {submitting ? "Sending..." : "Send message"}
+          </Button>
+        </div>
+      </fieldset>
     </form>
   );
 }

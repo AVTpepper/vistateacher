@@ -202,21 +202,29 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
   async function submit() {
     if (!content.trim() || submitting || uploading) return;
     setSubmitting(true);
-    const created = await onCreate({
-      type,
-      content: content.trim(),
-      imageURLs: imageURL ? [imageURL] : [],
-      fileAttachments: fileAttachment ? [fileAttachment] : [],
-      linkURLs: linkURL ? [linkURL] : [],
-      tags: tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean)
-        .slice(0, 5),
-      resourceId: null,
-      mentionUids: mentions.map((mention) => mention.uid),
-    });
-    setSubmitting(false);
+    let created = false;
+    try {
+      created = await onCreate({
+        type,
+        content: content.trim(),
+        imageURLs: imageURL ? [imageURL] : [],
+        fileAttachments: fileAttachment ? [fileAttachment] : [],
+        linkURLs: linkURL ? [linkURL] : [],
+        tags: tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+          .slice(0, 5),
+        resourceId: null,
+        mentionUids: mentions.map((mention) => mention.uid),
+      });
+    } catch {
+      toast.error(
+        "We couldn't publish that post. Your draft is still available.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
     if (!created) return;
     recovery.setValue(EMPTY_DRAFT);
     recovery.clear();
@@ -252,7 +260,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
         </p>
       )}
       {expanded ? (
-        <div className="mt-3">
+        <fieldset disabled={submitting} className="mt-3 min-w-0">
           <div className="mb-3 flex flex-wrap gap-2" aria-label="Post type">
             {types.map(({ value, label, icon: Icon }) => (
               <button
@@ -477,7 +485,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
               </button>
             </div>
           </div>
-        </div>
+        </fieldset>
       ) : (
         <div className="mt-3 flex border-t pt-3">
           {types.map(({ value, action, icon: Icon }) => (
