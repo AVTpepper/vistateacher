@@ -14,11 +14,13 @@ Binary resource files are not stored in recovery copies; after a refresh, select
 
 The post-create response adds an optional `post` alongside the existing `postId`. Failure to read the optional confirmed post does not turn a successful creation into an error. The feed replaces the pending item without refetching or discarding loaded pages, and deduplicates overlapping pagination results.
 
-Onboarding requires name, professional role, education stage, subjects, and a taught language when Languages is selected. Location, organization, bio, and experience are deferred. Country and city can remain empty when editing the profile. Deferred experience is stored as `null` and displayed as ?Not added?; existing numeric values remain valid. Existing profiles need no migration.
+Onboarding requires name, professional role, education stage, subjects, and a taught language when Languages is selected. Location, organization, bio, and experience are deferred. Country and city can remain empty when editing the profile. Deferred experience is stored as `null` and displayed as `Not added`; existing numeric values remain valid. Existing profiles need no migration.
 
 Plan prices and allowances are unchanged. Plus AI creations and refinements share a 50-generation monthly pool. Monthly lesson allowances reset at 00:00 UTC on the first day of the next calendar month, independently of subscription renewal.
 
 ## Verification
+
+Validated on 2026-10-15: lint, TypeScript, and production build passed; 152 unit/component tests and 70 browser tests passed, with 25 intentional project-specific skips.
 
 `tests/e2e/consistent-creation.spec.ts` creates isolated accounts in the demo Firebase emulators. It covers desktop and phone layouts, keyboard and accessibility checks, failed requests, refresh recovery, short onboarding, owned-resource navigation, Community limits, the final shared Plus generation, the daily message cap, and the connection cap.
 
