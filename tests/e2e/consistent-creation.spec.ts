@@ -126,9 +126,7 @@ test("post drafts recover after failed publication and refresh", async ({
   await signIn(page, user.email);
   await page.goto("/app");
   await page.getByRole("button", { name: /What's on your mind/ }).click();
-  const editor = page.getByPlaceholder(
-    "Share a classroom win, challenge, or useful insight...",
-  );
+  const editor = page.locator('textarea[name="post-content"]');
   await editor.fill("Keep this unfinished classroom idea");
   await page.getByRole("button", { name: "Question", exact: true }).click();
   await page.getByRole("button", { name: "Add web link" }).click();
@@ -502,6 +500,36 @@ test("Plus shares its final generation between creation and refinement", async (
   );
   expect(exhausted.status).toBe(429);
   expect(exhausted.body.code).toBe("limit-reached");
+});
+
+test("Community messaging allows the tenth message and blocks the eleventh", async ({
+  page,
+}) => {
+  const user = await account();
+  const { db } = emulator();
+  const day = new Date().toISOString().slice(0, 10);
+  await db
+    .doc(`usage/${user.uid}_${day}`)
+    .set({ uid: user.uid, period: day, messages: 9 });
+  await signIn(page, user.email);
+  const tenth = await postJson(page, "/api/messages", {
+    recipientId: "plus-educator",
+    content: "My tenth message today",
+  });
+  expect(tenth.status).toBe(201);
+  const eleventh = await postJson(page, "/api/messages", {
+    recipientId: "plus-educator",
+    content: "This message must be blocked",
+  });
+  expect(eleventh.status).toBe(429);
+  expect(eleventh.body.code).toBe("limit-reached");
+  await page.goto(`/messages?conversation=${tenth.body.conversationId}`);
+  await expect(
+    page.getByText("Daily message limit reached", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Message", exact: true }),
+  ).toHaveCount(0);
 });
 
 test("connection requests respect the unchanged five-connection boundary", async ({

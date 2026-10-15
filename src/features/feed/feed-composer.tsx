@@ -281,6 +281,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
             ))}
           </div>
           <MentionTextarea
+            aria-label="Post content"
             autoFocus
             name="post-content"
             autoComplete="off"

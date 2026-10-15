@@ -514,14 +514,6 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                 </DropdownMenu.Item>
                 <DropdownMenu.Item asChild>
                   <Link
-                    href="/app?view=saved"
-                    className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
-                  >
-                    Saved posts
-                  </Link>
-                </DropdownMenu.Item>
-                <DropdownMenu.Item asChild>
-                  <Link
                     href="/settings/security"
                     className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
                   >
