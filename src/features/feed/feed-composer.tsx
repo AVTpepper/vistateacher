@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  getDownloadURL,
-  ref,
-  uploadBytes,
-  uploadBytesResumable,
-} from "firebase/storage";
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import {
   FileText,
   FileUp,
@@ -18,6 +13,8 @@ import {
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { DraftStatus } from "@/components/ui/draft-status";
+import { useRecoveredDraft } from "@/lib/creation-drafts/use-recovered-draft";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { MentionTextarea } from "@/features/mentions/mention-textarea";
 import {
@@ -62,20 +59,40 @@ const types = [
   },
 ];
 
+const EMPTY_DRAFT = {
+  type: "post" as CreatePostInput["type"],
+  content: "",
+  mentions: [] as MentionTarget[],
+  tags: "",
+  imageURL: null as string | null,
+  fileAttachment: null as PostFileAttachment | null,
+  linkURL: null as string | null,
+  linkDraft: "",
+};
+
 export function FeedComposer({ account, onCreate }: FeedComposerProps) {
   const [expanded, setExpanded] = useState(false);
-  const [type, setType] = useState<CreatePostInput["type"]>("post");
-  const [content, setContent] = useState("");
-  const [mentions, setMentions] = useState<MentionTarget[]>([]);
-  const [tags, setTags] = useState("");
-  const [imageURL, setImageURL] = useState<string | null>(null);
-  const [fileAttachment, setFileAttachment] =
-    useState<PostFileAttachment | null>(null);
-  const [linkURL, setLinkURL] = useState<string | null>(null);
-  const [linkDraft, setLinkDraft] = useState("");
+  const recovery = useRecoveredDraft(`feed:${account.uid}`, EMPTY_DRAFT);
+  const {
+    type,
+    content,
+    mentions,
+    tags,
+    imageURL,
+    fileAttachment,
+    linkURL,
+    linkDraft,
+  } = recovery.value;
+  function updateDraft<K extends keyof typeof EMPTY_DRAFT>(
+    field: K,
+    value: (typeof EMPTY_DRAFT)[K],
+  ) {
+    recovery.setValue((current) => ({ ...current, [field]: value }));
+  }
   const [linkEditorOpen, setLinkEditorOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const firstName = account.displayName.split(" ")[0] || "Educator";
@@ -90,13 +107,29 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
       return;
     }
     setUploading(true);
+    setUploadProgress(0);
     try {
       const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const path = `posts/${account.uid}/${crypto.randomUUID()}/${crypto.randomUUID()}.${extension}`;
       const client = await refreshFirebaseClientAuth();
       const object = ref(client.storage, path);
-      await uploadBytes(object, file, { contentType: file.type });
-      setImageURL(await getDownloadURL(object));
+      await new Promise<void>((resolve, reject) => {
+        const task = uploadBytesResumable(object, file, {
+          contentType: file.type,
+        });
+        task.on(
+          "state_changed",
+          (snapshot) =>
+            setUploadProgress(
+              Math.round(
+                (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
+              ),
+            ),
+          reject,
+          resolve,
+        );
+      });
+      updateDraft("imageURL", await getDownloadURL(object));
     } catch (error) {
       toast.error(
         firebaseUploadErrorMessage(error, "We couldn't upload that image."),
@@ -115,6 +148,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
     const contentType = postFileContentType(file.name);
     if (!contentType) return;
     setUploading(true);
+    setUploadProgress(0);
     try {
       const extension = file.name.split(".").at(-1)!.toLocaleLowerCase("en-US");
       const path = `posts/${account.uid}/${crypto.randomUUID()}/${crypto.randomUUID()}.${extension}`;
@@ -122,9 +156,19 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
       const object = ref(client.storage, path);
       await new Promise<void>((resolve, reject) => {
         const task = uploadBytesResumable(object, file, { contentType });
-        task.on("state_changed", undefined, reject, resolve);
+        task.on(
+          "state_changed",
+          (snapshot) =>
+            setUploadProgress(
+              Math.round(
+                (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
+              ),
+            ),
+          reject,
+          resolve,
+        );
       });
-      setFileAttachment({
+      updateDraft("fileAttachment", {
         name: file.name,
         url: await getDownloadURL(object),
         contentType,
@@ -145,8 +189,8 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
       toast.error("Enter a valid web link.");
       return;
     }
-    setLinkURL(normalized);
-    setLinkDraft("");
+    updateDraft("linkURL", normalized);
+    updateDraft("linkDraft", "");
     setLinkEditorOpen(false);
   }
 
@@ -169,15 +213,9 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
     });
     setSubmitting(false);
     if (!created) return;
-    setContent("");
-    setMentions([]);
-    setTags("");
-    setImageURL(null);
-    setFileAttachment(null);
-    setLinkURL(null);
-    setLinkDraft("");
+    recovery.setValue(EMPTY_DRAFT);
+    recovery.clear();
     setLinkEditorOpen(false);
-    setType("post");
     setExpanded(false);
   }
 
@@ -200,6 +238,14 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
         </button>
       </div>
 
+      <div className="mt-2">
+        <DraftStatus status={recovery.status} restored={recovery.restored} />
+      </div>
+      {uploading && (
+        <p role="status" className="text-muted-foreground mt-2 text-xs">
+          Uploading attachment: {uploadProgress}%
+        </p>
+      )}
       {expanded ? (
         <div className="mt-3">
           <div className="mb-3 flex flex-wrap gap-2" aria-label="Post type">
@@ -207,7 +253,8 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
               <button
                 type="button"
                 key={value}
-                onClick={() => setType(value)}
+                aria-pressed={type === value}
+                onClick={() => updateDraft("type", value)}
                 className={cn(
                   "flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors",
                   type === value
@@ -229,10 +276,10 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
             inputMode="text"
             value={content}
             mentions={mentions}
-            onMentionsChange={setMentions}
+            onMentionsChange={(value) => updateDraft("mentions", value)}
             excludeUid={account.uid}
             maxLength={5_000}
-            onValueChange={setContent}
+            onValueChange={(value) => updateDraft("content", value)}
             placeholder={
               type === "question"
                 ? "Ask your fellow educators a question..."
@@ -248,7 +295,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
           <input
             value={tags}
             maxLength={160}
-            onChange={(event) => setTags(event.target.value)}
+            onChange={(event) => updateDraft("tags", event.target.value)}
             placeholder="Tags, separated by commas"
             className="bg-muted text-foreground placeholder:text-muted-foreground mt-2 h-10 w-full rounded-lg px-3 text-base outline-none md:text-xs"
           />
@@ -257,7 +304,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
               <span className="truncate">Image ready to share</span>
               <button
                 type="button"
-                onClick={() => setImageURL(null)}
+                onClick={() => updateDraft("imageURL", null)}
                 aria-label="Remove image"
                 className="text-muted-foreground hover:text-foreground grid size-7 place-items-center rounded-md"
               >
@@ -273,7 +320,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
               </span>
               <button
                 type="button"
-                onClick={() => setFileAttachment(null)}
+                onClick={() => updateDraft("fileAttachment", null)}
                 aria-label="Remove attached file"
                 className="text-muted-foreground hover:text-foreground grid size-7 shrink-0 place-items-center rounded-md"
               >
@@ -286,7 +333,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
               <span className="min-w-0 truncate">{linkURL}</span>
               <button
                 type="button"
-                onClick={() => setLinkURL(null)}
+                onClick={() => updateDraft("linkURL", null)}
                 aria-label="Remove web link"
                 className="text-muted-foreground hover:text-foreground grid size-7 shrink-0 place-items-center rounded-md"
               >
@@ -306,7 +353,9 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
                   inputMode="url"
                   autoFocus
                   value={linkDraft}
-                  onChange={(event) => setLinkDraft(event.target.value)}
+                  onChange={(event) =>
+                    updateDraft("linkDraft", event.target.value)
+                  }
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
@@ -328,7 +377,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
                     type="button"
                     onClick={() => {
                       setLinkEditorOpen(false);
-                      setLinkDraft("");
+                      updateDraft("linkDraft", "");
                     }}
                     aria-label="Cancel adding web link"
                     className="text-muted-foreground hover:bg-background grid size-10 place-items-center rounded-lg"
@@ -393,7 +442,19 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
                 event.target.value = "";
               }}
             />
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={submitting || uploading}
+                className="text-destructive min-h-11 rounded-lg px-3 text-sm"
+                onClick={() => {
+                  recovery.setValue(EMPTY_DRAFT);
+                  recovery.clear();
+                  setLinkEditorOpen(false);
+                }}
+              >
+                Discard draft
+              </button>
               <button
                 type="button"
                 onClick={() => setExpanded(false)}
@@ -419,7 +480,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
               type="button"
               key={value}
               onClick={() => {
-                setType(value);
+                updateDraft("type", value);
                 setExpanded(true);
               }}
               className="text-muted-foreground hover:bg-secondary hover:text-primary group flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors"

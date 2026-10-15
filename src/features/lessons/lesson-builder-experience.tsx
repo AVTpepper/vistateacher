@@ -30,6 +30,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { DraftStatus } from "@/components/ui/draft-status";
+import { useRecoveredDraft } from "@/lib/creation-drafts/use-recovered-draft";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import {
   LimitUpgradeDialog,
@@ -234,6 +236,8 @@ function ListField({
 }
 
 function LessonEditor({
+  recoveryKey,
+  currentVersion,
   content,
   visibility,
   saving,
@@ -242,17 +246,39 @@ function LessonEditor({
   onSave,
   onRefine,
 }: {
+  recoveryKey: string;
+  currentVersion: number;
   content: LessonPlanInput;
   visibility: "draft" | "published";
   saving: boolean;
   canRefine: boolean;
   onCancel: () => void;
-  onSave: (content: LessonPlanInput, visibility: "draft" | "published") => void;
-  onRefine: (feedback: string, referenceContent: LessonPlanInput) => void;
+  onSave: (
+    content: LessonPlanInput,
+    visibility: "draft" | "published",
+  ) => Promise<boolean>;
+  onRefine: (
+    feedback: string,
+    referenceContent: LessonPlanInput,
+  ) => Promise<boolean>;
 }) {
-  const [draft, setDraft] = useState(content);
-  const [draftVisibility, setDraftVisibility] = useState(visibility);
-  const [feedback, setFeedback] = useState("");
+  const recovery = useRecoveredDraft(recoveryKey, {
+    content,
+    visibility,
+    feedback: "",
+    baseVersion: currentVersion,
+  });
+  const {
+    content: draft,
+    visibility: draftVisibility,
+    feedback,
+  } = recovery.value;
+  const setDraft = (content: LessonPlanInput) =>
+    recovery.setValue((current) => ({ ...current, content }));
+  const setDraftVisibility = (visibility: "draft" | "published") =>
+    recovery.setValue((current) => ({ ...current, visibility }));
+  const setFeedback = (feedback: string) =>
+    recovery.setValue((current) => ({ ...current, feedback }));
   const textField = (
     label: string,
     value: string,
@@ -275,7 +301,8 @@ function LessonEditor({
         <div>
           <h2 className="font-serif text-xl">Edit lesson</h2>
           <p className="text-muted-foreground text-xs">
-            Saving creates a new immutable version.
+            Your previous versions are kept. Recovery drafts stay private until
+            you save.
           </p>
         </div>
         <button
@@ -287,6 +314,15 @@ function LessonEditor({
           <X aria-hidden="true" className="size-4" />
         </button>
       </div>
+      <div className="mb-4">
+        <DraftStatus status={recovery.status} restored={recovery.restored} />
+      </div>
+      {recovery.restored && recovery.value.baseVersion !== currentVersion && (
+        <p role="alert" className="text-amber mb-4 text-sm">
+          This unfinished edit is based on an older version. Review it before
+          saving.
+        </p>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-1.5 text-xs font-bold sm:col-span-2">
           Lesson status
@@ -425,7 +461,9 @@ function LessonEditor({
           <button
             type="button"
             disabled={saving || !canRefine || feedback.trim().length < 3}
-            onClick={() => onRefine(feedback, draft)}
+            onClick={async () => {
+              if (await onRefine(feedback, draft)) recovery.clear();
+            }}
             className="border-primary text-primary mt-2 inline-flex min-h-11 items-center rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
           >
             Regenerate With AI Feedback
@@ -436,12 +474,30 @@ function LessonEditor({
           onClick={onCancel}
           className="min-h-11 rounded-lg border px-4 text-sm font-bold"
         >
-          Cancel
+          Close editor
         </button>
         <button
           type="button"
           disabled={saving}
-          onClick={() => onSave(draft, draftVisibility)}
+          className="text-destructive min-h-11 rounded-lg px-4 text-sm"
+          onClick={() => {
+            recovery.setValue({
+              content,
+              visibility,
+              feedback: "",
+              baseVersion: currentVersion,
+            });
+            recovery.clear();
+          }}
+        >
+          Discard edit
+        </button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={async () => {
+            if (await onSave(draft, draftVisibility)) recovery.clear();
+          }}
           className="bg-primary text-primary-foreground flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-bold disabled:opacity-50"
         >
           {saving ? (
@@ -784,15 +840,22 @@ function LessonDisplay({
 }
 
 export function LessonBuilderExperience({
+  viewerUid,
   initialWorkspace,
   initialLesson,
 }: {
+  viewerUid: string;
   initialWorkspace: LessonWorkspace;
   initialLesson: LessonDetail | null;
 }) {
   const [workspace, setWorkspace] = useState(initialWorkspace);
   const [lesson, setLesson] = useState(initialLesson);
-  const [source, setSource] = useState(initialLesson?.source ?? EMPTY_SOURCE);
+  const sourceRecovery = useRecoveredDraft(
+    `lesson-source:${viewerUid}`,
+    EMPTY_SOURCE,
+  );
+  const source = lesson?.source ?? sourceRecovery.value;
+  const setSource = sourceRecovery.setValue;
   const [lessonCount, setLessonCount] = useState(1);
   const [working, setWorking] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -878,7 +941,6 @@ export function LessonBuilderExperience({
         await fetch(`/api/ai-lessons/${lessonId}`),
       );
       setLesson(selected);
-      setSource(selected.source);
       setEditing(false);
       setAttemptedGenerate(false);
     } catch (error) {
@@ -895,7 +957,6 @@ export function LessonBuilderExperience({
     consumesQuota: "creation" | "refinement" | null = null,
   ) {
     setLesson(next);
-    setSource(next.source);
     setWorkspace((current) => ({
       ...current,
       usage: consumesQuota
@@ -928,6 +989,8 @@ export function LessonBuilderExperience({
       );
       const lessons = "lessons" in generated ? generated.lessons : [generated];
       lessons.forEach((item) => storeLesson(item, "creation"));
+      sourceRecovery.setValue(EMPTY_SOURCE);
+      sourceRecovery.clear();
       setAttemptedGenerate(false);
       toast.success(
         lessons.length > 1
@@ -949,7 +1012,7 @@ export function LessonBuilderExperience({
     name: "regenerate" | "duplicate",
     options?: { feedback?: string; referenceContent?: LessonPlanInput },
   ) {
-    if (!lesson) return;
+    if (!lesson) return false;
     setWorking(true);
     try {
       const next = await resultJson<LessonDetail>(
@@ -967,15 +1030,18 @@ export function LessonBuilderExperience({
         }),
       );
       storeLesson(next, name === "regenerate" ? "refinement" : null);
+      setEditing(false);
       toast.success(
         name === "regenerate"
           ? "New lesson version generated."
           : "Lesson duplicated.",
       );
+      return true;
     } catch (error) {
       if (!showUpgradeFor(error)) {
         toast.error(error instanceof Error ? error.message : "Action failed.");
       }
+      return false;
     } finally {
       setWorking(false);
     }
@@ -985,7 +1051,7 @@ export function LessonBuilderExperience({
     content: LessonPlanInput,
     visibility: "draft" | "published",
   ) {
-    if (!lesson) return;
+    if (!lesson) return false;
     setWorking(true);
     try {
       const updated = await resultJson<LessonDetail>(
@@ -998,8 +1064,10 @@ export function LessonBuilderExperience({
       storeLesson(updated);
       setEditing(false);
       toast.success("Lesson version saved.");
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Save failed.");
+      return false;
     } finally {
       setWorking(false);
     }
@@ -1239,7 +1307,6 @@ export function LessonBuilderExperience({
           type="button"
           onClick={() => {
             setLesson(null);
-            setSource(EMPTY_SOURCE);
             setLessonCount(1);
             setEditing(false);
             setAttemptedGenerate(false);
@@ -1339,6 +1406,24 @@ export function LessonBuilderExperience({
             <p className="text-muted-foreground mb-3 text-xs leading-5">
               {requiredHelper}
             </p>
+            <div className="mb-3">
+              <DraftStatus
+                status={sourceRecovery.status}
+                restored={sourceRecovery.restored}
+              />
+            </div>
+            {sourceRecovery.status !== "idle" && (
+              <button
+                type="button"
+                className="text-destructive mb-3 min-h-11 text-sm font-semibold"
+                onClick={() => {
+                  sourceRecovery.setValue(EMPTY_SOURCE);
+                  sourceRecovery.clear();
+                }}
+              >
+                Discard parameter draft
+              </button>
+            )}
             {showGenerateErrors && (
               <p
                 role="alert"
@@ -1567,6 +1652,9 @@ export function LessonBuilderExperience({
           )}
           {lesson && editing && (
             <LessonEditor
+              key={`${lesson.id}:${lesson.currentVersion}`}
+              recoveryKey={`lesson-edit:${viewerUid}:${lesson.id}`}
+              currentVersion={lesson.currentVersion}
               content={lesson.content}
               visibility={lesson.visibility}
               saving={working}
@@ -1575,11 +1663,9 @@ export function LessonBuilderExperience({
                 workspace.usage.refinements.remaining !== 0
               }
               onCancel={() => setEditing(false)}
-              onSave={(content, visibility) =>
-                void saveWithVisibility(content, visibility)
-              }
+              onSave={saveWithVisibility}
               onRefine={(feedback, referenceContent) =>
-                void action("regenerate", { feedback, referenceContent })
+                action("regenerate", { feedback, referenceContent })
               }
             />
           )}

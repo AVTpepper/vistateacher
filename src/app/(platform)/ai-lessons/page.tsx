@@ -20,6 +20,7 @@ export default async function AiLessonsPage({
   return (
     <div className="page-container">
       <LessonBuilderExperience
+        viewerUid={account.uid}
         initialWorkspace={workspace}
         initialLesson={lesson}
       />
