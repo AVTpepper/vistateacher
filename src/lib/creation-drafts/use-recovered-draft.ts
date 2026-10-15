@@ -34,13 +34,18 @@ function hasShape(value: unknown, template: unknown): boolean {
   return typeof value === typeof template;
 }
 
-export function useRecoveredDraft<T>(key: string, initialValue: T) {
+export function useRecoveredDraft<T>(
+  key: string,
+  initialValue: T,
+  validator?: { safeParse: (value: unknown) => { success: boolean } },
+) {
   const storageKey = `vista:draft:v1:${key}`;
   const [value, setValue] = useState(initialValue);
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   const [restored, setRestored] = useState(false);
   const current = useRef(initialValue);
   const initial = useRef(initialValue);
+  const validation = useRef(validator);
   const dirty = useRef(false);
 
   useEffect(() => {
@@ -48,7 +53,11 @@ export function useRecoveredDraft<T>(key: string, initialValue: T) {
       const raw = localStorage.getItem(storageKey);
       if (!raw) return;
       const stored: unknown = JSON.parse(raw);
-      if (!hasShape(stored, initial.current)) {
+      if (
+        !(validation.current
+          ? validation.current.safeParse(stored).success
+          : hasShape(stored, initial.current))
+      ) {
         localStorage.removeItem(storageKey);
         return;
       }

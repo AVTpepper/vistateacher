@@ -18,7 +18,10 @@ import {
 } from "@/lib/creation-drafts/client";
 import type { ForumCategory } from "@/lib/forum/server";
 import type { MentionTarget } from "@/lib/mentions/types";
-import type { ForumCreationDraft } from "@/schemas/creation-draft";
+import {
+  forumCreationDraftSchema,
+  type ForumCreationDraft,
+} from "@/schemas/creation-draft";
 
 export function ForumCreationForm({
   viewerUid,
@@ -35,13 +38,17 @@ export function ForumCreationForm({
   const titleRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const categoryRef = useRef<HTMLSelectElement>(null);
-  const recovery = useRecoveredDraft<ForumCreationDraft>(`forum:${viewerUid}`, {
-    categoryId: draft?.categoryId || initialCategoryId,
-    title: draft?.title ?? "",
-    content: draft?.content ?? "",
-    tags: draft?.tags ?? "",
-    mentions: draft?.mentions ?? [],
-  });
+  const recovery = useRecoveredDraft<ForumCreationDraft>(
+    `forum:${viewerUid}`,
+    {
+      categoryId: draft?.categoryId || initialCategoryId,
+      title: draft?.title ?? "",
+      content: draft?.content ?? "",
+      tags: draft?.tags ?? "",
+      mentions: draft?.mentions ?? [],
+    },
+    forumCreationDraftSchema,
+  );
   const { mentions, ...form } = recovery.value;
   const setForm = (next: typeof form) =>
     recovery.setValue((current) => ({ ...current, ...next }));

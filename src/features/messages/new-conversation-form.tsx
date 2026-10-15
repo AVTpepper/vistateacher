@@ -12,7 +12,10 @@ import {
   deleteCreationDraft,
   saveCreationDraft,
 } from "@/lib/creation-drafts/client";
-import type { MessageCreationDraft } from "@/schemas/creation-draft";
+import {
+  messageCreationDraftSchema,
+  type MessageCreationDraft,
+} from "@/schemas/creation-draft";
 import type { ProfileSearchResult } from "@/types/models";
 
 export function NewConversationForm({
@@ -32,6 +35,7 @@ export function NewConversationForm({
       recipient: initialRecipientUid ? null : (draft?.recipient ?? null),
       content: initialRecipientUid ? "" : (draft?.content ?? ""),
     },
+    messageCreationDraftSchema,
   );
   const { recipient, content } = recovery.value;
   const updateRecovery = recovery.setValue;

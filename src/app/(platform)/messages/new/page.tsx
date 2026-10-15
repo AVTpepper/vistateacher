@@ -34,6 +34,7 @@ export default async function NewConversationPage({
           </p>
         </header>
         <NewConversationForm
+          key={params.recipient?.trim() || "new"}
           viewerUid={account.uid}
           initialRecipientUid={params.recipient?.trim() || null}
           draft={draft}

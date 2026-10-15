@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useRecoveredDraft } from "./use-recovered-draft";
+import { z } from "zod";
 
 function Editor({ owner = "alice" }: { owner?: string }) {
   const draft = useRecoveredDraft(`test:${owner}`, { title: "", content: "" });
@@ -59,6 +60,35 @@ describe("draft recovery", () => {
     );
     render(<Editor />);
     expect(screen.getByLabelText("Title")).toHaveValue("");
+  });
+
+  it("restores an explicitly cleared optional field even when the server draft has a value", () => {
+    const schema = z.object({
+      recipient: z.object({ uid: z.string() }).nullable(),
+      content: z.string(),
+    });
+    localStorage.setItem(
+      "vista:draft:v1:optional",
+      JSON.stringify({
+        recipient: null,
+        content: "Choose another recipient later",
+      }),
+    );
+    function OptionalEditor() {
+      const draft = useRecoveredDraft<{
+        recipient: { uid: string } | null;
+        content: string;
+      }>(
+        "optional",
+        { recipient: { uid: "old-recipient" }, content: "" },
+        schema,
+      );
+      return <p>{draft.value.recipient?.uid ?? draft.value.content}</p>;
+    }
+    render(<OptionalEditor />);
+    expect(
+      screen.getByText("Choose another recipient later"),
+    ).toBeInTheDocument();
   });
 
   it("preserves editing and warns before reload when storage fails", () => {

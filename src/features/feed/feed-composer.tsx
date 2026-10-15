@@ -31,6 +31,7 @@ import {
 import type { MentionTarget } from "@/lib/mentions/types";
 import { cn } from "@/lib/utils";
 import type { CreatePostInput, PostFileAttachment } from "@/schemas/feed";
+import { postRecoverySchema } from "@/schemas/creation-draft";
 
 interface ComposerAccount {
   uid: string;
@@ -72,7 +73,11 @@ const EMPTY_DRAFT = {
 
 export function FeedComposer({ account, onCreate }: FeedComposerProps) {
   const [expanded, setExpanded] = useState(false);
-  const recovery = useRecoveredDraft(`feed:${account.uid}`, EMPTY_DRAFT);
+  const recovery = useRecoveredDraft(
+    `feed:${account.uid}`,
+    EMPTY_DRAFT,
+    postRecoverySchema,
+  );
   const {
     type,
     content,

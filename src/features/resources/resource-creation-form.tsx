@@ -29,7 +29,10 @@ import {
   resourceFileError,
 } from "@/lib/resources/file-validation";
 import type { IncompleteResource } from "@/lib/resources/server";
-import type { ResourceCreationDraft } from "@/schemas/creation-draft";
+import {
+  resourceCreationDraftSchema,
+  type ResourceCreationDraft,
+} from "@/schemas/creation-draft";
 import type { ResourceType } from "@/schemas/resource";
 
 const emptyForm = {
@@ -86,6 +89,7 @@ export function ResourceCreationForm({
             tags: sourceDraft.tags.join(", "),
           }
         : emptyForm,
+    resourceCreationDraftSchema.omit({ draftResourceId: true }),
   );
   const { value: form, setValue: setForm } = recovery;
 

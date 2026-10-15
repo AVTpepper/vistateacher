@@ -1,12 +1,25 @@
 import { z } from "zod";
 
 import { resourceTypeSchema } from "@/schemas/resource";
+import { postFileAttachmentSchema, postTypeSchema } from "@/schemas/feed";
 
 export const creationDraftTypeSchema = z.enum(["forum", "resource", "message"]);
 
 const mentionSchema = z.object({
   uid: z.string().trim().min(1).max(128),
   displayName: z.string().trim().min(1).max(160),
+});
+
+// Browser recovery allows unfinished text; publication uses stricter schemas.
+export const postRecoverySchema = z.object({
+  type: postTypeSchema,
+  content: z.string(),
+  mentions: z.array(mentionSchema),
+  tags: z.string(),
+  imageURL: z.url().nullable(),
+  fileAttachment: postFileAttachmentSchema.nullable(),
+  linkURL: z.url().nullable(),
+  linkDraft: z.string(),
 });
 
 export const forumCreationDraftSchema = z.object({
