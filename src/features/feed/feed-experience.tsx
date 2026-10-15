@@ -3,7 +3,7 @@
 import { FileText, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { requestJson } from "@/lib/http/client";
 import { toast } from "sonner";
 
@@ -31,13 +31,22 @@ const tabs: { value: FeedView; label: string }[] = [
   { value: "saved", label: "Saved" },
 ];
 
-async function loadFeed(view: FeedView, cursor?: string | null) {
+async function loadFeed(
+  view: FeedView,
+  cursor?: string | null,
+  signal?: AbortSignal,
+) {
   const params = new URLSearchParams({ view });
   if (cursor) params.set("cursor", cursor);
-  const response = await fetch(`/api/feed?${params}`);
+  const response = await fetch(`/api/feed?${params}`, { signal });
   const result = (await response.json().catch(() => null)) as FeedPage | null;
   if (!response.ok || !result) throw new Error("feed-load-failed");
   return result;
+}
+
+function mergePosts(first: FeedPost[], second: FeedPost[]): FeedPost[] {
+  const seen = new Set(first.map((post) => post.id));
+  return [...first, ...second.filter((post) => !seen.has(post.id))];
 }
 
 export function FeedExperience({
@@ -48,26 +57,48 @@ export function FeedExperience({
   const router = useRouter();
   const view = initialView;
   const [previousPage, setPreviousPage] = useState(initialPage);
+  const [previousView, setPreviousView] = useState(view);
+  const [hasLoadedMore, setHasLoadedMore] = useState(false);
+  const pageRequest = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      pageRequest.current?.abort();
+    },
+    [view],
+  );
   const [posts, setPosts] = useState(initialPage.posts);
   const [nextCursor, setNextCursor] = useState(initialPage.nextCursor);
   const [loading, setLoading] = useState(false);
 
   if (previousPage !== initialPage) {
     setPreviousPage(initialPage);
-    setPosts(initialPage.posts);
-    setNextCursor(initialPage.nextCursor);
+    if (previousView !== view) {
+      setPreviousView(view);
+      setPosts(initialPage.posts);
+      setNextCursor(initialPage.nextCursor);
+      setHasLoadedMore(false);
+    } else {
+      setPosts((current) => mergePosts(initialPage.posts, current));
+      if (!hasLoadedMore) setNextCursor(initialPage.nextCursor);
+    }
   }
 
   async function loadMore() {
-    if (!nextCursor || loading) return;
+    if (!nextCursor || loading || pageRequest.current) return;
+    const controller = new AbortController();
+    pageRequest.current = controller;
     setLoading(true);
     try {
-      const page = await loadFeed(view, nextCursor);
-      setPosts((current) => [...current, ...page.posts]);
+      const page = await loadFeed(view, nextCursor, controller.signal);
+      if (controller.signal.aborted) return;
+      setPosts((current) => mergePosts(current, page.posts));
       setNextCursor(page.nextCursor);
+      setHasLoadedMore(true);
     } catch {
-      toast.error("We couldn't load more posts.");
+      if (!controller.signal.aborted)
+        toast.error("We couldn't load more posts.");
     } finally {
+      if (pageRequest.current === controller) pageRequest.current = null;
       setLoading(false);
     }
   }
@@ -105,8 +136,12 @@ export function FeedExperience({
     };
     if (view === "all") setPosts((current) => [optimistic, ...current]);
     let postId: string;
+    let confirmedPost: FeedPost | null = null;
     try {
-      const result = await requestJson<{ postId: string }>("/api/feed", {
+      const result = await requestJson<{
+        postId: string;
+        post?: FeedPost | null;
+      }>("/api/feed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
@@ -116,6 +151,7 @@ export function FeedExperience({
           "Post could not be confirmed. Refresh before retrying.",
         );
       postId = result.postId;
+      confirmedPost = result.post ?? null;
     } catch (error) {
       setPosts((current) => current.filter((post) => post.id !== temporaryId));
       toast.error(
@@ -127,17 +163,13 @@ export function FeedExperience({
     }
     if (view !== "all") router.push("/app?view=all");
     else {
-      try {
-        const page = await loadFeed("all");
-        setPosts(page.posts);
-        setNextCursor(page.nextCursor);
-      } catch {
-        setPosts((current) =>
-          current.map((post) =>
-            post.id === temporaryId ? { ...post, id: postId } : post,
-          ),
-        );
-      }
+      setPosts((current) =>
+        current.map((post) =>
+          post.id === temporaryId
+            ? (confirmedPost ?? { ...post, id: postId })
+            : post,
+        ),
+      );
     }
     toast.success("Post published.");
     return true;
@@ -145,7 +177,8 @@ export function FeedExperience({
 
   return (
     <div className="mx-auto w-full max-w-2xl min-w-0 space-y-4">
-      <div className="surface-card flex gap-1 p-1">
+      <h1 className="sr-only">Community feed</h1>
+      <nav aria-label="Feed views" className="surface-card flex gap-1 p-1">
         {tabs.map((tab) => (
           <Link
             href={`/app?view=${tab.value}`}
@@ -162,7 +195,7 @@ export function FeedExperience({
             {tab.label}
           </Link>
         ))}
-      </div>
+      </nav>
       <FeedComposer account={account} onCreate={create} />
       {loading && posts.length === 0 ? (
         <div className="text-muted-foreground grid place-items-center py-16">
@@ -187,28 +220,41 @@ export function FeedExperience({
           </p>
         </section>
       ) : (
-        posts.map((post) => (
-          <PostCard
-            key={post.id}
-            initialPost={post}
-            viewer={account}
-            onDelete={(postId, restore) =>
-              setPosts((current) =>
-                restore
-                  ? current.some((item) => item.id === postId)
-                    ? current
-                    : [restore, ...current]
-                  : current.filter((item) => item.id !== postId),
-              )
-            }
-            onBookmarkRemoved={(postId) => {
-              if (view === "saved")
+        posts.map((post) =>
+          post.id.startsWith("pending-") ? (
+            <article
+              key={post.id}
+              aria-busy="true"
+              className="surface-card p-5"
+            >
+              <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+              <p role="status" className="text-muted-foreground mt-2 text-xs">
+                Publishing post...
+              </p>
+            </article>
+          ) : (
+            <PostCard
+              key={post.id}
+              initialPost={post}
+              viewer={account}
+              onDelete={(postId, restore) =>
                 setPosts((current) =>
-                  current.filter((item) => item.id !== postId),
-                );
-            }}
-          />
-        ))
+                  restore
+                    ? current.some((item) => item.id === postId)
+                      ? current
+                      : [restore, ...current]
+                    : current.filter((item) => item.id !== postId),
+                )
+              }
+              onBookmarkRemoved={(postId) => {
+                if (view === "saved")
+                  setPosts((current) =>
+                    current.filter((item) => item.id !== postId),
+                  );
+              }}
+            />
+          ),
+        )
       )}
       {nextCursor && (
         <button

@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "@/lib/auth/request";
 import { getRouteAccount } from "@/lib/auth/route-account";
 import { feedErrorResponse } from "@/lib/feed/route-response";
-import { createPost, getFeedPage } from "@/lib/feed/server";
+import { createPost, getFeedPage, getPost } from "@/lib/feed/server";
 import { createPostSchema, feedQuerySchema } from "@/schemas/feed";
 
 export async function GET(request: NextRequest) {
@@ -55,7 +55,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const postId = await createPost(account.uid, parsed.data);
-    return NextResponse.json({ postId }, { status: 201 });
+    // Creation remains successful even if the optional follow-up read fails.
+    const post = await getPost(account.uid, postId).catch(() => null);
+    return NextResponse.json({ postId, post }, { status: 201 });
   } catch (error) {
     const response = feedErrorResponse(error);
     if (response) return response;
