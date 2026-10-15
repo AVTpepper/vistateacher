@@ -54,6 +54,15 @@ describe("resolveEffectivePlan", () => {
     expect(resolveEffectivePlan(record, now)).toBe("free");
   });
 
+  it("does not grant trial access without an activated trial", () => {
+    expect(
+      resolveEffectivePlan(
+        subscription({ trialEndsAt: new Date("2026-08-15T12:00:00Z") }),
+        now,
+      ),
+    ).toBe("free");
+  });
+
   it("keeps Plus while Stripe retries a past-due subscription", () => {
     const record = subscription({
       plan: "plus",

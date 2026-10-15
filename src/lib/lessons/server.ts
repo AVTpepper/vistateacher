@@ -66,6 +66,7 @@ export interface LessonQuotaUsage {
 export interface LessonWorkspace {
   plan: "free" | "plus";
   usage: {
+    resetsAt: string;
     used: number;
     limit: number;
     remaining: number;
@@ -319,6 +320,9 @@ export async function getLessonWorkspace(
   return {
     plan,
     usage: {
+      resetsAt: new Date(
+        Date.UTC(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 1),
+      ).toISOString(),
       used,
       limit: entitlements.aiLessonsPerMonth,
       remaining: Math.max(0, entitlements.aiLessonsPerMonth - used),

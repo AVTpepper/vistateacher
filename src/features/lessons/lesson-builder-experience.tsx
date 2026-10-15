@@ -1291,12 +1291,24 @@ export function LessonBuilderExperience({
                 className="bg-muted rounded-lg px-3 py-2"
               >
                 <strong>{String(label)}</strong>{" "}
-                {(usage as typeof workspace.usage.creations).used}/
-                {(usage as typeof workspace.usage.creations).limit ??
-                  "Unlimited"}
+                {(usage as typeof workspace.usage.creations).limit === null
+                  ? "Unlimited"
+                  : `${Math.max(0, (usage as typeof workspace.usage.creations).limit! - (usage as typeof workspace.usage.creations).used)} of ${(usage as typeof workspace.usage.creations).limit} remaining`}
               </span>
             ))}
           </div>
+          <p className="text-muted-foreground mt-2 text-xs leading-5">
+            Monthly allowances reset{" "}
+            {new Intl.DateTimeFormat("en", {
+              month: "short",
+              day: "numeric",
+              timeZone: "UTC",
+            }).format(new Date(workspace.usage.resetsAt))}{" "}
+            at 00:00 UTC.
+            {workspace.plan === "plus"
+              ? " New lessons and refinements share your AI allowance."
+              : " Manual editing doesn't use AI generations."}
+          </p>
         </div>
       </header>
 

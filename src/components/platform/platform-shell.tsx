@@ -26,8 +26,9 @@ import { NotificationMenu } from "@/features/notifications/notification-menu";
 import { PresenceHeartbeat } from "@/features/presence/presence-heartbeat";
 import { GlobalSearch } from "@/features/search/global-search";
 import { refreshFirebaseClientAuth } from "@/lib/firebase/client-auth";
+import { resolveEffectivePlan } from "@/lib/entitlements/plan-entitlements";
 import { cn } from "@/lib/utils";
-import type { Plan } from "@/types/models";
+import type { Plan, SubscriptionStatus } from "@/types/models";
 import type { UserRole } from "@/types/models";
 
 const primaryNavigation = [
@@ -116,13 +117,13 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             const periodEnd = data?.currentPeriodEnd?.toDate?.() as
               Date | undefined;
             const trialEnd = data?.trialEndsAt?.toDate?.() as Date | undefined;
-            const hasTrial = Boolean(trialEnd && trialEnd > new Date());
-            const hasPaidAccess =
-              data?.plan === "plus" &&
-              (["active", "trialing"].includes(status)
-                ? !periodEnd || periodEnd > new Date()
-                : status === "past_due");
-            const nextPlan: Plan = hasTrial || hasPaidAccess ? "plus" : "free";
+            const nextPlan = resolveEffectivePlan({
+              plan: data?.plan === "plus" ? "plus" : "free",
+              status: status as SubscriptionStatus,
+              currentPeriodEnd: periodEnd ?? null,
+              trialConsumed: data?.trialConsumed === true,
+              trialEndsAt: trialEnd ?? null,
+            });
             setDisplayedPlan(nextPlan);
 
             const endLabel = periodEnd

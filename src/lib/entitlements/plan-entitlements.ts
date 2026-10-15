@@ -35,6 +35,11 @@ export const PLAN_ENTITLEMENTS = {
 
 export type PlanEntitlements = (typeof PLAN_ENTITLEMENTS)[Plan];
 
+export type PlanAccessState = Pick<
+  SubscriptionRecord,
+  "plan" | "status" | "currentPeriodEnd" | "trialConsumed" | "trialEndsAt"
+>;
+
 const ENTITLED_SUBSCRIPTION_STATUSES = new Set([
   "active",
   "trialing",
@@ -42,7 +47,7 @@ const ENTITLED_SUBSCRIPTION_STATUSES = new Set([
 ]);
 
 export function resolveEffectivePlan(
-  subscription: SubscriptionRecord | null,
+  subscription: PlanAccessState | null,
   now = new Date(),
 ): Plan {
   if (!subscription) return "free";
