@@ -423,13 +423,18 @@ test("keeps desktop platform navigation complete and within the viewport", async
     "Forum",
     "AI Lesson Builder",
     "Messages",
-    "Saved",
   ]) {
     await expect(navigation.getByRole("link", { name: label })).toBeVisible();
   }
 
   await page.getByRole("button", { name: "Open profile menu" }).click();
   const profileNavigation = page.getByLabel("Profile navigation");
+  await expect(
+    profileNavigation.getByRole("menuitem", { name: "Saved posts" }),
+  ).toHaveAttribute("href", "/app?view=saved");
+  await expect(
+    profileNavigation.getByRole("menuitem", { name: "My Resources" }),
+  ).toHaveAttribute("href", "/resources?view=mine");
   await expect(
     profileNavigation.getByRole("menuitem", { name: "Settings", exact: true }),
   ).toBeVisible();
