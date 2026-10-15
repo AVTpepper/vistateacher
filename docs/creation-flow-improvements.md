@@ -14,12 +14,12 @@ Binary resource files are not stored in recovery copies; after a refresh, select
 
 The post-create response adds an optional `post` alongside the existing `postId`. Failure to read the optional confirmed post does not turn a successful creation into an error. The feed replaces the pending item without refetching or discarding loaded pages, and deduplicates overlapping pagination results.
 
-Onboarding requires name, professional role, education stage, subjects, and a taught language when Languages is selected. Location, organization, bio, and experience are deferred. Country and city can remain empty when editing the profile. Existing profiles need no migration.
+Onboarding requires name, professional role, education stage, subjects, and a taught language when Languages is selected. Location, organization, bio, and experience are deferred. Country and city can remain empty when editing the profile. Deferred experience is stored as `null` and displayed as ?Not added?; existing numeric values remain valid. Existing profiles need no migration.
 
 Plan prices and allowances are unchanged. Plus AI creations and refinements share a 50-generation monthly pool. Monthly lesson allowances reset at 00:00 UTC on the first day of the next calendar month, independently of subscription renewal.
 
 ## Verification
 
-`tests/e2e/consistent-creation.spec.ts` creates isolated accounts in the demo Firebase emulators. It covers desktop and phone layouts, keyboard and accessibility checks, failed requests, refresh recovery, short onboarding, owned-resource navigation, Community limits, the final shared Plus generation, and the connection cap.
+`tests/e2e/consistent-creation.spec.ts` creates isolated accounts in the demo Firebase emulators. It covers desktop and phone layouts, keyboard and accessibility checks, failed requests, refresh recovery, short onboarding, owned-resource navigation, Community limits, the final shared Plus generation, the daily message cap, and the connection cap.
 
 Unit coverage verifies draft account separation, storage failures, incomplete input recovery, accessible authentication errors, retained feed pages/cursors, overlapping Saved results, and onboarding destination/plan intent. The broader existing suite also exercises attachment uploads, dialogs, billing, feed interactions, and rules.
