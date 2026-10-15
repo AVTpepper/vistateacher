@@ -3,7 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import type { z } from "zod";
 
@@ -34,34 +33,12 @@ export function OnboardingForm({
   returnTo?: string | null;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2>(1);
-  async function nextStep() {
-    if (
-      await form.trigger(
-        [
-          "professionalRoles",
-          "displayName",
-          "gradeLevel",
-          "country",
-          "city",
-          "school",
-          "yearsOfExperience",
-        ],
-        { shouldFocus: true },
-      )
-    ) {
-      setStep(2);
-      requestAnimationFrame(() =>
-        document.getElementById("teaching-interests")?.focus(),
-      );
-    }
-  }
   const form = useForm<OnboardingInput, unknown, OnboardingValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       displayName,
       professionalRoles: [],
-      gradeLevel: "Primary / Elementary School",
+      gradeLevel: undefined,
       subjects: [],
       languages: [],
       country: "",
@@ -149,25 +126,9 @@ export function OnboardingForm({
   }
 
   return (
-    <form
-      className="space-y-9"
-      onSubmit={(event) => {
-        if (step === 1) {
-          event.preventDefault();
-          void nextStep();
-        } else void form.handleSubmit(submit)(event);
-      }}
-      noValidate
-    >
-      <section
-        hidden={step !== 1}
-        aria-labelledby="professional-details"
-        className="space-y-5"
-      >
+    <form className="space-y-9" onSubmit={form.handleSubmit(submit)} noValidate>
+      <section aria-labelledby="professional-details" className="space-y-5">
         <div>
-          <p className="text-primary font-mono text-xs font-bold uppercase">
-            Step 1 of 2
-          </p>
           <h2
             tabIndex={-1}
             id="professional-details"
@@ -217,6 +178,9 @@ export function OnboardingForm({
               className="border-accent bg-input/60 h-11 w-full rounded-md border px-3 text-sm"
               {...form.register("gradeLevel")}
             >
+              <option value="" disabled>
+                Choose your education stage
+              </option>
               {educationStages.map(({ value, label, guidance }) => (
                 <option key={value} value={value}>
                   {label} ({guidance})
@@ -224,64 +188,11 @@ export function OnboardingForm({
               ))}
             </select>
           </Field>
-          <Field
-            label="Country"
-            id="country"
-            error={form.formState.errors.country?.message}
-          >
-            <Input
-              id="country"
-              autoComplete="country-name"
-              {...form.register("country")}
-            />
-          </Field>
-          <Field
-            label="City"
-            id="city"
-            error={form.formState.errors.city?.message}
-          >
-            <Input
-              id="city"
-              autoComplete="address-level2"
-              {...form.register("city")}
-            />
-          </Field>
-          <Field
-            label="School or organization"
-            id="school"
-            error={form.formState.errors.school?.message}
-          >
-            <Input
-              id="school"
-              autoComplete="organization"
-              {...form.register("school")}
-            />
-          </Field>
-          <Field
-            label="Years of experience"
-            id="yearsOfExperience"
-            error={form.formState.errors.yearsOfExperience?.message}
-          >
-            <Input
-              id="yearsOfExperience"
-              type="number"
-              min={0}
-              max={60}
-              {...form.register("yearsOfExperience", { valueAsNumber: true })}
-            />
-          </Field>
         </div>
       </section>
 
-      <section
-        hidden={step !== 2}
-        aria-labelledby="teaching-interests"
-        className="space-y-5"
-      >
+      <section aria-labelledby="teaching-interests" className="space-y-5">
         <div>
-          <p className="text-accent-readable font-mono text-xs font-bold uppercase">
-            Step 2 of 2
-          </p>
           <h2
             tabIndex={-1}
             id="teaching-interests"
@@ -328,19 +239,6 @@ export function OnboardingForm({
             })}
           </ChoiceFieldset>
         )}
-        <Field
-          label="Short professional bio"
-          id="bio"
-          error={form.formState.errors.bio?.message}
-        >
-          <textarea
-            id="bio"
-            rows={4}
-            className="border-accent bg-input/60 w-full resize-y rounded-md border px-3 py-3 text-sm"
-            placeholder="Share your teaching focus and what you hope to exchange with other educators."
-            {...form.register("bio")}
-          />
-        </Field>
       </section>
 
       {form.formState.errors.root?.message && (
@@ -348,22 +246,11 @@ export function OnboardingForm({
           {form.formState.errors.root.message}
         </p>
       )}
+      <p className="text-muted-foreground text-sm leading-6">
+        That's all you need to get started. Add your location, organization,
+        experience, and bio later in profile settings.
+      </p>
       <div className="form-actions">
-        {step === 2 && (
-          <Button
-            type="button"
-            variant="outline"
-            disabled={form.formState.isSubmitting}
-            onClick={() => {
-              setStep(1);
-              requestAnimationFrame(() =>
-                document.getElementById("professional-details")?.focus(),
-              );
-            }}
-          >
-            Back
-          </Button>
-        )}
         <Button
           className="w-full sm:w-auto"
           size="lg"
@@ -375,7 +262,7 @@ export function OnboardingForm({
           ) : (
             <ArrowRight aria-hidden="true" />
           )}
-          {step === 1 ? "Next: subjects and expertise" : "Complete profile"}
+          Get started
         </Button>
       </div>
     </form>

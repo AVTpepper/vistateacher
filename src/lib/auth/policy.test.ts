@@ -54,6 +54,18 @@ describe("onboarding schema", () => {
     expect(onboardingSchema.parse(validInput)).toEqual(validInput);
   });
 
+  it("allows educators to defer optional profile details", () => {
+    const parsed = onboardingSchema.parse({
+      displayName: validInput.displayName,
+      professionalRoles: validInput.professionalRoles,
+      gradeLevel: validInput.gradeLevel,
+      subjects: ["Science"],
+    });
+    expect(parsed.country).toBe("");
+    expect(parsed.city).toBe("");
+    expect(parsed.bio).toBe("");
+  });
+
   it("rejects missing subjects and unrealistic experience", () => {
     expect(
       onboardingSchema.safeParse({

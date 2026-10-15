@@ -32,13 +32,19 @@ export const onboardingSchema = z
   .object({
     displayName: z.string().trim().min(2).max(80),
     professionalRoles: z.array(z.enum(professionalRoles)).min(1).max(4),
-    gradeLevel: z.enum(educationStageValues),
+    gradeLevel: z.enum(educationStageValues, {
+      error: "Choose your education stage.",
+    }),
     subjects: z.array(z.enum(subjectAreas)).min(1).max(6),
     languages: z.array(z.enum(taughtLanguages)).max(8).default([]),
-    country: z.string().trim().min(2).max(80),
-    city: z.string().trim().min(2).max(80),
+    country: z
+      .union([z.literal(""), z.string().trim().min(2).max(80)])
+      .default(""),
+    city: z
+      .union([z.literal(""), z.string().trim().min(2).max(80)])
+      .default(""),
     school: z.string().trim().max(120).default(""),
-    yearsOfExperience: z.number().int().min(0).max(60),
+    yearsOfExperience: z.number().int().min(0).max(60).default(0),
     bio: z.string().trim().max(500).default(""),
     interests: z.array(z.string().trim().min(2).max(40)).max(8).default([]),
   })

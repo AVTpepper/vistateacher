@@ -181,10 +181,12 @@ export function ProfileView({
                   {profile.school}
                 </span>
               )}
-              <span className="flex items-center gap-1.5">
-                <MapPin aria-hidden="true" className="size-3" />
-                {location}
-              </span>
+              {location && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin aria-hidden="true" className="size-3" />
+                  {location}
+                </span>
+              )}
               <span className="flex items-center gap-1.5">
                 <Calendar aria-hidden="true" className="size-3" />
                 Joined {data.joinedLabel}

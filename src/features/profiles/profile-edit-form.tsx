@@ -262,10 +262,14 @@ export function ProfileEditForm({
             placeholder="your-school.org"
           />
         </Field>
-        <Field label="City" id="city" error={fieldErrors.city}>
+        <Field label="City (optional)" id="city" error={fieldErrors.city}>
           <Input id="city" name="city" defaultValue={initial.city} required />
         </Field>
-        <Field label="Country" id="country" error={fieldErrors.country}>
+        <Field
+          label="Country (optional)"
+          id="country"
+          error={fieldErrors.country}
+        >
           <Input
             id="country"
             name="country"

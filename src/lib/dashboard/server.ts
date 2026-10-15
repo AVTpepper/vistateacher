@@ -50,6 +50,7 @@ export interface DashboardActionItem {
     | "lesson-draft"
     | "notification"
     | "resource-tip"
+    | "profile-tip"
     | "billing";
 }
 
@@ -439,6 +440,21 @@ export async function getDashboardData(
     topResources: ownedResources
       .sort((left, right) => right.downloadCount - left.downloadCount)
       .slice(0, 4),
-    actionItems: billingAction ? [billingAction, ...actionItems] : actionItems,
+    actionItems: [
+      ...(billingAction ? [billingAction] : []),
+      ...(!profile.bio
+        ? [
+            {
+              id: "profile_completion",
+              kind: "profile-tip" as const,
+              title: "Make your profile your own",
+              detail:
+                "Add a bio, location, and teaching experience whenever you're ready.",
+              href: "/settings/profile",
+            },
+          ]
+        : []),
+      ...actionItems,
+    ],
   };
 }
