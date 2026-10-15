@@ -43,7 +43,7 @@ export default async function PricingPage({
     <ContentPage
       eyebrow="Simple plans"
       title="Begin with community. Add Plus for deeper tools."
-      intro="Core professional participation is included with Community access. Plus expands limits and unlocks planning, export, and analytics tools."
+      intro="Community includes professional networking, AI lesson planning, and PDF and DOCX exports. Plus expands your allowances and adds full analytics and Plus resources."
     >
       <div
         className="bg-muted mx-auto mb-8 grid max-w-sm grid-cols-2 gap-1 rounded-lg p-1"

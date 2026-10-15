@@ -1,5 +1,6 @@
 "use client";
 import { PLUS_PRICING, plusPriceLabel } from "@/lib/billing/pricing";
+import { PLAN_COPY } from "@/lib/billing/plan-copy";
 
 import {
   EmbeddedCheckout,
@@ -126,8 +127,8 @@ export function EmbeddedCheckoutPanel({
         <div className="space-y-3 text-sm">
           {[
             "Unlimited connections and messages",
-            "50 AI generations each month",
-            "Unlimited lesson exports",
+            PLAN_COPY.plusGenerations,
+            PLAN_COPY.plusExports,
             "Full analytics and Plus resources",
           ].map((benefit) => (
             <p key={benefit} className="flex items-start gap-2">

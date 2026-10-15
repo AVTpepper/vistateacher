@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { adminDb } from "@/lib/firebase/admin";
+import { PLAN_COPY } from "@/lib/billing/plan-copy";
 
 const features = [
   {
@@ -515,7 +516,8 @@ export async function LandingPage() {
                   "Professional educator profile",
                   "Community discovery",
                   "Unlimited resource uploads and downloads",
-                  "1 AI lesson with 2 refinements",
+                  PLAN_COPY.communityLessons,
+                  PLAN_COPY.communityExports,
                 ]}
               />
               <Plan
@@ -525,7 +527,7 @@ export async function LandingPage() {
                 featured
                 features={[
                   "Expanded connections and messaging",
-                  "50 AI generations each month",
+                  PLAN_COPY.plusGenerations,
                   "Access to Plus resources",
                   "Unlimited exports and full analytics",
                 ]}

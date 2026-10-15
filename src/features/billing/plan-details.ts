@@ -1,4 +1,5 @@
 import { PLUS_PRICING, PLUS_YEARLY_SAVING } from "@/lib/billing/pricing";
+import { PLAN_COPY } from "@/lib/billing/plan-copy";
 export interface BillingPlanDetails {
   id: "free" | "plus";
   name: string;
@@ -17,11 +18,11 @@ export const billingPlans = [
     note: "No payment method required.",
     features: [
       "Educator profile",
-      "Up to 5 connections",
-      "10 messages per day",
+      PLAN_COPY.communityConnections,
+      PLAN_COPY.communityMessages,
       "Unlimited resource uploads and downloads",
-      "1 AI lesson with 2 refinements per month",
-      "2 PDF or DOCX lesson exports per month",
+      PLAN_COPY.communityLessons,
+      PLAN_COPY.communityExports,
     ],
   },
   {
@@ -29,11 +30,11 @@ export const billingPlans = [
     name: "Plus",
     price: PLUS_PRICING.month.label,
     priceSuffix: " / month",
-    note: `${PLUS_PRICING.year.label} when billed yearly (save ${PLUS_YEARLY_SAVING}).`,
+    note: `${PLUS_PRICING.year.label} when billed yearly (save $${PLUS_YEARLY_SAVING}).`,
     features: [
       "Unlimited connections and messages",
-      "50 AI generations per month",
-      "Unlimited PDF and DOCX lesson exports",
+      PLAN_COPY.plusGenerations,
+      PLAN_COPY.plusExports,
       "Full analytics and Plus resources",
     ],
   },

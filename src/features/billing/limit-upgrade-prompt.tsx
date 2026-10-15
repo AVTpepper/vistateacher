@@ -5,6 +5,7 @@ import { ArrowRight, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
+import { PLAN_COPY } from "@/lib/billing/plan-copy";
 
 export type UpgradePromptReason =
   | "connections"
@@ -31,17 +32,17 @@ export const UPGRADE_PROMPTS: Record<
   "ai-generations": {
     title: "Keep building with AI",
     reason: "You’ve used all Community AI generations for this month.",
-    benefit: "Plus includes 50 AI generations every month.",
+    benefit: `Plus includes ${PLAN_COPY.plusGenerations}.`,
   },
   "ai-lessons": {
     title: "Create another AI lesson",
     reason: "You’ve used your Community new-lesson allowance this month.",
-    benefit: "Plus includes up to 50 new AI lessons each month.",
+    benefit: `Plus includes ${PLAN_COPY.plusGenerations}.`,
   },
   "ai-refinements": {
     title: "Keep refining your lessons",
     reason: "You’ve used both Community AI refinements for this month.",
-    benefit: "Plus includes up to 50 AI refinements each month.",
+    benefit: `Plus includes ${PLAN_COPY.plusGenerations}.`,
   },
   "lesson-exports": {
     title: "Export more lesson plans",

@@ -60,7 +60,6 @@ const primaryNavigation = [
     icon: Sparkles,
     href: "/ai-lessons",
     group: "Teaching tools",
-    plus: true,
   },
 ] as const;
 
@@ -245,46 +244,39 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
         aria-label="Platform navigation"
         className="grid max-h-[calc(100dvh-5rem)] gap-1 overflow-y-auto"
       >
-        {primaryNavigation.map(
-          ({ label, icon: Icon, href, group, ...item }, index) => {
-            const active = isNavigationActive(href);
-            return (
-              <Fragment key={href}>
-                {(index === 0 ||
-                  primaryNavigation[index - 1].group !== group) && (
-                  <p className="mt-3 px-3 pb-1 text-xs font-bold tracking-wide text-white/80 uppercase">
-                    {group}
-                  </p>
+        {primaryNavigation.map(({ label, icon: Icon, href, group }, index) => {
+          const active = isNavigationActive(href);
+          return (
+            <Fragment key={href}>
+              {(index === 0 ||
+                primaryNavigation[index - 1].group !== group) && (
+                <p className="mt-3 px-3 pb-1 text-xs font-bold tracking-wide text-white/80 uppercase">
+                  {group}
+                </p>
+              )}
+              <Link
+                href={href}
+                aria-current={active ? "page" : undefined}
+                onClick={closeMobileMenu}
+                className={cn(
+                  "relative flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
+                  active
+                    ? "border-accent bg-accent/15 border-r-[3px] text-white"
+                    : "text-white/75 hover:bg-white/8 hover:text-white",
                 )}
-                <Link
-                  href={href}
-                  aria-current={active ? "page" : undefined}
-                  onClick={closeMobileMenu}
+              >
+                <Icon
+                  aria-hidden="true"
                   className={cn(
-                    "relative flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
-                    active
-                      ? "border-accent bg-accent/15 border-r-[3px] text-white"
-                      : "text-white/75 hover:bg-white/8 hover:text-white",
+                    "size-4.5 shrink-0",
+                    active && "text-sidebar-foreground",
                   )}
-                >
-                  <Icon
-                    aria-hidden="true"
-                    className={cn(
-                      "size-4.5 shrink-0",
-                      active && "text-sidebar-foreground",
-                    )}
-                  />
-                  <span className="min-w-0 flex-1 truncate">{label}</span>
-                  {"plus" in item && item.plus && (
-                    <span className="bg-accent/20 rounded px-1.5 py-0.5 text-[9px] font-bold text-[#ffc4bc]">
-                      Plus
-                    </span>
-                  )}
-                </Link>
-              </Fragment>
-            );
-          },
-        )}
+                />
+                <span className="min-w-0 flex-1 truncate">{label}</span>
+              </Link>
+            </Fragment>
+          );
+        })}
         {account.role === "platform_admin" && (
           <Link
             href="/admin"
@@ -539,7 +531,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
           className="border-sidebar-border hidden border-t lg:block"
         >
           <div className="mx-auto flex max-w-7xl items-center justify-center gap-1 overflow-x-auto px-6">
-            {primaryNavigation.map(({ label, href, group, ...item }, index) => {
+            {primaryNavigation.map(({ label, href, group }, index) => {
               const active = isNavigationActive(href);
               return (
                 <Link
@@ -559,11 +551,6 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                     <span className="sr-only">{group}: </span>
                   )}
                   {label}
-                  {"plus" in item && item.plus && (
-                    <span className="text-[9px] font-bold text-[#ffaaa2]">
-                      Plus
-                    </span>
-                  )}
                   {active && (
                     <span className="bg-accent absolute inset-x-3 bottom-0 h-0.5 rounded-t" />
                   )}
