@@ -3,7 +3,6 @@
 import {
   AlertTriangle,
   BookOpen,
-  Bookmark,
   Compass,
   Home,
   LayoutDashboard,
@@ -43,12 +42,6 @@ const primaryNavigation = [
   { label: "Network", icon: UsersRound, href: "/network", group: "Community" },
   { label: "Forum", icon: MessageSquare, href: "/forum", group: "Community" },
   { label: "Messages", icon: Mail, href: "/messages", group: "Community" },
-  {
-    label: "Saved",
-    icon: Bookmark,
-    href: "/app?view=saved",
-    group: "Community",
-  },
   {
     label: "Resources",
     icon: BookOpen,
@@ -299,6 +292,12 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
 
   return (
     <div className="platform-shell bg-background flex h-dvh min-h-0 flex-col overflow-hidden">
+      <a
+        href="#platform-main"
+        className="bg-card text-foreground sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-lg focus:px-4 focus:py-3"
+      >
+        Skip to content
+      </a>
       <PresenceHeartbeat />
       <div
         aria-hidden={!mobileOpen}
@@ -459,7 +458,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                 </DropdownMenu.Item>
                 <DropdownMenu.Item asChild>
                   <Link
-                    href="/resources"
+                    href="/resources?view=mine"
                     onClick={() => setUserMenuOpen(false)}
                     className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
                   >
@@ -473,6 +472,15 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
                     className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
                   >
                     Pricing &amp; Plans
+                  </Link>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item asChild>
+                  <Link
+                    href="/app?view=saved"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="hover:bg-muted flex min-h-11 items-center px-4 text-sm font-semibold"
+                  >
+                    Saved posts
                   </Link>
                 </DropdownMenu.Item>
                 {account.role === "platform_admin" && (
@@ -530,33 +538,41 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
           aria-label="Primary platform navigation"
           className="border-sidebar-border hidden border-t lg:block"
         >
-          <div className="mx-auto flex max-w-7xl items-center justify-center gap-1 overflow-x-auto px-6">
-            {primaryNavigation.map(({ label, href, group }, index) => {
-              const active = isNavigationActive(href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "relative flex min-h-12 shrink-0 items-center gap-1.5 px-3 text-sm font-semibold transition-colors",
-                    index > 0 &&
-                      primaryNavigation[index - 1].group !== group &&
-                      "border-sidebar-border ml-2 border-l pl-4",
-                    active ? "text-white" : "text-white/75 hover:text-white",
-                  )}
-                >
-                  {(index === 0 ||
-                    primaryNavigation[index - 1].group !== group) && (
-                    <span className="sr-only">{group}: </span>
-                  )}
-                  {label}
-                  {active && (
-                    <span className="bg-accent absolute inset-x-3 bottom-0 h-0.5 rounded-t" />
-                  )}
-                </Link>
-              );
-            })}
+          <div className="mx-auto flex max-w-7xl flex-wrap justify-center gap-x-6 gap-y-2 px-6 pt-2">
+            {(["Overview", "Community", "Teaching tools"] as const).map(
+              (group) => (
+                <div key={group} role="group" aria-label={group}>
+                  <p className="px-2 text-xs font-semibold text-white/70">
+                    {group}
+                  </p>
+                  <div className="flex flex-wrap">
+                    {primaryNavigation
+                      .filter((item) => item.group === group)
+                      .map(({ label, href }) => {
+                        const active = isNavigationActive(href);
+                        return (
+                          <Link
+                            key={href}
+                            href={href}
+                            aria-current={active ? "page" : undefined}
+                            className={cn(
+                              "relative flex min-h-11 items-center px-2 text-sm font-semibold transition-colors",
+                              active
+                                ? "text-white"
+                                : "text-white/75 hover:text-white",
+                            )}
+                          >
+                            {label}
+                            {active && (
+                              <span className="bg-accent absolute inset-x-2 bottom-0 h-0.5 rounded-t" />
+                            )}
+                          </Link>
+                        );
+                      })}
+                  </div>
+                </div>
+              ),
+            )}
           </div>
         </nav>
       </header>
@@ -585,7 +601,11 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             : "overflow-y-auto overscroll-y-none",
         )}
       >
-        <main className={cn("flex-1", immersiveMessages && "min-h-0")}>
+        <main
+          id="platform-main"
+          tabIndex={-1}
+          className={cn("flex-1", immersiveMessages && "min-h-0")}
+        >
           {children}
         </main>
         {!immersiveMessages && <PlatformFooter />}

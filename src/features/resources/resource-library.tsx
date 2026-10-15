@@ -39,9 +39,11 @@ const typeColor = {
 };
 
 export function ResourceLibrary({
+  mine = false,
   resources,
   incompleteResources,
 }: {
+  mine?: boolean;
   resources: ResourceSummary[];
   incompleteResources: IncompleteResource[];
 }) {
@@ -83,7 +85,9 @@ export function ResourceLibrary({
     <div className="mx-auto max-w-6xl">
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-serif text-3xl">Resources</h1>
+          <h1 className="font-serif text-3xl">
+            {mine ? "My Resources" : "Resources"}
+          </h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Teacher-made lesson plans, worksheets, activities, and more.
           </p>
@@ -95,6 +99,29 @@ export function ResourceLibrary({
           <Upload aria-hidden="true" className="size-4" /> Upload
         </Link>
       </header>
+      <nav
+        aria-label="Resource collections"
+        className="mb-5 flex flex-wrap gap-2"
+      >
+        {[
+          { href: "/resources", label: "All resources", active: !mine },
+          { href: "/resources?view=mine", label: "My resources", active: mine },
+        ].map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={item.active ? "page" : undefined}
+            className={cn(
+              "flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold",
+              item.active
+                ? "bg-primary text-primary-foreground"
+                : "bg-card text-foreground border",
+            )}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
       {incompleteResources.length > 0 && (
         <section
           className="surface-card mb-5 p-4"
