@@ -111,14 +111,12 @@ describe("feed continuity", () => {
   it("deduplicates overlapping pages without changing Saved ordering", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          response({
-            posts: [post("saved first"), post("saved second")],
-            nextCursor: null,
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        response({
+          posts: [post("saved first"), post("saved second")],
+          nextCursor: null,
+        }),
+      ),
     );
     render(
       <FeedExperience
