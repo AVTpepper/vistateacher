@@ -91,11 +91,10 @@ describe("entitlement limits", () => {
   it("uses the centralized free limits", () => {
     const entitlements = getUserEntitlements(null, now);
 
-    expect(entitlements.maxConnections).toBe(5);
+    expect(entitlements.maxConnections).toBeNull();
+    expect(entitlements.messagesPerDay).toBeNull();
     expect(entitlements.aiLessonsPerMonth).toBe(3);
-    expect(entitlements.aiLessonCreationsPerMonth).toBe(1);
-    expect(entitlements.aiRefinementsPerMonth).toBe(2);
-    expect(entitlements.lessonExportsPerMonth).toBe(2);
+    expect(entitlements.lessonExportsPerMonth).toBeNull();
     expect(entitlements.resourceUploadsPerMonth).toBeNull();
     expect(entitlements.resourceDownloadsPerMonth).toBeNull();
   });

@@ -33,11 +33,7 @@ import type { DashboardData, DashboardQuota } from "@/lib/dashboard/server";
 const QUOTA_UPGRADE_REASONS: Partial<
   Record<DashboardQuota["label"], UpgradePromptReason>
 > = {
-  Connections: "connections",
-  Messages: "messages",
-  "New AI lessons": "ai-lessons",
-  "AI refinements": "ai-refinements",
-  "Lesson exports": "lesson-exports",
+  "AI actions": "ai-generations",
 };
 
 function QuotaRow({ quota }: { quota: DashboardQuota }) {

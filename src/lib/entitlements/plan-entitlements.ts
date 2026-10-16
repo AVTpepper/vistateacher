@@ -2,14 +2,12 @@ import type { Plan, SubscriptionRecord } from "@/types/models";
 
 export const PLAN_ENTITLEMENTS = {
   free: {
-    maxConnections: 5,
-    messagesPerDay: 10,
+    maxConnections: null,
+    messagesPerDay: null,
     resourceUploadsPerMonth: null,
     resourceDownloadsPerMonth: null,
     aiLessonsPerMonth: 3,
-    aiLessonCreationsPerMonth: 1,
-    aiRefinementsPerMonth: 2,
-    lessonExportsPerMonth: 2,
+    lessonExportsPerMonth: null,
     fullAnalytics: false,
     plusResourceAccess: false,
     lessonPdfExport: true,
@@ -22,8 +20,6 @@ export const PLAN_ENTITLEMENTS = {
     resourceUploadsPerMonth: null,
     resourceDownloadsPerMonth: null,
     aiLessonsPerMonth: 50,
-    aiLessonCreationsPerMonth: 50,
-    aiRefinementsPerMonth: 50,
     lessonExportsPerMonth: null,
     fullAnalytics: true,
     plusResourceAccess: true,

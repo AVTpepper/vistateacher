@@ -70,8 +70,6 @@ export interface LessonWorkspace {
     used: number;
     limit: number;
     remaining: number;
-    creations: LessonQuotaUsage;
-    refinements: LessonQuotaUsage;
     exports: LessonQuotaUsage;
   };
   lessons: LessonSummary[];
@@ -83,9 +81,6 @@ export class LessonActionError extends Error {
       | "inactive"
       | "plus-required"
       | "limit-reached"
-      | "creation-limit-reached"
-      | "refinement-limit-reached"
-      | "export-limit-reached"
       | "rate-limited"
       | "not-found"
       | "not-owner"
@@ -326,14 +321,6 @@ export async function getLessonWorkspace(
       used,
       limit: entitlements.aiLessonsPerMonth,
       remaining: Math.max(0, entitlements.aiLessonsPerMonth - used),
-      creations: quota(
-        number(usage.data()?.aiLessonCreations),
-        entitlements.aiLessonCreationsPerMonth,
-      ),
-      refinements: quota(
-        number(usage.data()?.aiRefinements),
-        entitlements.aiRefinementsPerMonth,
-      ),
       exports: quota(
         number(usage.data()?.lessonExports),
         entitlements.lessonExportsPerMonth,
@@ -467,10 +454,6 @@ async function reserveGeneration(
     const used = number(usage.data()?.aiLessons);
     const creations = number(usage.data()?.aiLessonCreations);
     const refinements = number(usage.data()?.aiRefinements);
-    if (!lessonId && creations >= entitlements.aiLessonCreationsPerMonth)
-      throw new LessonActionError("creation-limit-reached");
-    if (lessonId && refinements >= entitlements.aiRefinementsPerMonth)
-      throw new LessonActionError("refinement-limit-reached");
     if (used >= entitlements.aiLessonsPerMonth)
       throw new LessonActionError("limit-reached");
     const lastGeneration = date(usage.data()?.lastAiLessonAt);
@@ -671,11 +654,8 @@ async function assertBatchCreationCapacity(uid: string, count: number) {
   );
   const entitlements = PLAN_ENTITLEMENTS[plan];
   const used = number(usage.data()?.aiLessons);
-  const creations = number(usage.data()?.aiLessonCreations);
   if (used + count > entitlements.aiLessonsPerMonth)
     throw new LessonActionError("limit-reached");
-  if (creations + count > entitlements.aiLessonCreationsPerMonth)
-    throw new LessonActionError("creation-limit-reached");
 }
 
 export async function createLessons(
@@ -878,80 +858,14 @@ export async function deleteLesson(
   await db.recursiveDelete(lessonRef);
 }
 
-export interface LessonExportReservation {
-  lesson: LessonDetail;
-  period: string;
-  counted: boolean;
-}
-
-export async function reserveLessonExport(
+export async function authorizeLessonExport(
   uid: string,
   lessonId: string,
-  options: { countUsage?: boolean } = {},
-): Promise<LessonExportReservation> {
-  const db = adminDb();
-  const now = new Date();
-  const period = monthKey(now);
-  const lesson = await getLesson(uid, lessonId);
-  const shouldCount = options.countUsage !== false;
-  const usageRef = db.doc(`usage/${uid}_${period}`);
-  const lessonRef = db.doc(`lessons/${lessonId}`);
-  let counted = false;
-
-  await db.runTransaction(async (transaction) => {
-    const [user, subscription, usage, currentLesson] = await transaction.getAll(
-      db.doc(`users/${uid}`),
-      db.doc(`subscriptions/${uid}`),
-      usageRef,
-      lessonRef,
-    );
-    if (user.data()?.status !== "active")
-      throw new LessonActionError("inactive");
-    if (!currentLesson.exists) throw new LessonActionError("not-found");
-    if (currentLesson.data()?.ownerId !== uid)
-      throw new LessonActionError("not-owner");
-    const plan = resolveEffectivePlan(
-      subscriptionRecord(subscription.data()),
-      now,
-    );
-    if (!shouldCount) return;
-    const limit = PLAN_ENTITLEMENTS[plan].lessonExportsPerMonth;
-    const used = number(usage.data()?.lessonExports);
-    if (limit !== null && used >= limit)
-      throw new LessonActionError("export-limit-reached");
-    if (limit !== null) {
-      counted = true;
-      transaction.set(
-        usageRef,
-        {
-          uid,
-          period,
-          lessonExports: used + 1,
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
-    }
-  });
-
-  return { lesson, period, counted };
-}
-
-export async function releaseLessonExport(
-  uid: string,
-  reservation: Pick<LessonExportReservation, "period" | "counted">,
-): Promise<void> {
-  if (!reservation.counted) return;
-  const usageRef = adminDb().doc(`usage/${uid}_${reservation.period}`);
-  await adminDb().runTransaction(async (transaction) => {
-    const usage = await transaction.get(usageRef);
-    transaction.set(
-      usageRef,
-      {
-        lessonExports: Math.max(0, number(usage.data()?.lessonExports) - 1),
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-  });
+): Promise<LessonDetail> {
+  const [user, lesson] = await Promise.all([
+    adminDb().doc(`users/${uid}`).get(),
+    getLesson(uid, lessonId),
+  ]);
+  if (user.data()?.status !== "active") throw new LessonActionError("inactive");
+  return lesson;
 }

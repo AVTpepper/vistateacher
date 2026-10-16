@@ -34,7 +34,6 @@ export async function GET(
       account.uid,
       routeParams.lessonId,
       format.data,
-      { countUsage: !preview },
     );
     return new NextResponse(Buffer.from(exported.bytes), {
       headers: {

@@ -353,7 +353,7 @@ export function LessonEditor({
           <FormField
             id={`${id}-feedback`}
             label="AI feedback for fresh regeneration"
-            hint="Regeneration uses one AI refinement from your monthly allowance."
+            hint="Regeneration uses one AI action from your shared monthly allowance."
           >
             <Textarea
               id={`${id}-feedback`}

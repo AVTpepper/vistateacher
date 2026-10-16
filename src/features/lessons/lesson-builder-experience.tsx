@@ -586,28 +586,6 @@ export function LessonBuilderExperience({
       ...usage,
       used: usage.used + count,
       remaining: Math.max(0, usage.remaining - count),
-      creations:
-        kind === "creation"
-          ? {
-              ...usage.creations,
-              used: usage.creations.used + count,
-              remaining:
-                usage.creations.remaining === null
-                  ? null
-                  : Math.max(0, usage.creations.remaining - count),
-            }
-          : usage.creations,
-      refinements:
-        kind === "refinement"
-          ? {
-              ...usage.refinements,
-              used: usage.refinements.used + count,
-              remaining:
-                usage.refinements.remaining === null
-                  ? null
-                  : Math.max(0, usage.refinements.remaining - count),
-            }
-          : usage.refinements,
     };
   }
 
@@ -617,9 +595,6 @@ export function LessonBuilderExperience({
     }
     const reasonByCode: Partial<Record<string, UpgradePromptReason>> = {
       "limit-reached": "ai-generations",
-      "creation-limit-reached": "ai-lessons",
-      "refinement-limit-reached": "ai-refinements",
-      "export-limit-reached": "lesson-exports",
       "plus-required": "ai-generations",
     };
     const reason = error.code ? reasonByCode[error.code] : null;
@@ -935,18 +910,8 @@ export function LessonBuilderExperience({
   const showGenerateErrors = attemptedGenerate && missingFields.length > 0;
   const requiredHelper = `Fill out ${formatMissingFields([...REQUIRED_GENERATE_FIELDS])} before generating.`;
   const exhaustedReasons: UpgradePromptReason[] =
-    workspace.plan === "free"
-      ? [
-          ...(workspace.usage.creations.remaining === 0
-            ? (["ai-lessons"] as const)
-            : []),
-          ...(workspace.usage.refinements.remaining === 0
-            ? (["ai-refinements"] as const)
-            : []),
-          ...(workspace.usage.exports.remaining === 0
-            ? (["lesson-exports"] as const)
-            : []),
-        ]
+    workspace.plan === "free" && workspace.usage.remaining === 0
+      ? ["ai-generations"]
       : [];
   return (
     <div className="mx-auto max-w-6xl">
@@ -964,33 +929,13 @@ export function LessonBuilderExperience({
         </div>
         <div className="w-full sm:w-auto">
           <div className="flex flex-wrap gap-2 text-xs">
-            {(workspace.plan === "plus"
-              ? [
-                  [
-                    "AI generations",
-                    {
-                      used: workspace.usage.used,
-                      limit: workspace.usage.limit,
-                    },
-                  ],
-                  ["Exports", workspace.usage.exports],
-                ]
-              : [
-                  ["New lessons", workspace.usage.creations],
-                  ["Refinements", workspace.usage.refinements],
-                  ["Exports", workspace.usage.exports],
-                ]
-            ).map(([label, usage]) => (
-              <span
-                key={String(label)}
-                className="bg-muted rounded-lg px-3 py-2"
-              >
-                <strong>{String(label)}</strong>{" "}
-                {(usage as typeof workspace.usage.creations).limit === null
-                  ? "Unlimited"
-                  : `${Math.max(0, (usage as typeof workspace.usage.creations).limit! - (usage as typeof workspace.usage.creations).used)} of ${(usage as typeof workspace.usage.creations).limit} remaining`}
-              </span>
-            ))}
+            <span className="bg-muted rounded-lg px-3 py-2">
+              <strong>AI actions</strong> {workspace.usage.remaining} of{" "}
+              {workspace.usage.limit} remaining
+            </span>
+            <span className="bg-muted rounded-lg px-3 py-2">
+              <strong>PDF / Word exports</strong> Unlimited
+            </span>
           </div>
           <p className="text-muted-foreground mt-2 text-xs leading-5">
             Monthly allowances reset{" "}
@@ -1000,9 +945,9 @@ export function LessonBuilderExperience({
               timeZone: "UTC",
             }).format(new Date(workspace.usage.resetsAt))}{" "}
             at 00:00 UTC.
-            {workspace.plan === "plus"
-              ? " New lessons and refinements share your AI allowance."
-              : " Manual editing doesn't use AI generations."}
+            {
+              " Each new lesson or AI refinement uses one action from the same allowance. Editing and exporting are free."
+            }
           </p>
         </div>
       </header>
@@ -1338,7 +1283,6 @@ export function LessonBuilderExperience({
                   disabled={
                     working ||
                     workspace.usage.remaining < lessonCount ||
-                    (workspace.usage.creations.remaining ?? 0) < lessonCount ||
                     source.topic.trim().length < 3
                   }
                   className="bg-accent text-accent-foreground flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold disabled:opacity-50"
@@ -1381,10 +1325,7 @@ export function LessonBuilderExperience({
               content={lesson.content}
               visibility={lesson.visibility}
               saving={working}
-              canRefine={
-                workspace.usage.remaining > 0 &&
-                workspace.usage.refinements.remaining !== 0
-              }
+              canRefine={workspace.usage.remaining > 0}
               onCancel={() => setEditing(false)}
               onSave={saveWithVisibility}
               onRefine={(feedback, referenceContent) =>
@@ -1406,10 +1347,7 @@ export function LessonBuilderExperience({
               onPreviewPdf={() => void previewPdf()}
               onExport={(format) => void exportLesson(format)}
               onPublish={() => void publishLesson()}
-              canRegenerate={
-                workspace.usage.remaining > 0 &&
-                workspace.usage.refinements.remaining !== 0
-              }
+              canRegenerate={workspace.usage.remaining > 0}
               canExport={workspace.usage.exports.remaining !== 0}
             />
           )}
