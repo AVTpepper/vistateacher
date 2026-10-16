@@ -65,7 +65,7 @@ export default async function PricingPage({
           </Link>
         ))}
       </div>
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 md:gap-y-0">
         {billingPlans.map((plan) => {
           const isCurrent = billing?.effectivePlan === plan.id;
           const displayedPrice =
@@ -79,8 +79,8 @@ export default async function PricingPage({
               key={plan.id}
               className={
                 plan.id === "plus"
-                  ? "surface-card-featured p-7"
-                  : "surface-card surface-card-interactive p-7"
+                  ? "surface-card-featured p-7 md:row-span-5 md:grid md:grid-rows-subgrid"
+                  : "surface-card surface-card-interactive p-7 md:row-span-5 md:grid md:grid-rows-subgrid"
               }
             >
               <h2 className="font-serif text-3xl tracking-tight">

@@ -507,7 +507,7 @@ export async function LandingPage() {
                 their place.
               </p>
             </div>
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-5 sm:grid-cols-2 sm:gap-y-0">
               <Plan
                 name="Community"
                 price="$0"
@@ -569,8 +569,8 @@ function Plan({
     <article
       className={
         featured
-          ? "surface-card-featured relative overflow-hidden p-8"
-          : "surface-card surface-card-interactive p-8"
+          ? "surface-card-featured relative overflow-hidden p-8 sm:row-span-5 sm:grid sm:grid-rows-subgrid"
+          : "surface-card surface-card-interactive p-8 sm:row-span-5 sm:grid sm:grid-rows-subgrid"
       }
     >
       {featured && (
