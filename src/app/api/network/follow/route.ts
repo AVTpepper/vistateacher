@@ -42,9 +42,9 @@ async function action(request: NextRequest, mode: "follow" | "unfollow") {
       self: ["You cannot follow yourself.", 400],
       "already-following": ["You already follow this educator.", 409],
       inactive: ["This connection is not available.", 409],
-      "limit-reached": [
-        "Your Community plan includes up to five connections.",
-        403,
+      "rate-limited": [
+        "You are sending connection requests too quickly. Please wait a minute and try again.",
+        429,
       ],
       "not-found": ["Educator not found.", 404],
     } as const;

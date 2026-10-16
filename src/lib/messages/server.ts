@@ -1,5 +1,7 @@
 import "server-only";
 
+import { MESSAGE_BURST_LIMIT, nextBurstUsage } from "@/lib/abuse/burst-policy";
+
 import {
   FieldPath,
   FieldValue,
@@ -71,11 +73,6 @@ export interface MessagePage {
   nextCursor: string | null;
 }
 
-export interface MessageQuota {
-  used: number;
-  limit: number | null;
-}
-
 export interface NotificationItem {
   id: string;
   type: string;
@@ -102,7 +99,7 @@ export class MessageActionError extends Error {
       | "not-member"
       | "self-message"
       | "blocked"
-      | "limit-reached"
+      | "rate-limited"
       | "invalid-cursor"
       | "invalid-attachment"
       | "not-owner"
@@ -140,36 +137,6 @@ function participant(uid: string, data: DocumentData | undefined) {
 
 function dayKey(now = new Date()): string {
   return now.toISOString().slice(0, 10);
-}
-
-function messageLimit(subscription: DocumentData | undefined, now: Date) {
-  const end = (value: unknown) =>
-    value instanceof Timestamp ? value.toDate() : null;
-  const paid =
-    subscription?.plan === "plus" &&
-    (subscription.status === "active" || subscription.status === "trialing") &&
-    (!end(subscription.currentPeriodEnd) ||
-      end(subscription.currentPeriodEnd)! > now);
-  const trial =
-    subscription?.trialConsumed === true &&
-    end(subscription.trialEndsAt) !== null &&
-    end(subscription.trialEndsAt)! > now;
-  return paid || trial ? null : 10;
-}
-
-export async function getMessageQuota(
-  uid: string,
-  now = new Date(),
-): Promise<MessageQuota> {
-  const db = adminDb();
-  const [usage, subscription] = await Promise.all([
-    db.doc(`usage/${uid}_${dayKey(now)}`).get(),
-    db.doc(`subscriptions/${uid}`).get(),
-  ]);
-  return {
-    used: number(usage.data()?.messages),
-    limit: messageLimit(subscription.data(), now),
-  };
 }
 
 function blockId(blockerUid: string, blockedUid: string): string {
@@ -386,29 +353,25 @@ async function writeMessage(
       throw new MessageActionError("not-member");
     const senderRef = db.doc(`users/${uid}`);
     const recipientRef = db.doc(`users/${recipientId}`);
-    const [
-      sender,
-      ,
-      outgoingBlock,
-      incomingBlock,
-      usage,
-      subscription,
-      reserved,
-    ] = await Promise.all([
-      requireActiveUser(transaction, senderRef),
-      requireActiveUser(transaction, recipientRef),
-      transaction.get(db.doc(`blocks/${blockId(uid, recipientId)}`)),
-      transaction.get(db.doc(`blocks/${blockId(recipientId, uid)}`)),
-      transaction.get(usageRef),
-      transaction.get(db.doc(`subscriptions/${uid}`)),
-      attachment ? transaction.get(attachment.ref) : Promise.resolve(null),
-    ]);
+    const [sender, , outgoingBlock, incomingBlock, usage, reserved] =
+      await Promise.all([
+        requireActiveUser(transaction, senderRef),
+        requireActiveUser(transaction, recipientRef),
+        transaction.get(db.doc(`blocks/${blockId(uid, recipientId)}`)),
+        transaction.get(db.doc(`blocks/${blockId(recipientId, uid)}`)),
+        transaction.get(usageRef),
+        attachment ? transaction.get(attachment.ref) : Promise.resolve(null),
+      ]);
     if (outgoingBlock.exists || incomingBlock.exists)
       throw new MessageActionError("blocked");
-    const limit = messageLimit(subscription.data(), now);
-    const used = number(usage.data()?.messages);
-    if (limit !== null && used >= limit)
-      throw new MessageActionError("limit-reached");
+    const burst = usage.data()?.messageBurst;
+    const nextBurst = nextBurstUsage(
+      burst?.startedAt instanceof Timestamp ? burst.startedAt.toDate() : null,
+      number(burst?.count),
+      MESSAGE_BURST_LIMIT,
+      now,
+    );
+    if (!nextBurst) throw new MessageActionError("rate-limited");
     if (attachment && reserved?.data()?.status !== "reserved")
       throw new MessageActionError("invalid-attachment");
     const attachmentData = attachment
@@ -458,6 +421,10 @@ async function writeMessage(
         uid,
         period: dayKey(now),
         messages: FieldValue.increment(1),
+        messageBurst: {
+          startedAt: Timestamp.fromDate(nextBurst.startedAt),
+          count: nextBurst.count,
+        },
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },

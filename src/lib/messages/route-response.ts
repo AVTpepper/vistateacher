@@ -16,9 +16,10 @@ export function messageErrorResponse(error: unknown) {
       status: 409,
       message: "Messaging is unavailable for this conversation.",
     },
-    "limit-reached": {
+    "rate-limited": {
       status: 429,
-      message: "Your daily message limit has been reached.",
+      message:
+        "You are sending messages too quickly. Please wait a minute and try again.",
     },
     "invalid-cursor": { status: 400, message: "Invalid pagination cursor." },
     "invalid-attachment": {

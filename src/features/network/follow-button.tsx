@@ -5,10 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-  LimitUpgradeDialog,
-  type UpgradePromptReason,
-} from "@/features/billing/limit-upgrade-prompt";
 import { cn } from "@/lib/utils";
 
 export function FollowButton({
@@ -28,8 +24,6 @@ export function FollowButton({
   const [status, setStatus] = useState(connectionStatus ?? "none");
   const [direction, setDirection] = useState(connectionDirection);
   const [pending, setPending] = useState(false);
-  const [upgradeReason, setUpgradeReason] =
-    useState<UpgradePromptReason | null>(null);
 
   async function handleConnect() {
     if (status === "pending" && direction === "incoming") {
@@ -94,10 +88,6 @@ export function FollowButton({
           error?: string;
           code?: string;
         } | null;
-        if (result?.code === "limit-reached") {
-          setUpgradeReason("connections");
-          return;
-        }
         toast.error(result?.error ?? "We couldn't update this connection.");
         return;
       }
@@ -154,12 +144,6 @@ export function FollowButton({
                 ? "Accept request"
                 : "Follow"}
       </button>
-      <LimitUpgradeDialog
-        reason={upgradeReason}
-        onOpenChange={(open) => {
-          if (!open) setUpgradeReason(null);
-        }}
-      />
     </>
   );
 }

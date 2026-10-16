@@ -2,17 +2,15 @@ import "server-only";
 
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
-import { resolveEffectivePlan } from "@/lib/entitlements/plan-entitlements";
+import {
+  CONNECTION_BURST_LIMIT,
+  nextBurstUsage,
+} from "@/lib/abuse/burst-policy";
 import { adminDb } from "@/lib/firebase/admin";
 import { matchesDiscoveryFilters } from "@/lib/network/discovery-policy";
 import { canFollow } from "@/lib/network/follow-policy";
 import { profileDocumentSchema, type ProfileDocument } from "@/schemas/profile";
 import type { DiscoveryFilters } from "@/schemas/network";
-import type {
-  Plan,
-  SubscriptionRecord,
-  SubscriptionStatus,
-} from "@/types/models";
 
 export interface EducatorDiscoveryResult {
   profile: ProfileDocument;
@@ -30,7 +28,7 @@ export interface ConnectionRelationship {
 export class NetworkActionError extends Error {
   constructor(
     public readonly code:
-      "self" | "already-following" | "inactive" | "limit-reached" | "not-found",
+      "self" | "already-following" | "inactive" | "rate-limited" | "not-found",
   ) {
     super(code);
   }
@@ -104,36 +102,6 @@ export async function getAcceptedConnectionUids(
       .filter(([, relationship]) => relationship.status === "accepted")
       .map(([otherUid]) => otherUid),
   );
-}
-
-function subscriptionRecord(
-  data: FirebaseFirestore.DocumentData | undefined,
-): SubscriptionRecord | null {
-  if (!data) return null;
-  const date = (value: unknown) =>
-    value instanceof Timestamp ? value.toDate() : null;
-  return {
-    plan: data.plan === "plus" ? "plus" : "free",
-    status: String(data.status ?? "free") as SubscriptionStatus,
-    stripeCustomerId:
-      typeof data.stripeCustomerId === "string" ? data.stripeCustomerId : null,
-    stripeSubscriptionId:
-      typeof data.stripeSubscriptionId === "string"
-        ? data.stripeSubscriptionId
-        : null,
-    stripePriceId:
-      typeof data.stripePriceId === "string" ? data.stripePriceId : null,
-    billingInterval:
-      data.billingInterval === "month" || data.billingInterval === "year"
-        ? data.billingInterval
-        : null,
-    currentPeriodEnd: date(data.currentPeriodEnd),
-    cancelAtPeriodEnd: data.cancelAtPeriodEnd === true,
-    trialStartedAt: date(data.trialStartedAt),
-    trialEndsAt: date(data.trialEndsAt),
-    trialConsumed: data.trialConsumed === true,
-    updatedAt: date(data.updatedAt) ?? new Date(0),
-  };
 }
 
 export async function discoverEducators(
@@ -296,39 +264,57 @@ export async function followEducator(
     const reverseFollowRef = db.doc(
       `follows/${getFollowId(followingUid, followerUid)}`,
     );
-    const subscriptionRef = db.doc(`subscriptions/${followerUid}`);
+    const burstNow = new Date();
+    const usageRef = db.doc(
+      `usage/${followerUid}_${burstNow.toISOString().slice(0, 10)}`,
+    );
     const [
       followerSnapshot,
       followingSnapshot,
       followSnapshot,
       reverseFollowSnapshot,
-      subscriptionSnapshot,
+      usageSnapshot,
     ] = await transaction.getAll(
       followerRef,
       followingRef,
       followRef,
       reverseFollowRef,
-      subscriptionRef,
+      usageRef,
     );
     if (!followerSnapshot.exists || !followingSnapshot.exists)
       throw new NetworkActionError("not-found");
 
     const follower = profileDocumentSchema.parse(followerSnapshot.data());
     const following = profileDocumentSchema.parse(followingSnapshot.data());
-    const plan: Plan = resolveEffectivePlan(
-      subscriptionRecord(subscriptionSnapshot.data()),
-    );
     const decision = canFollow({
       followerUid,
       followingUid,
       followerStatus: follower.status,
       followingStatus: following.status,
       alreadyFollowing: followSnapshot.exists || reverseFollowSnapshot.exists,
-      followingCount: follower.connectionCount,
-      plan,
     });
     if (!decision.allowed) throw new NetworkActionError(decision.reason);
 
+    const burst = usageSnapshot.data()?.connectionRequestBurst;
+    const nextBurst = nextBurstUsage(
+      burst?.startedAt instanceof Timestamp ? burst.startedAt.toDate() : null,
+      typeof burst?.count === "number" ? burst.count : 0,
+      CONNECTION_BURST_LIMIT,
+      burstNow,
+    );
+    if (!nextBurst) throw new NetworkActionError("rate-limited");
+    transaction.set(
+      usageRef,
+      {
+        uid: followerUid,
+        connectionRequestBurst: {
+          startedAt: Timestamp.fromDate(nextBurst.startedAt),
+          count: nextBurst.count,
+        },
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
     const now = FieldValue.serverTimestamp();
     transaction.create(followRef, {
       followerUid,

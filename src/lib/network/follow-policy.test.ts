@@ -8,26 +8,11 @@ const validInput = {
   followerStatus: "active" as const,
   followingStatus: "active" as const,
   alreadyFollowing: false,
-  followingCount: 4,
-  plan: "free" as const,
 };
 
 describe("follow policy", () => {
-  it("allows a Free member below the centralized limit", () => {
+  it("allows a Community member to connect", () => {
     expect(canFollow(validInput)).toEqual({ allowed: true });
-  });
-
-  it("stops a Free member at five connections", () => {
-    expect(canFollow({ ...validInput, followingCount: 5 })).toEqual({
-      allowed: false,
-      reason: "limit-reached",
-    });
-  });
-
-  it("keeps Plus connections unlimited", () => {
-    expect(
-      canFollow({ ...validInput, followingCount: 50_000, plan: "plus" }),
-    ).toEqual({ allowed: true });
   });
 
   it("rejects self-follow, duplicates, and inactive accounts", () => {
