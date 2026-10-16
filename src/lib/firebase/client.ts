@@ -48,11 +48,23 @@ export function getFirebaseClient(): FirebaseClientServices {
     typeof window !== "undefined" &&
     !emulatorsConnected
   ) {
-    connectAuthEmulator(services.auth, "http://127.0.0.1:9099", {
-      disableWarnings: true,
-    });
-    connectFirestoreEmulator(services.db, "127.0.0.1", 8080);
-    connectStorageEmulator(services.storage, "127.0.0.1", 9199);
+    connectAuthEmulator(
+      services.auth,
+      `http://127.0.0.1:${env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_PORT}`,
+      {
+        disableWarnings: true,
+      },
+    );
+    connectFirestoreEmulator(
+      services.db,
+      "127.0.0.1",
+      env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT,
+    );
+    connectStorageEmulator(
+      services.storage,
+      "127.0.0.1",
+      env.NEXT_PUBLIC_FIREBASE_STORAGE_EMULATOR_PORT,
+    );
     emulatorsConnected = true;
   }
 

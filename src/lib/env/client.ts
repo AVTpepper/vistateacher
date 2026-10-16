@@ -8,6 +8,24 @@ const clientEnvSchema = z.object({
   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: z.string().min(1),
   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: z.string().min(1),
   NEXT_PUBLIC_FIREBASE_APP_ID: z.string().min(1),
+  NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_PORT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(65535)
+    .default(9099),
+  NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(65535)
+    .default(8080),
+  NEXT_PUBLIC_FIREBASE_STORAGE_EMULATOR_PORT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(65535)
+    .default(9199),
   NEXT_PUBLIC_USE_FIREBASE_EMULATORS: z
     .enum(["true", "false"])
     .default("false")
@@ -32,6 +50,12 @@ export function getClientEnv(): ClientEnv {
       NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID:
         process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
       NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+      NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_PORT:
+        process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_PORT,
+      NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT:
+        process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT,
+      NEXT_PUBLIC_FIREBASE_STORAGE_EMULATOR_PORT:
+        process.env.NEXT_PUBLIC_FIREBASE_STORAGE_EMULATOR_PORT,
       NEXT_PUBLIC_USE_FIREBASE_EMULATORS:
         process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS,
     });
