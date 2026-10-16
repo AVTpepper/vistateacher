@@ -8,7 +8,6 @@ export function lessonErrorResponse(error: unknown): NextResponse | null {
   if (!(error instanceof LessonActionError)) return null;
   const responses = {
     inactive: ["Your account cannot perform this action.", 403],
-    "plus-required": ["AI lessons require a Plus membership.", 403],
     "limit-reached": ["You have used all AI generations for this month.", 429],
     "rate-limited": ["Wait a few seconds before generating again.", 429],
     "not-found": ["Lesson not found.", 404],

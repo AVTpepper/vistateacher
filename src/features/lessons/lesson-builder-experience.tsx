@@ -595,7 +595,6 @@ export function LessonBuilderExperience({
     }
     const reasonByCode: Partial<Record<string, UpgradePromptReason>> = {
       "limit-reached": "ai-generations",
-      "plus-required": "ai-generations",
     };
     const reason = error.code ? reasonByCode[error.code] : null;
     if (!reason) return false;

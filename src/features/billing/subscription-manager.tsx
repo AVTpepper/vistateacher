@@ -7,6 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { PLAN_ENTITLEMENTS } from "@/lib/entitlements/plan-entitlements";
 
 export function SubscriptionManager({
   canManageBilling,
@@ -125,10 +126,14 @@ export function SubscriptionManager({
                   . You will not be charged again unless you restore renewal.
                 </AlertDialog.Description>
                 <ul className="text-muted-foreground mt-4 space-y-2 text-sm leading-6">
-                  <li>Unlimited messaging and connections will end.</li>
                   <li>
-                    AI, export, analytics, and Plus resource limits will return
-                    to Community access.
+                    Connections, messaging, and standard exports stay free.
+                  </li>
+                  <li>
+                    When Plus ends, your AI allowance returns to{" "}
+                    {PLAN_ENTITLEMENTS.free.aiLessonsPerMonth} actions per
+                    month. Basic analytics remain available; Plus resources
+                    require Plus access.
                   </li>
                   <li>You can restore renewal before Plus ends.</li>
                 </ul>

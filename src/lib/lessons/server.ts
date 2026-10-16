@@ -79,7 +79,6 @@ export class LessonActionError extends Error {
   constructor(
     public readonly code:
       | "inactive"
-      | "plus-required"
       | "limit-reached"
       | "rate-limited"
       | "not-found"
