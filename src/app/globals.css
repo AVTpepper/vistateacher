@@ -1,5 +1,201 @@
 @import "tailwindcss";
 
+/* Progressive enhancement: content is readable before JS and without motion. */
+html:has(.marketing-flow) {
+  scroll-behavior: smooth;
+}
+
+.marketing-flow section[data-flow-visible="true"] {
+  animation: marketing-arrive 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes marketing-arrive {
+  from {
+    opacity: 0.78;
+    translate: 0 18px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+.story-carousel {
+  min-width: 0;
+}
+.story-track {
+  --story-width: 82%;
+  --story-gap: 1.25rem;
+  display: flex;
+  position: relative;
+  gap: var(--story-gap);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  padding-block: 0.75rem 1rem;
+  margin-block: -0.75rem 0;
+  border-radius: 1.5rem;
+}
+.story-slide {
+  flex: 0 0 var(--story-width);
+  min-width: 0;
+  scroll-snap-align: start;
+}
+.story-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 23rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border: 1px solid var(--border);
+  border-radius: 1.75rem;
+  background:
+    radial-gradient(
+      ellipse at top right,
+      color-mix(in srgb, var(--accent) 18%, transparent),
+      transparent 65%
+    ),
+    var(--card);
+  box-shadow: var(--shadow-sm);
+  transition:
+    box-shadow 240ms ease,
+    border-color 240ms ease;
+}
+.story-slide:nth-child(2n) .story-card {
+  background:
+    radial-gradient(
+      ellipse at top right,
+      color-mix(in srgb, var(--secondary) 65%, transparent),
+      transparent 75%
+    ),
+    var(--card);
+}
+.story-slide:nth-child(3n) .story-card {
+  background:
+    radial-gradient(
+      ellipse at top right,
+      color-mix(in srgb, var(--violet) 20%, transparent),
+      transparent 75%
+    ),
+    var(--card);
+}
+.story-slide[data-active="true"] .story-card {
+  border-color: var(--accent-readable);
+}
+.story-card:hover {
+  box-shadow: var(--shadow-md);
+}
+.story-icon {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 1.1rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  rotate: -6deg;
+  transition: rotate 240ms ease;
+}
+.story-slide[data-active="true"] .story-icon {
+  rotate: 4deg;
+}
+.story-number {
+  font-family: var(--font-serif, Georgia), serif;
+  font-size: 3.5rem;
+  line-height: 1;
+  color: var(--accent-readable);
+  opacity: 0.45;
+}
+.story-tag {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  background: var(--card);
+  color: var(--muted-foreground);
+}
+.story-arrow {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--primary);
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    scale 180ms ease;
+}
+.story-arrow:hover:not(:disabled) {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  scale: 1.06;
+}
+.story-arrow:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.story-dot {
+  display: grid;
+  place-items: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+  border-radius: 999px;
+}
+.story-dot span {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--border);
+  transition:
+    width 220ms ease,
+    background-color 220ms ease;
+}
+.story-dot[aria-current="true"] span {
+  width: 1.75rem;
+  background: var(--primary);
+}
+.story-arrow:focus-visible,
+.story-dot:focus-visible,
+.story-track:focus-visible,
+.flow-faq summary:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+}
+.flow-faq summary {
+  border-radius: 0.25rem;
+}
+.flow-faq summary::marker {
+  color: var(--accent-readable);
+}
+.flow-faq details[open] p {
+  animation: marketing-arrive 250ms ease-out;
+}
+
+@media (min-width: 768px) {
+  .story-track {
+    --story-width: 62%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .marketing-flow section[data-flow-visible="true"],
+  .flow-faq details[open] p {
+    animation: none;
+  }
+  .story-icon {
+    rotate: 0deg !important;
+  }
+  .story-arrow:hover:not(:disabled) {
+    scale: 1;
+  }
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
