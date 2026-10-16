@@ -31,7 +31,7 @@ test("renders the VistaTeacher marketing foundation", async ({ page }) => {
   await page.goto("/pricing");
   await expect(
     page.getByRole("heading", {
-      name: "Begin with community. Add Plus for deeper tools.",
+      name: "Connect for free. Add Plus for more AI planning.",
     }),
   ).toBeVisible();
   await expect(page.getByText("$9 / month", { exact: true })).toBeVisible();

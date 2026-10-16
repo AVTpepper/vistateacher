@@ -638,3 +638,29 @@ test("message burst rejection keeps the composer usable without an upgrade", asy
   await page.getByRole("button", { name: "Send message", exact: true }).click();
   await expect(composer).toHaveValue("");
 });
+
+test("cancellation explains retained Community access without changing renewal", async ({
+  page,
+}) => {
+  const user = await account("plus");
+  await signIn(page, user.email);
+  await page.goto("/settings/billing/manage");
+  await page
+    .getByRole("button", { name: "Cancel at period end", exact: true })
+    .click();
+  const dialog = page.getByRole("alertdialog", {
+    name: "Turn off Plus renewal?",
+  });
+  await expect(dialog).toContainText(
+    "Connections, messaging, and standard exports stay free.",
+  );
+  await expect(dialog).toContainText(
+    "AI allowance returns to 3 actions per month",
+  );
+  await dialog.getByRole("button", { name: "Keep Plus", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(
+    (await emulator().db.doc(`subscriptions/${user.uid}`).get()).data()
+      ?.cancelAtPeriodEnd,
+  ).toBe(false);
+});
