@@ -9,6 +9,7 @@ import {
   type BillingView,
 } from "@/features/billing/billing-controls";
 import { billingPlans } from "@/features/billing/plan-details";
+import { PLAN_ENTITLEMENTS } from "@/lib/entitlements/plan-entitlements";
 import { getCurrentAccount } from "@/lib/auth/session";
 import { planIntentHref } from "@/lib/billing/plan-intent";
 import { getBillingState } from "@/lib/billing/server";
@@ -42,8 +43,8 @@ export default async function PricingPage({
   return (
     <ContentPage
       eyebrow="Simple plans"
-      title="Begin with community. Add Plus for deeper tools."
-      intro="Community includes professional networking, AI lesson planning, and PDF and DOCX exports. Plus expands your allowances and adds full analytics and Plus resources."
+      title="Connect for free. Add Plus for more AI planning."
+      intro="Connections, messaging, community resource sharing, and standard lesson exports are free. Plus gives you more AI actions for lesson preparation, full analytics, and Plus resources."
     >
       <div
         className="bg-muted mx-auto mb-8 grid max-w-sm grid-cols-2 gap-1 rounded-lg p-1"
@@ -182,6 +183,41 @@ export default async function PricingPage({
         from account settings. Plus renews automatically at the selected
         interval until renewal is turned off.
       </p>
+      <section
+        className="mt-10 border-t pt-8"
+        aria-labelledby="plan-usage-heading"
+      >
+        <h2 id="plan-usage-heading" className="font-serif text-2xl">
+          How the allowances work
+        </h2>
+        <dl className="mt-5 grid gap-6 md:grid-cols-3">
+          <div>
+            <dt className="font-bold">One shared AI allowance</dt>
+            <dd className="text-muted-foreground mt-2 text-sm leading-6">
+              Creating a lesson or refining one with AI uses one action. Choose
+              any mix: {PLAN_ENTITLEMENTS.free.aiLessonsPerMonth} actions per
+              month with Community or {PLAN_ENTITLEMENTS.plus.aiLessonsPerMonth}{" "}
+              with Plus. Manual editing uses no actions.
+            </dd>
+          </div>
+          <div>
+            <dt className="font-bold">Resources and exports</dt>
+            <dd className="text-muted-foreground mt-2 text-sm leading-6">
+              Resources are files shared by members. Exports turn your lessons
+              into PDF or Word files. Standard exports are free, even when your
+              AI allowance is used up. Plus-only resources require Plus access.
+            </dd>
+          </div>
+          <div>
+            <dt className="font-bold">A network you can keep using</dt>
+            <dd className="text-muted-foreground mt-2 text-sm leading-6">
+              Connections and messages have no subscription quota. Short
+              anti-spam limits apply to every plan. AI allowances reset on the
+              first day of each month at 00:00 UTC.
+            </dd>
+          </div>
+        </dl>
+      </section>
       <section
         className="mt-12 border-t pt-10"
         aria-labelledby="billing-faq-heading"

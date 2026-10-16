@@ -7,47 +7,16 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { PLAN_COPY } from "@/lib/billing/plan-copy";
 
-export type UpgradePromptReason =
-  | "connections"
-  | "messages"
-  | "ai-generations"
-  | "ai-lessons"
-  | "ai-refinements"
-  | "lesson-exports";
+export type UpgradePromptReason = "ai-generations";
 
 export const UPGRADE_PROMPTS: Record<
   UpgradePromptReason,
   { title: string; reason: string; benefit: string }
 > = {
-  connections: {
-    title: "Grow your educator network",
-    reason: "You’ve reached the Community plan’s five-connection limit.",
-    benefit: "Plus unlocks unlimited connections with other educators.",
-  },
-  messages: {
-    title: "Keep the conversation going",
-    reason: "You’ve used the Community plan’s 10 messages for today.",
-    benefit: "Plus unlocks unlimited daily messaging.",
-  },
   "ai-generations": {
-    title: "Keep building with AI",
-    reason: "You’ve used all Community AI generations for this month.",
-    benefit: `Plus includes ${PLAN_COPY.plusGenerations}.`,
-  },
-  "ai-lessons": {
-    title: "Create another AI lesson",
-    reason: "You’ve used your Community new-lesson allowance this month.",
-    benefit: `Plus includes ${PLAN_COPY.plusGenerations}.`,
-  },
-  "ai-refinements": {
-    title: "Keep refining your lessons",
-    reason: "You’ve used both Community AI refinements for this month.",
-    benefit: `Plus includes ${PLAN_COPY.plusGenerations}.`,
-  },
-  "lesson-exports": {
-    title: "Export more lesson plans",
-    reason: "You’ve used both Community lesson exports for this month.",
-    benefit: "Plus unlocks unlimited lesson exports.",
+    title: "Keep preparing with AI",
+    reason: "You've used all Community AI actions for this month.",
+    benefit: `Plus includes ${PLAN_COPY.plusGenerations}. Your connections, messages, editing, and standard exports remain free.`,
   },
 };
 

@@ -1,13 +1,13 @@
 import { PLAN_ENTITLEMENTS } from "@/lib/entitlements/plan-entitlements";
 
-const community = PLAN_ENTITLEMENTS.free;
-const plus = PLAN_ENTITLEMENTS.plus;
-
 export const PLAN_COPY = {
-  communityConnections: `Up to ${community.maxConnections} connections`,
-  communityMessages: `${community.messagesPerDay} messages per day`,
-  communityLessons: `${community.aiLessonCreationsPerMonth} AI lesson with ${community.aiRefinementsPerMonth} refinements per month`,
-  communityExports: `${community.lessonExportsPerMonth} PDF or DOCX lesson exports per month`,
-  plusGenerations: `${plus.aiLessonsPerMonth} AI generations per month, shared between new lessons and refinements`,
-  plusExports: "Unlimited PDF and DOCX lesson exports",
+  communityConnections: "Unlimited connections",
+  communityMessages: "Unlimited messaging, with anti-spam protections",
+  communityLessons: `${PLAN_ENTITLEMENTS.free.aiLessonsPerMonth} AI actions per month for new lessons or refinements`,
+  communityExports: "Unlimited standard PDF and Word lesson exports",
+  plusGenerations: `${PLAN_ENTITLEMENTS.plus.aiLessonsPerMonth} AI actions per month for new lessons or refinements`,
+  communityPromise:
+    "Meet fellow educators, exchange resources, and share your expertise.",
+  plusPromise:
+    "More AI capacity for lesson preparation, plus full analytics and Plus resources.",
 } as const;

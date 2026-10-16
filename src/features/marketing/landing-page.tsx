@@ -23,7 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { adminDb } from "@/lib/firebase/admin";
-import { PLAN_COPY } from "@/lib/billing/plan-copy";
+import { billingPlans } from "@/features/billing/plan-details";
 
 const features = [
   {
@@ -511,26 +511,15 @@ export async function LandingPage() {
               <Plan
                 name="Community"
                 price="$0"
-                detail="For joining the educator community"
-                features={[
-                  "Professional educator profile",
-                  "Community discovery",
-                  "Unlimited resource uploads and downloads",
-                  PLAN_COPY.communityLessons,
-                  PLAN_COPY.communityExports,
-                ]}
+                detail="Connect, exchange resources, and share expertise"
+                features={billingPlans[0].features}
               />
               <Plan
                 name="Plus"
                 price="$9"
                 detail="Per month, or $79 yearly"
                 featured
-                features={[
-                  "Expanded connections and messaging",
-                  PLAN_COPY.plusGenerations,
-                  "Access to Plus resources",
-                  "Unlimited exports and full analytics",
-                ]}
+                features={billingPlans[1].features}
               />
             </div>
           </div>
@@ -573,7 +562,7 @@ function Plan({
   name: string;
   price: string;
   detail: string;
-  features: string[];
+  features: readonly string[];
   featured?: boolean;
 }) {
   return (
