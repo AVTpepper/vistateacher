@@ -201,3 +201,9 @@ The current Next.js process listens on all local interfaces. However, when `NEXT
 - Font build failures: allow build access to Google Fonts; `next/font` self-hosts the resulting assets.
 
 See [docs/manual-testing.md](docs/manual-testing.md), [docs/release.md](docs/release.md), [docs/architecture.md](docs/architecture.md), [docs/data-model.md](docs/data-model.md), [docs/security.md](docs/security.md), and [docs/build-plan.md](docs/build-plan.md).
+
+## Testing alongside another Firebase project
+
+Client emulator ports default to Auth 9099, Firestore 8080, and Storage 9199. If these are occupied, use a separate Firebase config with unused ports and set the matching `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_PORT`, `NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT`, and `NEXT_PUBLIC_FIREBASE_STORAGE_EMULATOR_PORT` before building the app. Set `FIREBASE_AUTH_EMULATOR_HOST`, `FIRESTORE_EMULATOR_HOST`, and `FIREBASE_STORAGE_EMULATOR_HOST` to those same localhost endpoints for server code and test fixtures. Keep `GCLOUD_PROJECT=demo-vista-teacher` and `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true`; do not reuse another project's emulator instance.
+
+See [network-first plans](docs/network-first-plans.md) for the current Free/Plus split and focused manual checks.

@@ -16,7 +16,7 @@ The post-create response adds an optional `post` alongside the existing `postId`
 
 Onboarding requires name, professional role, education stage, subjects, and a taught language when Languages is selected. Location, organization, bio, and experience are deferred. Country and city can remain empty when editing the profile. Deferred experience is stored as `null` and displayed as `Not added`; existing numeric values remain valid. Existing profiles need no migration.
 
-Plan prices and allowances are unchanged. Plus AI creations and refinements share a 50-generation monthly pool. Monthly lesson allowances reset at 00:00 UTC on the first day of the next calendar month, independently of subscription renewal.
+The subsequent [network-first plan update](network-first-plans.md) removes the connection, daily messaging, and standard export quotas. Community has 3 shared AI actions and Plus has 50; prices are unchanged. Monthly lesson allowances reset at 00:00 UTC on the first day of the next calendar month, independently of subscription renewal.
 
 ## Verification
 

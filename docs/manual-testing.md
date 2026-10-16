@@ -85,8 +85,8 @@ Test once at desktop width and once around 390 px mobile width.
 - [ ] Toggle contact privacy and verify another educator sees only permitted fields.
 - [ ] Search educators by name and apply subject, grade, location, and verification filters.
 - [ ] Follow and unfollow an educator; verify both profile counters update.
-- [ ] Verify the Community connection limit is enforced without changing counters incorrectly.
-- [ ] Complete both onboarding steps, move Back without losing selections, and verify role choices also appear in profile editing.
+- [ ] Verify Community can send requests beyond five accepted connections. Burst protection must show a temporary retry message, never an upgrade offer.
+- [ ] Complete compact onboarding, verify optional subject choices, and confirm role choices also appear in profile editing.
 - [ ] Change a password with current-password confirmation and verify a new login email remains pending until verified.
 - [ ] In an emulator or dedicated test account, request deletion after typing DELETE, retain the status receipt, verify removed identity/uploads and canceled renewal, and retry an interrupted job from the administrator deletion queue.
 
@@ -130,7 +130,7 @@ Test once at desktop width and once around 390 px mobile width.
 - [ ] Verify a non-participant cannot read the conversation or attachment.
 - [ ] Block an educator and confirm sending and starting conversations are denied both ways.
 - [ ] Report a message once and confirm duplicate reports are blocked.
-- [ ] Verify the Community daily send limit and unread counters.
+- [ ] Send more than ten messages in one day on Community. Verify unread counters and that burst protection recovers after sixty seconds on both plans.
 
 ## 10. Plus, AI Lessons, Dashboard, and Billing
 
@@ -138,10 +138,10 @@ Use `plus@vista.local` for Plus workflows. Automated/local AI uses `AI_PROVIDER=
 
 - [ ] Community dashboard shows summaries but not Plus trend series.
 - [ ] Plus dashboard shows trends, recommendations, usage, and subscription state.
-- [ ] Community educator cannot generate or export a Plus lesson.
+- [ ] Community can create and refine lessons using three shared AI actions. Neither plan may export another user's private lesson.
 - [ ] Plus educator creates, edits, regenerates, duplicates, and versions a lesson.
 - [ ] Export authorized lessons to PDF and DOCX.
-- [ ] Verify AI monthly quota and cooldown are enforced without consuming failed attempts.
+- [ ] Verify the shared monthly quota (3 Community / 50 Plus) and cooldown, with failed generations releasing quota. After exhaustion, manual edits, duplication, and repeated PDF/Word exports must still work.
 - [ ] Confirm a logged-out Plus choice preserves plan intent through registration, verification, onboarding, and sign-in before opening billing.
 - [ ] Confirm billing shows the Stripe test-mode notice when `STRIPE_MODE=TEST`.
 - [ ] Choose monthly and yearly Plus and confirm `/settings/billing/checkout` embeds the Stripe form inside VistaTeacher instead of navigating to `checkout.stripe.com`.

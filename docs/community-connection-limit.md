@@ -1,6 +1,6 @@
 # Evaluating the Community connection limit
 
-The Community allowance remains five connections. This change does not alter prices, quotas, or connection authorization.
+**Superseded by [network-first plans](network-first-plans.md).** The five-connection cap has been removed. The notes below record the earlier research proposal; no 5-versus-15 experiment was launched. Monitor reciprocal interactions, retention, reports, and paid conversion after rollout instead.
 
 ## Hypothesis
 

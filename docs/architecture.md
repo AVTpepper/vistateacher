@@ -37,11 +37,11 @@ New temporary Plus access enrollment is retired, and the former endpoint returns
 
 ## AI Lesson Flow
 
-The server verifies session/status, validates bounded source parameters, resolves plan allowances, and reserves monthly creation or refinement quota plus lesson generation state in one Admin transaction. Community receives one creation and two refinements per month; Plus retains fifty total generations. A trusted timestamp on the monthly usage record provides a cross-instance generation cooldown. The browser never receives an OpenAI credential.
+The server verifies session/status, validates bounded source parameters, resolves plan allowances, and reserves monthly creation or refinement quota plus lesson generation state in one Admin transaction. Community receives three AI actions per calendar month and Plus receives fifty. Creations and refinements share the same pool; the per-kind counters are analytics only. A trusted timestamp on the monthly usage record provides a cross-instance generation cooldown. The browser never receives an OpenAI credential.
 
 OpenAI Responses structured output uses the shared Zod lesson schema. One repair attempt is allowed. Successful generation atomically updates the current lesson and creates its immutable numbered version; failed generation removes the reservation or restores the previous ready version and reverses quota. Tests inject a deterministic server-only provider and never call OpenAI.
 
-Manual edits and duplication also create immutable versions transactionally. PDF and DOCX files are generated in memory by authenticated routes that re-check active status, ownership, and monthly export allowance; Community receives two exports per month and Plus is unlimited.
+Manual edits and duplication also create immutable versions transactionally. PDF and DOCX files are generated in memory by authenticated routes that re-check active status and ownership. Standard exports are unlimited for both plans and do not reserve monthly usage.
 
 ## Notifications and Analytics
 
@@ -55,7 +55,7 @@ All educators receive basic aggregate totals. Full follower, profile-view, resou
 
 Conversation IDs sort the two participant UIDs, guaranteeing one one-to-one thread per educator pair. The messages page server-renders a bounded conversation list and initial history; the authenticated Firebase client listens only to the selected participant-readable message collection for real-time delivery. Older history uses an opaque timestamp and document-ID cursor.
 
-Message sends run through Firebase Admin transactions. Each transaction verifies both active participants, both block directions, conversation membership, the effective subscription, and daily usage before creating the message, updating unread summary state, incrementing `usage/{uid}_{YYYY-MM-DD}.messages`, and creating the recipient notification. Community accounts stop at ten messages per UTC day; Plus accounts are unlimited.
+Message sends run through Firebase Admin transactions. Each transaction verifies both active participants, both block directions, conversation membership, and a persistent per-sender burst window before creating the message, updating unread summary state, incrementing `usage/{uid}_{YYYY-MM-DD}.messages`, and creating the recipient notification. There is no subscription-based daily message cap. Both plans allow twenty sends in a sixty-second window; rejection leaves message, notification, and unread state unchanged. Connection requests similarly allow ten requests per sixty-second window for every plan, without a cap on accepted connections.
 
 Attachments use a server reservation with generated paths and exact MIME/size metadata. Storage rules accept only the matching active owner upload. The send operation verifies object metadata before consuming the reservation, while failed sends cancel the object and reservation. Direct object reads are denied; participant-authorized downloads use the server route with attachment headers.
 
