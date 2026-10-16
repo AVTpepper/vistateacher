@@ -123,16 +123,16 @@ test("post drafts recover after failed publication and refresh", async ({
   page,
 }, testInfo) => {
   const user = await account();
+  const draftContent = `Keep this unfinished classroom idea ${user.uid}`;
+  const draftLink = `https://example.com/teaching-${user.uid}`;
   await signIn(page, user.email);
   await page.goto("/app");
   await page.getByRole("button", { name: /What's on your mind/ }).click();
   const editor = page.locator('textarea[name="post-content"]');
-  await editor.fill("Keep this unfinished classroom idea");
+  await editor.fill(draftContent);
   await page.getByRole("button", { name: "Question", exact: true }).click();
   await page.getByRole("button", { name: "Add web link" }).click();
-  await page
-    .getByLabel("Web link", { exact: true })
-    .fill("example.com/teaching");
+  await page.getByLabel("Web link", { exact: true }).fill(draftLink);
   await page.getByRole("button", { name: "Attach link" }).click();
   await page.route(
     "**/api/feed",
@@ -148,7 +148,7 @@ test("post drafts recover after failed publication and refresh", async ({
   await expect(
     page.getByText("Posting temporarily unavailable."),
   ).toBeVisible();
-  await expect(editor).toHaveValue("Keep this unfinished classroom idea");
+  await expect(editor).toHaveValue(draftContent);
   await page.reload();
   await expect(
     page
@@ -156,13 +156,11 @@ test("post drafts recover after failed publication and refresh", async ({
       .filter({ hasText: "unfinished draft was restored" }),
   ).toBeVisible();
   await page.getByRole("button", { name: /What's on your mind/ }).click();
-  await expect(editor).toHaveValue("Keep this unfinished classroom idea");
+  await expect(editor).toHaveValue(draftContent);
   await expect(
     page.getByRole("button", { name: "Question", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await expect(
-    page.getByText("https://example.com/teaching", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText(draftLink, { exact: true })).toBeVisible();
   await accessible(page);
   await page
     .locator("#platform-scroll-container")
@@ -176,9 +174,7 @@ test("post drafts recover after failed publication and refresh", async ({
     page.getByText("Post published.", { exact: true }),
   ).toBeVisible();
   await expect(
-    page
-      .getByRole("article")
-      .filter({ hasText: "Keep this unfinished classroom idea" }),
+    page.getByRole("article").filter({ hasText: draftContent }),
   ).toBeVisible();
   await page.reload();
   await expect(page.getByText(/unfinished draft was restored/)).toHaveCount(0);

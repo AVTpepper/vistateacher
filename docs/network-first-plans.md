@@ -38,3 +38,10 @@ Validate willingness to pay through repeat use, interviews, paid conversion, and
 - After AI exhaustion, edit, duplicate, publish, preview, and repeatedly export an owned lesson in PDF and Word. None should use AI actions.
 - Check that suspended users and non-owners cannot export. Verify blocks, unread counts, notifications, and Plus-resource access still behave correctly.
 - Check the shared allowance and next reset date on desktop and mobile. Existing usage should survive refresh, downgrade, and rollout.
+
+## Verification on 2026-10-16
+
+- 153 unit/component tests passed across 49 files; 44 emulator integration/rules tests passed.
+- The production browser suite covered 76 applicable cases, with 25 intentional project/viewport skips. The final full run passed 75 cases and exposed one draft-fixture collision between browsers. After making the draft text/link unique per account, that test passed on both desktop and mobile in a targeted two-case rerun. All 76 applicable cases therefore have passing evidence; the full suite was not repeated after this test-only fixture change.
+- ESLint, strict TypeScript, Prettier, and the optimized production build passed. Pricing was also visually inspected at 1440px and 390px, with no horizontal overflow.
+- Firebase tests used a separate demo emulator suite on ports 19099/18080/19199. AI was mocked; these checks do not measure live model quality or costs. No real Stripe payment was made.
