@@ -71,6 +71,7 @@ import {
   deleteLesson,
   duplicateLesson,
   getSharedLesson,
+  getLessonWorkspace,
   LessonActionError,
   regenerateLesson,
   updateLesson,
@@ -386,36 +387,50 @@ describe("Firestore rules", () => {
     });
   });
 
-  it("enforces the Community daily message limit inside the transaction", async () => {
-    await seedNetworkUser("sender");
-    await seedNetworkUser("recipient");
-    const conversationId = "recipient_sender";
-    await testEnv.withSecurityRulesDisabled(async (context) => {
-      await setDoc(
-        doc(
-          context.firestore(),
-          "usage",
-          "sender_" + new Date().toISOString().slice(0, 10),
-        ),
-        { uid: "sender", messages: 10 },
-      );
-      await setDoc(doc(context.firestore(), "conversations", conversationId), {
-        participantIds: ["recipient", "sender"],
-        unreadCounts: { recipient: 0, sender: 0 },
-        lastMessageAt: serverTimestamp(),
+  it.each(["free", "plus"])(
+    "keeps %s messaging free with transactional burst protection",
+    async (plan) => {
+      await seedNetworkUser("sender");
+      await seedNetworkUser("recipient");
+      const day = new Date().toISOString().slice(0, 10);
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "subscriptions", "sender"), {
+          plan,
+          status: "active",
+        });
+        await setDoc(doc(context.firestore(), "usage", `sender_${day}`), {
+          uid: "sender",
+          messages: 1000,
+          messageBurst: { startedAt: new Date(), count: 19 },
+        });
       });
-    });
-
-    await expect(
-      sendMessage("sender", {
-        conversationId,
-        content: "This message should exceed the daily limit.",
-        attachmentId: null,
-      }),
-    ).rejects.toMatchObject({
-      code: "limit-reached",
-    } satisfies Partial<MessageActionError>);
-  });
+      const result = await startConversation("sender", {
+        recipientId: "recipient",
+        content: "Conversations continue beyond ten daily messages.",
+      });
+      await expect(
+        sendMessage("sender", {
+          conversationId: result.conversationId,
+          content: "Too fast",
+          attachmentId: null,
+        }),
+      ).rejects.toMatchObject({ code: "rate-limited" });
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const usageRef = doc(context.firestore(), "usage", `sender_${day}`);
+        expect((await getDoc(usageRef)).data()?.messages).toBe(1001);
+        await updateDoc(usageRef, {
+          "messageBurst.startedAt": new Date(Date.now() - 61_000),
+        });
+      });
+      await expect(
+        sendMessage("sender", {
+          conversationId: result.conversationId,
+          content: "Ready to continue",
+          attachmentId: null,
+        }),
+      ).resolves.toBeDefined();
+    },
+  );
 
   it("enforces blocks and deterministic message reports", async () => {
     await seedNetworkUser("sender");
@@ -552,48 +567,62 @@ describe("Firestore rules", () => {
       teachingStyle: "inquiry" as const,
     };
     const communityLesson = await createLesson("free-teacher", source);
-    await expect(createLesson("free-teacher", source)).rejects.toMatchObject({
-      code: "creation-limit-reached",
-    } satisfies Partial<LessonActionError>);
-
-    for (let index = 0; index < 2; index += 1) {
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(
-          doc(
-            context.firestore(),
-            "usage",
-            `free-teacher_${new Date().toISOString().slice(0, 7)}`,
-          ),
-          { lastAiLessonAt: new Date(0) },
-          { merge: true },
-        );
-      });
-      await regenerateLesson("free-teacher", communityLesson.id);
-    }
+    // A second creation is allowed: creation and refinement use one shared pool.
     await testEnv.withSecurityRulesDisabled(async (context) => {
-      await setDoc(
+      await updateDoc(
         doc(
           context.firestore(),
           "usage",
           `free-teacher_${new Date().toISOString().slice(0, 7)}`,
         ),
         { lastAiLessonAt: new Date(0) },
-        { merge: true },
       );
+    });
+    await createLesson("free-teacher", source);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(
+        doc(
+          context.firestore(),
+          "usage",
+          `free-teacher_${new Date().toISOString().slice(0, 7)}`,
+        ),
+        { lastAiLessonAt: new Date(0) },
+      );
+    });
+    await regenerateLesson("free-teacher", communityLesson.id);
+    await expect(createLesson("free-teacher", source)).rejects.toMatchObject({
+      code: "limit-reached",
     });
     await expect(
       regenerateLesson("free-teacher", communityLesson.id),
-    ).rejects.toMatchObject({
-      code: "refinement-limit-reached",
-    } satisfies Partial<LessonActionError>);
+    ).rejects.toMatchObject({ code: "limit-reached" });
+    for (const format of ["pdf", "docx", "pdf", "docx"] as const) {
+      expect(
+        (await createLessonExport("free-teacher", communityLesson.id, format))
+          .bytes.length,
+      ).toBeGreaterThan(0);
+    }
 
-    await createLessonExport("free-teacher", communityLesson.id, "pdf");
-    await createLessonExport("free-teacher", communityLesson.id, "docx");
+    // AI exhaustion must not gate manual work or weaken export authorization.
+    await updateLesson(
+      "free-teacher",
+      communityLesson.id,
+      communityLesson.content,
+    );
+    await duplicateLesson("free-teacher", communityLesson.id);
+    expect((await getLessonWorkspace("free-teacher")).usage.used).toBe(3);
+    await seedNetworkUser("export-outsider");
     await expect(
-      createLessonExport("free-teacher", communityLesson.id, "pdf"),
-    ).rejects.toMatchObject({
-      code: "export-limit-reached",
-    } satisfies Partial<LessonActionError>);
+      createLessonExport("export-outsider", communityLesson.id, "pdf"),
+    ).rejects.toMatchObject({ code: "not-owner" });
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), "users", "free-teacher"), {
+        status: "suspended",
+      });
+    });
+    await expect(
+      createLessonExport("free-teacher", communityLesson.id, "docx"),
+    ).rejects.toMatchObject({ code: "inactive" });
 
     await seedNetworkUser("plus-teacher");
     await testEnv.withSecurityRulesDisabled(async (context) => {
@@ -821,14 +850,37 @@ describe("Firestore rules", () => {
     });
   });
 
-  it("enforces the Community connection limit inside the transaction", async () => {
-    await seedNetworkUser("follower", { connectionCount: 5 });
-    await seedNetworkUser("educator");
-
-    await expect(followEducator("follower", "educator")).rejects.toMatchObject({
-      code: "limit-reached",
-    } satisfies Partial<NetworkActionError>);
-  });
+  it.each(["free", "plus"])(
+    "allows %s connections beyond five and limits request bursts",
+    async (plan) => {
+      await seedNetworkUser("follower", { connectionCount: 100 });
+      await seedNetworkUser("educator");
+      await seedNetworkUser("another-educator");
+      const day = new Date().toISOString().slice(0, 10);
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "subscriptions", "follower"), {
+          plan,
+          status: "active",
+        });
+        await setDoc(doc(context.firestore(), "usage", `follower_${day}`), {
+          uid: "follower",
+          connectionRequestBurst: { startedAt: new Date(), count: 9 },
+        });
+      });
+      await followEducator("follower", "educator");
+      await expect(
+        followEducator("follower", "another-educator"),
+      ).rejects.toMatchObject({ code: "rate-limited" });
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await updateDoc(doc(context.firestore(), "usage", `follower_${day}`), {
+          "connectionRequestBurst.startedAt": new Date(Date.now() - 61_000),
+        });
+      });
+      await expect(
+        followEducator("follower", "another-educator"),
+      ).resolves.toBeUndefined();
+    },
+  );
 
   it("enforces ownership for resource, forum, and message edits", async () => {
     await Promise.all([

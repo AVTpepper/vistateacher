@@ -402,9 +402,6 @@ test("Community allowances work immediately below and at their boundaries", asyn
     .source;
   const created = await postJson(page, "/api/ai-lessons", { source });
   expect(created.status).toBe(201);
-  const exhaustedCreation = await postJson(page, "/api/ai-lessons", { source });
-  expect(exhaustedCreation.status).toBe(429);
-  expect(exhaustedCreation.body.code).toBe("creation-limit-reached");
   await usage(user.uid, {
     aiLessons: 2,
     aiLessonCreations: 1,
@@ -412,7 +409,7 @@ test("Community allowances work immediately below and at their boundaries", asyn
     lessonExports: 1,
   });
   await page.goto(`/ai-lessons?lesson=${lessonId}`);
-  await expect(page.getByText("1 of 2 remaining").first()).toBeVisible();
+  await expect(page.getByText("1 of 3 remaining")).toBeVisible();
   await page.getByRole("button", { name: "Regenerate", exact: true }).click();
   await expect(page.getByText("New lesson version generated.")).toBeVisible();
   await expect(
@@ -424,7 +421,7 @@ test("Community allowances work immediately below and at their boundaries", asyn
     {},
   );
   expect(refined.status).toBe(429);
-  expect(refined.body.code).toBe("refinement-limit-reached");
+  expect(refined.body.code).toBe("limit-reached");
   const exportStatus = await page.evaluate(
     async (lessonId) =>
       (await fetch(`/api/ai-lessons/${lessonId}/export/docx`)).status,
@@ -436,11 +433,11 @@ test("Community allowances work immediately below and at their boundaries", asyn
       (await fetch(`/api/ai-lessons/${lessonId}/export/docx`)).status,
     lessonId,
   );
-  expect(exhaustedExport).toBe(429);
+  expect(exhaustedExport).toBe(200);
   await page.reload();
   await expect(
     page.getByRole("button", { name: "DOCX", exact: true }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   await expect(page.getByText(/Monthly allowances reset/)).toBeVisible();
 });
 
@@ -505,7 +502,7 @@ test("Plus shares its final generation between creation and refinement", async (
   expect(exhausted.body.code).toBe("limit-reached");
 });
 
-test("Community messaging allows the tenth message and blocks the eleventh", async ({
+test("Community messaging continues past ten daily messages", async ({
   page,
 }) => {
   const user = await account();
@@ -522,20 +519,19 @@ test("Community messaging allows the tenth message and blocks the eleventh", asy
   expect(tenth.status).toBe(201);
   const eleventh = await postJson(page, "/api/messages", {
     recipientId: "plus-educator",
-    content: "This message must be blocked",
+    content: "My eleventh message today",
   });
-  expect(eleventh.status).toBe(429);
-  expect(eleventh.body.code).toBe("limit-reached");
+  expect(eleventh.status).toBe(201);
   await page.goto(`/messages?conversation=${tenth.body.conversationId}`);
   await expect(
     page.getByText("Daily message limit reached", { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(
     page.getByRole("textbox", { name: "Message", exact: true }),
-  ).toHaveCount(0);
+  ).toBeVisible();
 });
 
-test("connection requests respect the unchanged five-connection boundary", async ({
+test("Community connection requests continue beyond five connections", async ({
   page,
 }) => {
   const user = await account();
@@ -567,7 +563,78 @@ test("connection requests respect the unchanged five-connection boundary", async
   await page.goto(`/profile/${peerB}`);
   await page.getByRole("button", { name: "Connect", exact: true }).click();
   await expect(
-    page.getByRole("dialog", { name: "Grow your educator network" }),
+    page.getByRole("button", { name: "Request sent", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText(/five-connection limit/)).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("pricing explains the shared allowance and free network consistently", async ({
+  page,
+}) => {
+  await page.goto("/pricing");
+  await expect(
+    page.getByRole("heading", {
+      name: "Connect for free. Add Plus for more AI planning.",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Unlimited connections", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Unlimited messaging, with anti-spam protections", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Unlimited standard PDF and Word lesson exports", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("3 AI actions per month for new lessons or refinements", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("50 AI actions per month for new lessons or refinements", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "How the allowances work" }),
+  ).toBeVisible();
+  await accessible(page);
+});
+
+test("message burst rejection keeps the composer usable without an upgrade", async ({
+  page,
+}) => {
+  const user = await account();
+  await signIn(page, user.email);
+  const sent = await postJson(page, "/api/messages", {
+    recipientId: "plus-educator",
+    content: "Hello",
+  });
+  expect(sent.status).toBe(201);
+  const day = new Date().toISOString().slice(0, 10);
+  await emulator()
+    .db.doc(`usage/${user.uid}_${day}`)
+    .set(
+      { messageBurst: { startedAt: Timestamp.now(), count: 20 } },
+      { merge: true },
+    );
+  await page.goto(`/messages?conversation=${sent.body.conversationId}`);
+  const composer = page.getByRole("textbox", { name: "Message", exact: true });
+  await composer.fill("Keep this message for retry");
+  await page.getByRole("button", { name: "Send message", exact: true }).click();
+  await expect(page.getByText(/sending messages too quickly/)).toBeVisible();
+  await expect(composer).toHaveValue("Keep this message for retry");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await emulator()
+    .db.doc(`usage/${user.uid}_${day}`)
+    .update({
+      "messageBurst.startedAt": Timestamp.fromMillis(Date.now() - 61_000),
+    });
+  await page.getByRole("button", { name: "Send message", exact: true }).click();
+  await expect(composer).toHaveValue("");
 });
