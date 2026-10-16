@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  ArrowDown,
   BookOpen,
   Check,
   Compass,
@@ -15,6 +16,11 @@ import {
   Globe,
 } from "lucide-react";
 import Link from "next/link";
+import { MarketingFlow } from "@/components/marketing/marketing-flow";
+import {
+  StoryCarousel,
+  type StoryCard,
+} from "@/components/marketing/story-carousel";
 
 import {
   MarketingFooter,
@@ -25,27 +31,35 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { adminDb } from "@/lib/firebase/admin";
 import { billingPlans } from "@/features/billing/plan-details";
 
-const features = [
+const features: StoryCard[] = [
   {
-    icon: Users,
+    icon: "people",
+    eyebrow: "Find your people",
+    tags: ["Shared subjects", "New perspectives", "Real connections"],
     title: "Professional network",
     description:
       "Find educators by subject, grade level, school context, and shared professional interests.",
   },
   {
-    icon: BookOpen,
+    icon: "book",
+    eyebrow: "A good idea travels",
+    tags: ["Discover", "Share", "Make it yours"],
     title: "Resource library",
     description:
       "Share practical classroom resources with the context other teachers need to use them well.",
   },
   {
-    icon: MessageSquare,
+    icon: "chat",
+    eyebrow: "Think together",
+    tags: ["Ask a question", "Exchange experience", "Keep learning"],
     title: "Forum discussions",
     description:
       "Ask practical questions, exchange experience, and stay connected to ideas that matter.",
   },
   {
-    icon: Sparkles,
+    icon: "sparkles",
+    eyebrow: "Make room for teaching",
+    tags: ["Draft", "Refine", "Export"],
     title: "AI lesson builder",
     description:
       "Draft, refine, and export lesson plans you can adapt to your learners and classroom goals.",
@@ -116,7 +130,7 @@ export async function LandingPage() {
   const registeredUsersLabel = formatRegisteredUsers(registeredUsers);
 
   return (
-    <div className="bg-background min-h-screen overflow-x-clip">
+    <MarketingFlow className="bg-background min-h-screen overflow-x-clip">
       <MarketingHeader />
       <main>
         <section className="relative overflow-hidden">
@@ -172,6 +186,18 @@ export async function LandingPage() {
                 teachers
               </span>
             </div>
+            <p className="mt-6">
+              <Link
+                href="#features"
+                className="group text-accent-readable inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current"
+              >
+                Take a look around
+                <ArrowDown
+                  aria-hidden="true"
+                  className="size-4 motion-safe:transition-transform motion-safe:group-hover:translate-y-1"
+                />
+              </Link>
+            </p>
           </div>
           <div className="relative mx-auto max-w-5xl px-4 pb-14 sm:px-6 sm:pb-20">
             <div className="surface-card overflow-hidden rounded-2xl shadow-lg ring-1 ring-black/5">
@@ -272,24 +298,10 @@ export async function LandingPage() {
                 keep your educator network active.
               </p>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 sm:gap-6">
-              {features.map(({ icon: Icon, title, description }) => (
-                <article
-                  key={title}
-                  className="surface-card surface-card-interactive group p-6 sm:p-7"
-                >
-                  <span className="icon-well-accent group-hover:bg-accent group-hover:text-accent-foreground grid size-12 place-items-center rounded-2xl transition-colors duration-200">
-                    <Icon aria-hidden="true" className="size-5" />
-                  </span>
-                  <h3 className="group-hover:text-primary mt-5 font-serif text-xl tracking-tight transition-colors duration-200">
-                    {title}
-                  </h3>
-                  <p className="text-muted-foreground mt-2 text-sm leading-6 sm:text-base">
-                    {description}
-                  </p>
-                </article>
-              ))}
-            </div>
+            <StoryCarousel
+              label="Explore your educator toolkit"
+              cards={features}
+            />
           </div>
         </section>
 
@@ -548,7 +560,7 @@ export async function LandingPage() {
         </section>
       </main>
       <MarketingFooter />
-    </div>
+    </MarketingFlow>
   );
 }
 
