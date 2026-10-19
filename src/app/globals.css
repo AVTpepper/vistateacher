@@ -41,6 +41,8 @@ html:has(.marketing-flow) {
   touch-action: pan-y pinch-zoom;
 }
 .story-track .story-slide {
+  position: relative;
+  --card-lift: 0px;
   grid-area: 1 / 1;
   transform-origin: center;
   transform: translate3d(
@@ -53,7 +55,27 @@ html:has(.marketing-flow) {
   backface-visibility: hidden;
 }
 .story-track .story-slide:not([data-active="true"]) {
-  pointer-events: none;
+  cursor: pointer;
+}
+.story-slide:has(.story-select:hover),
+.story-slide:has(.story-select:focus-visible) {
+  --card-lift: -16px;
+}
+.story-slide:has(.story-select:hover) .story-card,
+.story-slide:has(.story-select:focus-visible) .story-card {
+  border-color: var(--accent-readable);
+  box-shadow: var(--shadow-md);
+}
+.story-select {
+  position: absolute;
+  inset: 0;
+  border-radius: 1.75rem;
+  cursor: pointer;
+  background: transparent;
+}
+.story-select:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 3px;
 }
 .story-track .story-slide:not([data-active="true"]) .story-card > * {
   visibility: hidden;
@@ -80,6 +102,7 @@ html:has(.marketing-flow) {
   outline-offset: 4px;
 }
 .story-card {
+  translate: 0 var(--card-lift, 0px);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -96,6 +119,7 @@ html:has(.marketing-flow) {
     var(--card);
   box-shadow: var(--shadow-sm);
   transition:
+    translate 240ms ease,
     box-shadow 240ms ease,
     border-color 240ms ease;
 }
@@ -215,6 +239,9 @@ html:has(.marketing-flow) {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .story-card {
+    translate: none;
+  }
   .marketing-flow section[data-flow-visible="true"],
   .flow-faq details[open] p {
     animation: none;

@@ -110,10 +110,10 @@ test("layered cards retain complete frames and support swiping", async ({
       true,
     );
     await expect(
-      carousel.locator('.story-slide[data-active="false"]').first(),
+      carousel.locator('.story-slide[data-active="false"] .story-card').first(),
     ).toHaveAttribute("inert", "");
     await expect(
-      carousel.locator('.story-slide[data-active="false"]').first(),
+      carousel.locator('.story-slide[data-active="false"] .story-card').first(),
     ).toHaveAttribute("aria-hidden", "true");
   }
 });
@@ -171,4 +171,65 @@ test("card content remains readable without JavaScript", async ({
   } finally {
     await context.close();
   }
+});
+
+test("rear cards lift on hover and come forward with click or keyboard", async ({
+  page,
+  isMobile,
+}) => {
+  await page.goto("/help");
+  const carousel = page.locator(".story-carousel").first();
+  await carousel.scrollIntoViewIfNeeded();
+  const rear = carousel.getByRole("button", {
+    name: "Bring Membership and billing to front",
+    exact: true,
+  });
+  await expect(rear).toBeVisible();
+  if (!isMobile) {
+    // The top band is exposed; the center is intentionally behind the front card.
+    await page.mouse.move(0, 0);
+    await expect
+      .poll(async () =>
+        rear.evaluate((el) => el.closest("li")!.getBoundingClientRect().top),
+      )
+      .toBeGreaterThan(0);
+    const bounds = (await rear.boundingBox())!;
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + 12);
+    await expect(rear.locator("..")).toHaveCSS("--card-lift", "-16px");
+    await expect
+      .poll(
+        async () =>
+          (await rear.locator("..").locator(".story-card").boundingBox())!.y,
+      )
+      .toBeLessThan(bounds.y - 5);
+    await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + 12);
+  } else {
+    await rear.focus();
+    await page.keyboard.press("Enter");
+  }
+  await expect(carousel.locator('[aria-live="polite"]')).toContainText(
+    "3 of 3",
+  );
+  await expect(carousel.locator(".story-track")).toBeFocused();
+  await expect(
+    carousel.getByRole("link", { name: "Explore the plans", exact: true }),
+  ).toHaveAttribute("href", "/pricing");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const account = carousel.getByRole("button", {
+    name: "Bring Account access to front",
+    exact: true,
+  });
+  await account.focus();
+  expect(
+    await account
+      .locator("..")
+      .evaluate((el) => parseFloat(getComputedStyle(el).transitionDuration)),
+  ).toBeLessThan(0.001);
+  await page.keyboard.press("Enter");
+  await expect(carousel.locator('[aria-live="polite"]')).toContainText(
+    "1 of 3",
+  );
+  await expect(
+    carousel.getByRole("link", { name: "Reset your password", exact: true }),
+  ).toBeVisible();
 });

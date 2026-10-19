@@ -53,6 +53,8 @@ export function StoryCarousel({
     serverSnapshot,
   );
   const [active, setActive] = useState(0);
+  const trackRef = useRef<HTMLUListElement>(null);
+  const swiped = useRef(false);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   function goTo(index: number) {
@@ -97,10 +99,12 @@ export function StoryCarousel({
       </div>
       <ul
         id={id}
+        ref={trackRef}
         className="story-track"
         tabIndex={enhanced ? 0 : undefined}
         data-enhanced={enhanced}
         onPointerDown={(event) => {
+          swiped.current = false;
           if (event.pointerType === "mouse" || !event.isPrimary) return;
           touchStart.current = { x: event.clientX, y: event.clientY };
         }}
@@ -114,6 +118,7 @@ export function StoryCarousel({
           const dx = event.clientX - start.x;
           const dy = event.clientY - start.y;
           if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+            swiped.current = true;
             goTo(active + (dx < 0 ? 1 : -1));
           }
         }}
@@ -143,8 +148,6 @@ export function StoryCarousel({
               key={card.title}
               className="story-slide"
               data-active={active === index}
-              aria-hidden={enhanced && active !== index ? true : undefined}
-              inert={enhanced && active !== index}
               style={
                 {
                   "--card-depth": Math.min(depth, 3),
@@ -154,6 +157,8 @@ export function StoryCarousel({
             >
               <article
                 className="story-card"
+                aria-hidden={enhanced && active !== index ? true : undefined}
+                inert={enhanced && active !== index}
                 aria-labelledby={`${id}-title-${index}`}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -193,6 +198,22 @@ export function StoryCarousel({
                   </Link>
                 )}
               </article>
+              {enhanced && active !== index && (
+                <button
+                  type="button"
+                  className="story-select"
+                  aria-label={`Bring ${card.title} to front`}
+                  aria-controls={id}
+                  onClick={(event) => {
+                    if (swiped.current && event.detail !== 0) {
+                      swiped.current = false;
+                      return;
+                    }
+                    goTo(index);
+                    trackRef.current?.focus({ preventScroll: true });
+                  }}
+                />
+              )}
             </li>
           );
         })}
