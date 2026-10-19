@@ -24,24 +24,60 @@ html:has(.marketing-flow) {
   min-width: 0;
 }
 .story-track {
-  --story-width: 82%;
-  --story-gap: 1.25rem;
-  display: flex;
+  display: grid;
+  gap: 1.25rem;
   position: relative;
-  gap: var(--story-gap);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-  padding-block: 0.75rem 1rem;
-  margin-block: -0.75rem 0;
-  border-radius: 1.5rem;
+  min-width: 0;
 }
 .story-slide {
-  flex: 0 0 var(--story-width);
   min-width: 0;
-  scroll-snap-align: start;
+}
+.story-track {
+  width: calc(100% - 2.5rem);
+  max-width: 46rem;
+  margin: 5rem auto 1.5rem;
+  perspective: 1400px;
+  transform-style: preserve-3d;
+  touch-action: pan-y pinch-zoom;
+}
+.story-track .story-slide {
+  grid-area: 1 / 1;
+  transform-origin: center;
+  transform: translate3d(
+      calc(var(--card-depth) * 10px),
+      calc(var(--card-depth) * -38px),
+      calc(var(--card-depth) * -100px)
+    )
+    rotateY(calc(var(--card-depth) * -3deg));
+  transition: transform 650ms cubic-bezier(0.22, 0.7, 0.18, 1);
+  backface-visibility: hidden;
+}
+.story-track .story-slide:not([data-active="true"]) {
+  pointer-events: none;
+}
+.story-track .story-slide:not([data-active="true"]) .story-card > * {
+  visibility: hidden;
+}
+.story-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.story-action:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.story-action:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
 }
 .story-card {
   display: flex;
@@ -178,15 +214,15 @@ html:has(.marketing-flow) {
   animation: marketing-arrive 250ms ease-out;
 }
 
-@media (min-width: 768px) {
-  .story-track {
-    --story-width: 62%;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .marketing-flow section[data-flow-visible="true"],
   .flow-faq details[open] p {
     animation: none;
+  }
+  .story-track .story-slide {
+    transition: none;
+    transform: translateY(calc(var(--card-depth) * -12px))
+      scale(calc(1 - var(--card-depth) * 0.04));
   }
   .story-icon {
     rotate: 0deg !important;

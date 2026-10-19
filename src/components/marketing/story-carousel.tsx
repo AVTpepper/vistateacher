@@ -8,7 +8,14 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import Link from "next/link";
+import {
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+} from "react";
 
 export interface StoryCard {
   title: string;
@@ -16,6 +23,8 @@ export interface StoryCard {
   eyebrow: string;
   tags: string[];
   icon: "people" | "book" | "chat" | "sparkles";
+  href?: string;
+  linkLabel?: string;
 }
 
 const icons = {
@@ -25,6 +34,11 @@ const icons = {
   sparkles: Sparkles,
 };
 
+// Keep a readable list in server HTML; enhance to a deck after hydration.
+const subscribe = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
+
 export function StoryCarousel({
   label,
   cards,
@@ -33,43 +47,19 @@ export function StoryCarousel({
   cards: StoryCard[];
 }) {
   const id = useId();
-  const track = useRef<HTMLUListElement>(null);
+  const enhanced = useSyncExternalStore(
+    subscribe,
+    clientSnapshot,
+    serverSnapshot,
+  );
   const [active, setActive] = useState(0);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   function goTo(index: number) {
-    const list = track.current;
-    const card = list?.children[index] as HTMLElement | undefined;
-    if (!list || !card) return;
-    const reduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    list.scrollTo({
-      left: card.offsetLeft - (list.children[0] as HTMLElement).offsetLeft,
-      behavior: reduced ? "instant" : "smooth",
-    });
+    setActive(Math.max(0, Math.min(cards.length - 1, index)));
   }
 
-  function syncActive() {
-    const list = track.current;
-    if (!list) return;
-    if (list.scrollWidth - list.clientWidth - list.scrollLeft < 2) {
-      setActive(cards.length - 1);
-      return;
-    }
-    const start = (list.children[0] as HTMLElement).offsetLeft;
-    let nearest = 0;
-    let distance = Infinity;
-    Array.from(list.children).forEach((child, index) => {
-      const nextDistance = Math.abs(
-        (child as HTMLElement).offsetLeft - start - list.scrollLeft,
-      );
-      if (nextDistance < distance) {
-        nearest = index;
-        distance = nextDistance;
-      }
-    });
-    setActive(nearest);
-  }
+  if (!cards.length) return null;
 
   return (
     <div
@@ -78,7 +68,7 @@ export function StoryCarousel({
       aria-roledescription="carousel"
       aria-label={label}
     >
-      <div className="mb-5 flex items-center justify-between gap-4">
+      <div className="story-controls mb-5 flex items-center justify-between gap-4">
         <p className="text-muted-foreground text-sm">
           A few possibilities. Find your starting point.
         </p>
@@ -87,7 +77,7 @@ export function StoryCarousel({
             type="button"
             aria-label={`Previous card in ${label}`}
             aria-controls={id}
-            disabled={active === 0}
+            disabled={!enhanced || active === 0}
             onClick={() => goTo(active - 1)}
             className="story-arrow"
           >
@@ -97,7 +87,7 @@ export function StoryCarousel({
             type="button"
             aria-label={`Next card in ${label}`}
             aria-controls={id}
-            disabled={active === cards.length - 1}
+            disabled={!enhanced || active === cards.length - 1}
             onClick={() => goTo(active + 1)}
             className="story-arrow"
           >
@@ -107,10 +97,26 @@ export function StoryCarousel({
       </div>
       <ul
         id={id}
-        ref={track}
         className="story-track"
-        tabIndex={0}
-        onScroll={syncActive}
+        tabIndex={enhanced ? 0 : undefined}
+        data-enhanced={enhanced}
+        onPointerDown={(event) => {
+          if (event.pointerType === "mouse" || !event.isPrimary) return;
+          touchStart.current = { x: event.clientX, y: event.clientY };
+        }}
+        onPointerCancel={() => {
+          touchStart.current = null;
+        }}
+        onPointerUp={(event) => {
+          const start = touchStart.current;
+          touchStart.current = null;
+          if (!start) return;
+          const dx = event.clientX - start.x;
+          const dy = event.clientY - start.y;
+          if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+            goTo(active + (dx < 0 ? 1 : -1));
+          }
+        }}
         aria-label={`${label} cards`}
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) return;
@@ -131,11 +137,20 @@ export function StoryCarousel({
       >
         {cards.map((card, index) => {
           const Icon = icons[card.icon];
+          const depth = (index - active + cards.length) % cards.length;
           return (
             <li
               key={card.title}
               className="story-slide"
               data-active={active === index}
+              aria-hidden={enhanced && active !== index ? true : undefined}
+              inert={enhanced && active !== index}
+              style={
+                {
+                  "--card-depth": Math.min(depth, 3),
+                  zIndex: cards.length - depth,
+                } as CSSProperties
+              }
             >
               <article
                 className="story-card"
@@ -171,17 +186,24 @@ export function StoryCarousel({
                     </li>
                   ))}
                 </ul>
+                {card.href && card.linkLabel && (
+                  <Link href={card.href} className="story-action mt-5">
+                    {card.linkLabel}
+                    <ArrowRight aria-hidden="true" className="size-4" />
+                  </Link>
+                )}
               </article>
             </li>
           );
         })}
       </ul>
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="story-controls mt-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1" aria-label={`Choose a card in ${label}`}>
           {cards.map((card, index) => (
             <button
               key={card.title}
               type="button"
+              disabled={!enhanced}
               aria-label={`Show ${card.title}`}
               aria-current={active === index ? "true" : undefined}
               aria-controls={id}
@@ -200,6 +222,14 @@ export function StoryCarousel({
           {active + 1} of {cards.length} · {cards[active].title}
         </p>
       </div>
+      <noscript>
+        <style>{`
+        .story-carousel .story-controls { display: none !important; }
+        .story-carousel .story-track { width: 100%; max-width: none; margin: 0; perspective: none; transform-style: flat; }
+        .story-carousel .story-slide { grid-area: auto !important; transform: none !important; pointer-events: auto !important; }
+        .story-carousel .story-slide .story-card > * { visibility: visible !important; }
+      `}</style>
+      </noscript>
     </div>
   );
 }
