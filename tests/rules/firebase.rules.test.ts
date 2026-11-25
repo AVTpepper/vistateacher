@@ -1516,12 +1516,32 @@ describe("Firestore rules", () => {
         { lastAiLessonAt: new Date(0) },
       );
     });
-    await regenerateLesson("free-teacher", communityLesson.id);
+    await regenerateLesson(
+      "free-teacher",
+      communityLesson.id,
+      undefined,
+      undefined,
+      undefined,
+      {
+        expectedVersion: communityLesson.currentVersion,
+        requestId: randomUUID(),
+      },
+    );
     await expect(createLesson("free-teacher", source)).rejects.toMatchObject({
       code: "limit-reached",
     });
     await expect(
-      regenerateLesson("free-teacher", communityLesson.id),
+      regenerateLesson(
+        "free-teacher",
+        communityLesson.id,
+        undefined,
+        undefined,
+        undefined,
+        {
+          expectedVersion: communityLesson.currentVersion + 1,
+          requestId: randomUUID(),
+        },
+      ),
     ).rejects.toMatchObject({ code: "limit-reached" });
     for (const format of ["pdf", "docx", "pdf", "docx"] as const) {
       expect(
@@ -1650,7 +1670,14 @@ describe("Firestore rules", () => {
         { merge: true },
       );
     });
-    const regenerated = await regenerateLesson("lesson-owner", created.id);
+    const regenerated = await regenerateLesson(
+      "lesson-owner",
+      created.id,
+      undefined,
+      undefined,
+      undefined,
+      { expectedVersion: edited.currentVersion, requestId: randomUUID() },
+    );
     expect(regenerated.currentVersion).toBe(3);
     expect(regenerated.versions[0]?.kind).toBe("generated");
 

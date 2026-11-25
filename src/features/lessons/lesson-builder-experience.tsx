@@ -138,6 +138,7 @@ function asSummary(lesson: LessonDetail): LessonSummary {
     currentVersion: lesson.currentVersion,
     visibility: lesson.visibility,
     generationStatus: lesson.generationStatus,
+    sampleMode: lesson.sampleMode,
     createdAt: lesson.createdAt,
     updatedAt: lesson.updatedAt,
   };

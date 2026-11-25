@@ -651,7 +651,7 @@ export async function getLessonBatch(uid: string, requestId: string): Promise<Le
       return item;
     });
     if (changed) transaction.update(ref, { items: next, updatedAt: FieldValue.serverTimestamp() });
-    return { ...value, items: next };
+    return { source: value.source, items: next };
   });
   const items = data.items as BatchItemRecord[];
   const lessons: LessonDetail[] = [];

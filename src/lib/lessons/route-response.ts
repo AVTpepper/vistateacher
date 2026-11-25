@@ -13,6 +13,12 @@ export function lessonErrorResponse(error: unknown): NextResponse | null {
     "not-found": ["Lesson not found.", 404],
     "not-owner": ["You do not own this lesson.", 403],
     busy: ["This lesson is already being generated.", 409],
+    conflict: [
+      "This lesson changed in another tab. Reload it before saving or regenerating.",
+      409,
+    ],
+    "invalid-content": ["Review the lesson content.", 400],
+    "invalid-cursor": ["Refresh the lesson list to continue.", 400],
     "generation-failed": ["The lesson could not be generated. Try again.", 502],
   } as const;
   const [message, status] = responses[error.code];
