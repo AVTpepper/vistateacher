@@ -2,15 +2,15 @@
 
 VistaTeacher's core network is free. Plus sells more AI preparation capacity and the existing analytics and Plus-resource access. Prices remain $9/month or $79/year. This change does not add a new Stripe product or alter subscription lifecycle handling.
 
-| Capability                               | Community                                  | Plus                                    |
-| ---------------------------------------- | ------------------------------------------ | --------------------------------------- |
-| Profiles, connections, feed, discussions | Included; no connection quota              | Included                                |
-| Messaging                                | No daily subscription quota                | Same                                    |
-| Community resource sharing               | Included; existing file validation applies | Included                                |
-| Standard PDF / Word lesson exports       | Unlimited                                  | Unlimited                               |
-| AI actions per calendar month            | 3, in any creation/refinement mix          | 50, in any creation/refinement mix      |
-| Manual lesson edits and duplication      | No AI usage                                | No AI usage                             |
-| Full analytics and Plus resources        | Basic analytics; community resources       | Full analytics and Plus-resource access |
+| Capability                               | Community                                  | Plus                                |
+| ---------------------------------------- | ------------------------------------------ | ----------------------------------- |
+| Profiles, connections, feed, discussions | Included; no connection quota              | Included                            |
+| Messaging                                | No daily subscription quota                | Same                                |
+| Community resource sharing               | Included; existing file validation applies | Included                            |
+| Standard PDF / Word lesson exports       | Unlimited                                  | Unlimited                           |
+| AI actions per calendar month            | 3, in any creation/refinement mix          | 50, in any creation/refinement mix  |
+| Manual lesson edits and duplication      | No AI usage                                | No AI usage                         |
+| Analytics and resources                  | Basic analytics; community resources       | Full analytics; community resources |
 
 Each generated lesson costs one action; generating a batch of N costs N actions. Each AI regeneration/refinement costs one action. Monthly usage resets at 00:00 UTC on the first day of the next calendar month, independently of the Stripe renewal date. Failed generation releases its reservation. The existing generation cooldown still applies. Legacy monthly counters are retained, so this release does not reset anyone's usage or require data migration.
 

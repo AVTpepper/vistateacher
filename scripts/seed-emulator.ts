@@ -1,6 +1,8 @@
 import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
+import { PDFDocument, StandardFonts } from "pdf-lib";
 
 import { DEFAULT_FORUM_CATEGORIES } from "../src/lib/forum/categories";
 
@@ -13,6 +15,7 @@ if (!projectId.startsWith("demo-")) {
 
 process.env.FIREBASE_AUTH_EMULATOR_HOST ??= "127.0.0.1:9099";
 process.env.FIRESTORE_EMULATOR_HOST ??= "127.0.0.1:8080";
+process.env.FIREBASE_STORAGE_EMULATOR_HOST ??= "127.0.0.1:9199";
 process.env.GCLOUD_PROJECT = projectId;
 
 const app = getApps().length ? getApp() : initializeApp({ projectId });
@@ -96,6 +99,31 @@ async function upsertAuthUser(user: (typeof educators)[number]) {
 }
 
 await Promise.all(educators.map(upsertAuthUser));
+
+const samplePdf = await PDFDocument.create();
+const sampleFont = await samplePdf.embedFont(StandardFonts.Helvetica);
+const samplePage = samplePdf.addPage([595, 842]);
+samplePage.drawText("Ecosystem Notice and Wonder", {
+  x: 48,
+  y: 780,
+  size: 20,
+  font: sampleFont,
+});
+samplePage.drawText("What do you notice? What do you wonder?", {
+  x: 48,
+  y: 740,
+  size: 12,
+  font: sampleFont,
+});
+const sampleBytes = await samplePdf.save();
+const samplePath = "resources/plus-educator/demo-resource/organizer.pdf";
+await getStorage(app)
+  .bucket(
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ??
+      `${projectId}.appspot.com`,
+  )
+  .file(samplePath)
+  .save(Buffer.from(sampleBytes), { contentType: "application/pdf" });
 
 const batch = db.batch();
 for (const educator of educators) {
@@ -206,17 +234,27 @@ batch.set(db.doc("resources/demo-resource"), {
   gradeLevel: "Middle School",
   tags: ["ecosystems"],
   accessTier: "free",
-  filePath: null,
-  fileName: null,
-  fileType: null,
-  fileSize: null,
+  filePath: samplePath,
+  fileName: "ecosystem-organizer.pdf",
+  fileType: "application/pdf",
+  fileSize: sampleBytes.byteLength,
   thumbnailURL: null,
-  externalURL: "https://example.com/demo-resource",
+  externalURL: null,
   downloadCount: 2,
   ratingAverage: 5,
   ratingCount: 1,
+  ratingTotal: 5,
   status: "active",
   moderationStatus: "approved",
+  createdAt: FieldValue.serverTimestamp(),
+  updatedAt: FieldValue.serverTimestamp(),
+});
+
+batch.set(db.doc("resourceReviews/demo-resource_educator-three"), {
+  resourceId: "demo-resource",
+  authorId: "educator-three",
+  rating: 5,
+  review: "A clear starting point for student discussion about ecosystems.",
   createdAt: FieldValue.serverTimestamp(),
   updatedAt: FieldValue.serverTimestamp(),
 });

@@ -1,5 +1,10 @@
 import "server-only";
 
+import {
+  prepareCommunityNotifications,
+  writeCommunityNotification,
+} from "@/lib/notifications/delivery";
+
 import { MESSAGE_BURST_LIMIT, nextBurstUsage } from "@/lib/abuse/burst-policy";
 
 import {
@@ -18,6 +23,7 @@ import {
   encodeMessageCursor,
 } from "@/lib/messages/cursor";
 import { createConversationId } from "@/lib/messages/conversation-id";
+import { canReceiveMessage } from "@/lib/messages/privacy";
 import type {
   BlockUserInput,
   MessageQuery,
@@ -89,7 +95,10 @@ export interface NotificationItem {
 export interface NotificationPage {
   notifications: NotificationItem[];
   nextCursor: string | null;
+  unreadCount: number;
 }
+
+export type NotificationFilter = "all" | "unread" | "archived";
 
 export class MessageActionError extends Error {
   constructor(
@@ -99,6 +108,7 @@ export class MessageActionError extends Error {
       | "not-member"
       | "self-message"
       | "blocked"
+      | "connections-only"
       | "rate-limited"
       | "invalid-cursor"
       | "invalid-attachment"
@@ -353,17 +363,41 @@ async function writeMessage(
       throw new MessageActionError("not-member");
     const senderRef = db.doc(`users/${uid}`);
     const recipientRef = db.doc(`users/${recipientId}`);
-    const [sender, , outgoingBlock, incomingBlock, usage, reserved] =
-      await Promise.all([
-        requireActiveUser(transaction, senderRef),
-        requireActiveUser(transaction, recipientRef),
-        transaction.get(db.doc(`blocks/${blockId(uid, recipientId)}`)),
-        transaction.get(db.doc(`blocks/${blockId(recipientId, uid)}`)),
-        transaction.get(usageRef),
-        attachment ? transaction.get(attachment.ref) : Promise.resolve(null),
-      ]);
+    const [
+      sender,
+      ,
+      outgoingBlock,
+      incomingBlock,
+      usage,
+      reserved,
+      recipientSettings,
+      outgoingConnection,
+      incomingConnection,
+    ] = await Promise.all([
+      requireActiveUser(transaction, senderRef),
+      requireActiveUser(transaction, recipientRef),
+      transaction.get(db.doc(`blocks/${blockId(uid, recipientId)}`)),
+      transaction.get(db.doc(`blocks/${blockId(recipientId, uid)}`)),
+      transaction.get(usageRef),
+      attachment ? transaction.get(attachment.ref) : Promise.resolve(null),
+      transaction.get(db.doc(`userPrivate/${recipientId}`)),
+      transaction.get(db.doc(`follows/${uid}_${recipientId}`)),
+      transaction.get(db.doc(`follows/${recipientId}_${uid}`)),
+    ]);
     if (outgoingBlock.exists || incomingBlock.exists)
       throw new MessageActionError("blocked");
+    if (
+      !canReceiveMessage({
+        connected: [outgoingConnection, incomingConnection].some(
+          (connection) =>
+            connection.exists && connection.data()?.status !== "pending",
+        ),
+        allowNonConnections:
+          recipientSettings.data()?.privacySettings
+            ?.allowMessagesFromNonConnections === true,
+      })
+    )
+      throw new MessageActionError("connections-only");
     const burst = usage.data()?.messageBurst;
     const nextBurst = nextBurstUsage(
       burst?.startedAt instanceof Timestamp ? burst.startedAt.toDate() : null,
@@ -383,6 +417,9 @@ async function writeMessage(
           path: String(attachment.data()?.path),
         }
       : null;
+    const recipients = await prepareCommunityNotifications(transaction, uid, [
+      recipientId,
+    ]);
     transaction.set(messageRef, {
       senderId: uid,
       content,
@@ -429,20 +466,16 @@ async function writeMessage(
       },
       { merge: true },
     );
-    transaction.create(
-      db.doc(`users/${recipientId}/notifications/message_${messageRef.id}`),
-      {
-        type: "message",
-        actorId: uid,
-        actorName: String(sender.data()?.displayName ?? "An educator"),
-        entityId: conversationId,
-        message: `${String(sender.data()?.displayName ?? "An educator")} sent you a message.`,
-        href: `/messages?conversation=${conversationId}`,
-        read: false,
-        archived: false,
-        createdAt: FieldValue.serverTimestamp(),
-      },
-    );
+    writeCommunityNotification(transaction, recipients, {
+      recipientId,
+      id: `message_${messageRef.id}`,
+      type: "message",
+      actorId: uid,
+      actorName: String(sender.data()?.displayName ?? "An educator"),
+      entityId: conversationId,
+      message: `${String(sender.data()?.displayName ?? "An educator")} sent you a message.`,
+      href: `/messages?conversation=${conversationId}`,
+    });
     if (attachment) transaction.update(attachment.ref, { status: "consumed" });
   });
   return { conversationId, messageId: messageRef.id };
@@ -717,19 +750,41 @@ export async function reportMessage(uid: string, input: MessageReportInput) {
 export async function getNotifications(
   uid: string,
   cursorValue?: string,
+  filter: NotificationFilter = "all",
 ): Promise<NotificationPage> {
   const db = adminDb();
   let query: Query = db
     .collection(`users/${uid}/notifications`)
     .orderBy("createdAt", "desc")
     .orderBy(FieldPath.documentId(), "desc");
+  if (filter === "unread") query = query.where("read", "==", false);
+  if (filter === "archived") query = query.where("archived", "==", true);
   if (cursorValue) {
     const cursor = decodeMessageCursor(cursorValue);
     if (!cursor) throw new MessageActionError("invalid-cursor");
     query = query.startAfter(Timestamp.fromMillis(cursor.createdAt), cursor.id);
   }
-  const snapshot = await query.limit(MESSAGE_PAGE_SIZE + 1).get();
-  const documents = snapshot.docs.slice(0, MESSAGE_PAGE_SIZE);
+  // Older notifications may omit archived. Filtering those in the read phase
+  // preserves them without requiring a destructive migration or excluding them
+  // through an equality query. Fill the page, rather than filtering one page.
+  const matches: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+  while (matches.length <= MESSAGE_PAGE_SIZE) {
+    const snapshot = await query.limit(MESSAGE_PAGE_SIZE + 1).get();
+    matches.push(
+      ...snapshot.docs.filter(
+        (document) =>
+          filter === "archived" || document.data().archived !== true,
+      ),
+    );
+    if (
+      snapshot.size < MESSAGE_PAGE_SIZE + 1 ||
+      matches.length > MESSAGE_PAGE_SIZE
+    )
+      break;
+    const lastScanned = snapshot.docs.at(-1)!;
+    query = query.startAfter(lastScanned);
+  }
+  const documents = matches.slice(0, MESSAGE_PAGE_SIZE);
   const last = documents.at(-1);
   return {
     notifications: documents.map((document) => {
@@ -748,13 +803,34 @@ export async function getNotifications(
       };
     }),
     nextCursor:
-      snapshot.size > MESSAGE_PAGE_SIZE && last
+      matches.length > MESSAGE_PAGE_SIZE && last
         ? encodeMessageCursor({
             createdAt: timestamp(last.data().createdAt).toMillis(),
             id: last.id,
           })
         : null,
+    unreadCount: await getUnreadNotificationCount(uid),
   };
+}
+
+export async function getUnreadNotificationCount(uid: string): Promise<number> {
+  const db = adminDb();
+  const unread = db
+    .collection(`users/${uid}/notifications`)
+    .where("read", "==", false);
+  // Both aggregates share a read-only transaction snapshot. Subtraction also
+  // includes legacy rows without archived; downloading every unread row would
+  // charge a document read per notification on every badge refresh.
+  return db.runTransaction(
+    async (transaction) => {
+      const [all, archived] = await Promise.all([
+        transaction.get(unread.count()),
+        transaction.get(unread.where("archived", "==", true).count()),
+      ]);
+      return Math.max(0, all.data().count - archived.data().count);
+    },
+    { readOnly: true },
+  );
 }
 
 export type NotificationAction =
@@ -768,28 +844,40 @@ export async function updateNotification(
   const db = adminDb();
   if (notificationId) {
     const reference = db.doc(`users/${uid}/notifications/${notificationId}`);
-    if (!(await reference.get()).exists)
-      throw new MessageActionError("not-found");
-    if (action === "delete") {
-      await reference.delete();
-      return;
-    }
-    const updates = {
-      "mark-read": { read: true },
-      "mark-unread": { read: false },
-      archive: { archived: true },
-      restore: { archived: false },
-    } as const;
-    await reference.update(updates[action]);
+    await db.runTransaction(async (transaction) => {
+      if (!(await transaction.get(reference)).exists)
+        throw new MessageActionError("not-found");
+      if (action === "delete") transaction.delete(reference);
+      else {
+        const updates = {
+          "mark-read": { read: true },
+          "mark-unread": { read: false },
+          archive: { archived: true },
+          restore: { archived: false },
+        } as const;
+        transaction.update(reference, updates[action]);
+      }
+    });
     return;
   }
-  const unread = await db
+  // Capture the action's upper bound. Updates arriving afterward stay unread;
+  // archive history stays unread until the teacher explicitly restores it.
+  const cutoff = (await db.doc(`users/${uid}`).get()).readTime;
+  let query: Query = db
     .collection(`users/${uid}/notifications`)
     .where("read", "==", false)
-    .limit(100)
-    .get();
-  const batch = db.batch();
-  for (const document of unread.docs)
-    batch.update(document.ref, { read: true });
-  await batch.commit();
+    .where("createdAt", "<=", cutoff)
+    .orderBy("createdAt", "asc")
+    .orderBy(FieldPath.documentId(), "asc");
+  while (true) {
+    const unread = await query.limit(400).get();
+    if (unread.empty) break;
+    const batch = db.batch();
+    for (const document of unread.docs)
+      if (document.data().archived !== true)
+        batch.update(document.ref, { read: true });
+    await batch.commit();
+    if (unread.docs.length < 400) break;
+    query = query.startAfter(unread.docs.at(-1)!);
+  }
 }

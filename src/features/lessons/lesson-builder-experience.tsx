@@ -26,13 +26,18 @@ import {
   WandSparkles,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { DraftStatus } from "@/components/ui/draft-status";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useRecoveredDraft } from "@/lib/creation-drafts/use-recovered-draft";
 import { LessonEditor } from "@/features/lessons/lesson-editor";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { GoogleDocExport } from "@/features/teaching-exports/google-doc-export";
 import {
   LimitUpgradeDialog,
   LimitUpgradeNotice,
@@ -63,6 +68,9 @@ const GRADES = [
   ),
 ];
 
+const lessonMenuItemClass =
+  "data-[highlighted]:bg-muted flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm font-semibold outline-none data-[disabled]:opacity-50";
+
 const EMPTY_SOURCE: LessonSourceInput = {
   subject: "Mathematics",
   gradeLevel: "5th Grade",
@@ -72,6 +80,10 @@ const EMPTY_SOURCE: LessonSourceInput = {
   standards: "",
   studentNeeds: "",
   teachingStyle: "balanced",
+  curriculum: "",
+  language: "English",
+  availableMaterials: "",
+  additionalInstructions: "",
 };
 
 const REQUIRED_GENERATE_FIELDS = [
@@ -86,7 +98,11 @@ function missingGenerateFields(source: LessonSourceInput): string[] {
   if (!source.subject.trim()) missing.push("Subject");
   if (!source.gradeLevel.trim()) missing.push("Grade level");
   if (source.topic.trim().length < 3) missing.push("Topic / unit");
-  if (!source.durationMinutes || source.durationMinutes < 1) {
+  if (
+    !Number.isInteger(source.durationMinutes) ||
+    source.durationMinutes < 15 ||
+    source.durationMinutes > 240
+  ) {
     missing.push("Duration");
   }
   return missing;
@@ -138,69 +154,33 @@ async function resultJson<T>(response: Response): Promise<T> {
   return result as T;
 }
 
-function AIEnhancedTextarea({
+function PlanningTextarea({
   label,
   value,
   onChange,
-  onGetInsights,
-  onRegenerate,
-  insightsLoading = false,
-  regenerateLoading = false,
   rows = 3,
+  maxLength = 2000,
   placeholder = "",
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  onGetInsights?: (current: string) => void;
-  onRegenerate?: () => void;
-  insightsLoading?: boolean;
-  regenerateLoading?: boolean;
   rows?: number;
+  maxLength?: number;
   placeholder?: string;
 }) {
+  const id = useId();
   return (
-    <label className="grid gap-1.5 text-xs font-bold">
-      <div className="flex items-center justify-between">
-        <span>{label}</span>
-        <div className="flex gap-1.5">
-          {onGetInsights && (
-            <button
-              type="button"
-              onClick={() => onGetInsights(value)}
-              disabled={insightsLoading || value.trim().length < 3}
-              className="text-primary hover:bg-primary/5 flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold disabled:opacity-50"
-              title="Get AI insights to improve this field"
-            >
-              <Lightbulb className="size-3" />
-              Insights
-            </button>
-          )}
-          {onRegenerate && (
-            <button
-              type="button"
-              onClick={onRegenerate}
-              disabled={regenerateLoading}
-              className="text-accent-readable hover:bg-accent/5 flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold disabled:opacity-50"
-              title="AI regenerate this field"
-            >
-              {regenerateLoading ? (
-                <LoaderCircle className="size-3 animate-spin" />
-              ) : (
-                <WandSparkles className="size-3" />
-              )}
-              Regenerate
-            </button>
-          )}
-        </div>
-      </div>
-      <textarea
+    <label htmlFor={id} className="grid gap-1.5 text-sm font-bold">
+      <span>{label}</span>
+      <Textarea
+        id={id}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         rows={rows}
-        maxLength={2000}
+        maxLength={maxLength}
         placeholder={placeholder}
-        className="bg-muted resize-none rounded-lg px-3 py-2 text-sm font-normal outline-none"
+        className="font-normal"
       />
     </label>
   );
@@ -365,74 +345,123 @@ function LessonDisplay({
                 {content.durationMinutes} minutes
               </span>
             </div>
+            <p className="mt-2 text-xs font-semibold text-white/80">
+              {lesson.visibility === "draft"
+                ? "Private draft"
+                : "Published to the community"}
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Button
+              variant="inverse"
               type="button"
               disabled={working}
               onClick={onEdit}
-              className="hover:bg-muted/50 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold"
             >
               <Pencil className="size-3" />
               Edit
-            </button>
-            <DeleteConfirmDialog itemName="lesson" onConfirm={onDelete}>
-              <button
-                type="button"
-                disabled={working}
-                className="hover:bg-muted/50 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
-              >
-                <Trash2 className="size-3" />
-                Delete
-              </button>
-            </DeleteConfirmDialog>
-            <button
-              type="button"
-              onClick={onDuplicate}
-              disabled={working}
-              className="hover:bg-muted/50 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
-            >
-              <Copy className="size-3" />
-              Duplicate
-            </button>
-            <button
-              type="button"
-              onClick={onPreviewPdf}
-              disabled={working}
-              className="hover:bg-muted/50 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
-            >
-              <Eye className="size-3" />
-              Preview PDF
-            </button>
-            <button
-              type="button"
-              onClick={() => onExport("pdf")}
+            </Button>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <Button variant="inverse" type="button" disabled={working}>
+                  <Download className="size-3" />
+                  Export
+                  <ChevronDown className="size-3" />
+                </Button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  align="end"
+                  sideOffset={8}
+                  aria-label="Lesson exports"
+                  className="bg-card text-card-foreground z-50 min-w-48 rounded-xl border p-1 shadow-xl"
+                >
+                  {[
+                    { label: "Preview PDF", action: onPreviewPdf, icon: Eye },
+                    {
+                      label: "Download PDF",
+                      action: () => onExport("pdf"),
+                      icon: Download,
+                    },
+                    {
+                      label: "Download Word",
+                      action: () => onExport("docx"),
+                      icon: FileText,
+                    },
+                  ].map(({ label, action, icon: Icon }) => (
+                    <DropdownMenu.Item
+                      key={label}
+                      disabled={working || !canExport}
+                      onSelect={action}
+                      className={lessonMenuItemClass}
+                    >
+                      <Icon className="size-4" aria-hidden="true" />
+                      {label}
+                    </DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+            <GoogleDocExport
+              key={`${lesson.id}:${lesson.currentVersion}`}
+              kind="lesson"
+              sourceId={lesson.id}
+              version={lesson.currentVersion}
               disabled={working || !canExport}
-              className="hover:bg-muted/50 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
-            >
-              <Download className="size-3" />
-              PDF
-            </button>
-            <button
-              type="button"
-              onClick={() => onExport("docx")}
-              disabled={working || !canExport}
-              className="hover:bg-muted/50 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
-            >
-              <Download className="size-3" />
-              DOCX
-            </button>
-            {lesson.visibility === "draft" && (
-              <button
-                type="button"
-                onClick={onPublish}
-                disabled={working}
-                className="border-accent bg-accent/10 text-accent-readable hover:bg-accent/20 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
-              >
-                <Sparkles className="size-3" />
-                Publish
-              </button>
-            )}
+            />
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <Button variant="inverse" type="button" disabled={working}>
+                  More
+                  <ChevronDown className="size-3" />
+                </Button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  align="end"
+                  sideOffset={8}
+                  aria-label="More lesson actions"
+                  className="bg-card text-card-foreground z-50 min-w-48 rounded-xl border p-1 shadow-xl"
+                >
+                  <DropdownMenu.Item asChild className={lessonMenuItemClass}>
+                    <Link href={`/worksheets/new?lesson=${lesson.id}`}>
+                      <FileText className="size-4" aria-hidden="true" />
+                      Create worksheet from lesson
+                    </Link>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item
+                    onSelect={onDuplicate}
+                    className={lessonMenuItemClass}
+                  >
+                    <Copy className="size-4" aria-hidden="true" />
+                    Duplicate
+                  </DropdownMenu.Item>
+                  {lesson.visibility === "draft" && (
+                    <DropdownMenu.Item
+                      onSelect={onPublish}
+                      className={lessonMenuItemClass}
+                    >
+                      <Sparkles className="size-4" aria-hidden="true" />
+                      Publish to community
+                    </DropdownMenu.Item>
+                  )}
+                  <DropdownMenu.Separator className="bg-border my-1 h-px" />
+                  <DeleteConfirmDialog
+                    itemName="lesson"
+                    onConfirm={onDelete}
+                    consequence="Google Docs and separately published resource copies remain. Manage them in Google Drive or Resources."
+                  >
+                    <DropdownMenu.Item
+                      onSelect={(event) => event.preventDefault()}
+                      className={`${lessonMenuItemClass} text-destructive`}
+                    >
+                      <Trash2 className="size-4" aria-hidden="true" />
+                      Delete lesson
+                    </DropdownMenu.Item>
+                  </DeleteConfirmDialog>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
           </div>
         </div>
       </div>
@@ -442,7 +471,8 @@ function LessonDisplay({
           const open = expanded === section.key;
           return (
             <div key={section.key}>
-              <button
+              <Button
+                variant="ghost"
                 id={`lesson-section-trigger-${section.key}`}
                 type="button"
                 aria-controls={`lesson-section-panel-${section.key}`}
@@ -473,7 +503,7 @@ function LessonDisplay({
                 ) : (
                   <ChevronRight aria-hidden="true" className="size-4" />
                 )}
-              </button>
+              </Button>
               {open && (
                 <div
                   id={`lesson-section-panel-${section.key}`}
@@ -506,21 +536,23 @@ function LessonDisplay({
               className="bg-background resize-none rounded-lg px-3 py-2 text-xs font-normal outline-none"
             />
           </label>
-          <button
+          <Button
+            variant="ghost"
             type="button"
             disabled={working || !canRegenerate || feedback.trim().length < 3}
             onClick={() => onRegenerateWithFeedback(feedback)}
-            className="border-primary text-primary mt-1 flex h-8 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
+            className="border-primary text-primary mt-1 flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"
           >
             <WandSparkles className="size-3" />
             Regenerate With Feedback
-          </button>
+          </Button>
         </div>
-        <button
+        <Button
+          variant="ghost"
           type="button"
           onClick={onRegenerate}
           disabled={working || !canRegenerate}
-          className="border-primary text-primary flex h-9 items-center justify-center gap-2 rounded-lg border px-4 text-xs font-bold disabled:opacity-50"
+          className="border-primary text-primary flex h-11 items-center justify-center gap-2 rounded-lg border px-4 text-xs font-bold disabled:opacity-50"
         >
           {working ? (
             <LoaderCircle className="size-4 animate-spin" />
@@ -528,7 +560,7 @@ function LessonDisplay({
             <RotateCw className="size-4" />
           )}
           Regenerate
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -538,10 +570,12 @@ export function LessonBuilderExperience({
   viewerUid,
   initialWorkspace,
   initialLesson,
+  sampleMode = false,
 }: {
   viewerUid: string;
   initialWorkspace: LessonWorkspace;
   initialLesson: LessonDetail | null;
+  sampleMode?: boolean;
 }) {
   const [workspace, setWorkspace] = useState(initialWorkspace);
   const [lesson, setLesson] = useState(initialLesson);
@@ -554,8 +588,16 @@ export function LessonBuilderExperience({
   const [lessonCount, setLessonCount] = useState(1);
   const [working, setWorking] = useState(false);
   const [editing, setEditing] = useState(false);
+  const lessonResultRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!lesson?.id || editing) return;
+    lessonResultRef.current?.scrollIntoView({
+      block: "start",
+      behavior: "instant",
+    });
+    lessonResultRef.current?.focus({ preventScroll: true });
+  }, [lesson?.id, lesson?.currentVersion, editing]);
   const [attemptedGenerate, setAttemptedGenerate] = useState(false);
-  const [aiEnhancingField, setAiEnhancingField] = useState<string | null>(null);
   const [upgradeReason, setUpgradeReason] =
     useState<UpgradePromptReason | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<
@@ -811,7 +853,18 @@ export function LessonBuilderExperience({
   async function previewPdf() {
     if (!lesson) return;
     setWorking(true);
+    let previewWindow: Window | null = null;
     try {
+      // Open during the click gesture so async generation does not trigger
+      // popup blocking. Detach the opener before navigating to the PDF.
+      previewWindow = window.open("about:blank", "_blank");
+      if (!previewWindow) {
+        toast.error("Enable pop-ups to preview the PDF.");
+        return;
+      }
+      previewWindow.opener = null;
+      previewWindow.document.title = "Preparing your PDF";
+      previewWindow.document.body.textContent = "Preparing your PDF…";
       const response = await fetch(
         `/api/ai-lessons/${lesson.id}/export/pdf?preview=1`,
       );
@@ -827,56 +880,23 @@ export function LessonBuilderExperience({
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      const previewWindow = window.open(url, "_blank", "noopener,noreferrer");
-      if (!previewWindow) {
+      if (previewWindow.closed) {
         URL.revokeObjectURL(url);
-        toast.error("Enable pop-ups to preview the PDF.");
         return;
       }
+      previewWindow.document.title = "Lesson PDF";
+      previewWindow.document.body.textContent =
+        "Your PDF is ready. Your browser will open it or save it to Downloads.";
+      previewWindow.location.replace(url);
       window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
       toast.success("PDF preview opened.");
     } catch (error) {
+      previewWindow?.close();
       if (!showUpgradeFor(error)) {
         toast.error(error instanceof Error ? error.message : "Preview failed.");
       }
     } finally {
       setWorking(false);
-    }
-  }
-
-  async function getFieldInsights(
-    field: string,
-    currentValue: string,
-  ): Promise<void> {
-    if (!currentValue.trim()) return;
-    setAiEnhancingField(field);
-    try {
-      // For now, show a toast with suggestions. In a real implementation,
-      // this would call an API endpoint to get AI-powered insights
-      toast.message("✨ AI Insights", {
-        description: `Consider adding more specific details, examples, or measurable outcomes to improve "${field}". You can also use "Regenerate" to create fresh content based on all your parameters.`,
-        duration: 5000,
-      });
-    } catch {
-      toast.error("Could not get insights.");
-    } finally {
-      setAiEnhancingField(null);
-    }
-  }
-
-  async function regenerateField(field: string): Promise<void> {
-    // This would call a new API endpoint to regenerate a specific field
-    // For now, it shows a toast with instructions
-    setAiEnhancingField(field);
-    try {
-      toast.message("🔄 Regenerating...", {
-        description: `Use the "Regenerate" button at the bottom of the lesson or edit individual content to refine the ${field}.`,
-        duration: 4000,
-      });
-    } catch {
-      toast.error("Regeneration failed.");
-    } finally {
-      setAiEnhancingField(null);
     }
   }
 
@@ -904,7 +924,7 @@ export function LessonBuilderExperience({
   }
 
   const fieldClass =
-    "bg-muted h-10 w-full rounded-lg border-0 px-3 text-sm outline-none";
+    "input-shell bg-background h-11 w-full rounded-xl border px-3 text-base font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm";
   const missingFields = missingGenerateFields(source);
   const showGenerateErrors = attemptedGenerate && missingFields.length > 0;
   const requiredHelper = `Fill out ${formatMissingFields([...REQUIRED_GENERATE_FIELDS])} before generating.`;
@@ -916,7 +936,7 @@ export function LessonBuilderExperience({
     <div className="mx-auto max-w-6xl">
       <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="font-serif text-3xl">AI Lesson Builder</h1>
             <span className="bg-accent text-accent-foreground rounded px-2 py-0.5 text-[10px] font-bold">
               {workspace.plan === "plus" ? "PLUS" : "COMMUNITY"}
@@ -951,10 +971,22 @@ export function LessonBuilderExperience({
         </div>
       </header>
 
+      {sampleMode && (
+        <p
+          className="bg-muted mb-5 rounded-xl border p-4 text-sm"
+          role="status"
+        >
+          Sample mode: generated lessons use demonstration content, without an
+          AI request. Output language and teaching instructions are applied when
+          the OpenAI provider is connected.
+        </p>
+      )}
+
       <LimitUpgradeNotice reasons={exhaustedReasons} className="mb-5" />
 
       <div className="mb-5 space-y-3">
-        <button
+        <Button
+          variant="ghost"
           type="button"
           disabled={working}
           onClick={() => {
@@ -963,11 +995,11 @@ export function LessonBuilderExperience({
             setEditing(false);
             setAttemptedGenerate(false);
           }}
-          className="bg-primary text-primary-foreground flex h-10 items-center gap-2 rounded-lg px-4 text-xs font-bold"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 flex h-11 items-center gap-2 rounded-lg px-4 text-xs font-bold"
         >
           <Sparkles className="size-4" />
           New lesson
-        </button>
+        </Button>
         {[
           { key: "published", label: "Published Lessons", icon: BookOpen },
           { key: "draft", label: "Draft Lessons", icon: Save },
@@ -981,7 +1013,8 @@ export function LessonBuilderExperience({
           return (
             <div key={category.key}>
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() =>
                     setExpandedCategories((prev) => ({
@@ -998,7 +1031,7 @@ export function LessonBuilderExperience({
                   )}
                   <Icon className="size-4" />
                   {category.label} ({items.length})
-                </button>
+                </Button>
                 {category.key === "published" && (
                   <Link
                     href="/resources"
@@ -1019,26 +1052,29 @@ export function LessonBuilderExperience({
                           : "border-border bg-card hover:bg-muted"
                       }`}
                     >
-                      <button
+                      <Button
+                        variant="ghost"
                         type="button"
                         aria-label={`Continue refining ${item.title}`}
                         disabled={working}
                         onClick={() => void selectLesson(item.id)}
-                        className="h-10 min-w-0 flex-1 truncate px-3 text-left text-xs font-bold"
+                        className="h-11 min-w-0 flex-1 truncate px-3 text-left text-xs font-bold"
                       >
                         {item.title}
-                      </button>
+                      </Button>
                       <DeleteConfirmDialog
                         itemName="lesson"
+                        consequence="Google Docs and separately published resource copies remain. Manage them in Google Drive or Resources."
                         onConfirm={() => deleteLessonById(item.id)}
                       >
-                        <button
+                        <Button
+                          variant="ghost"
                           type="button"
                           aria-label={`Delete ${item.title}`}
-                          className="hover:bg-destructive/10 hover:text-destructive grid size-10 shrink-0 place-items-center"
+                          className="hover:bg-destructive/10 hover:text-destructive grid size-11 shrink-0 place-items-center"
                         >
                           <Trash2 aria-hidden="true" className="size-3.5" />
-                        </button>
+                        </Button>
                       </DeleteConfirmDialog>
                     </div>
                   ))}
@@ -1050,7 +1086,7 @@ export function LessonBuilderExperience({
       </div>
 
       <div
-        className={`grid items-start gap-5 ${!lesson ? "lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.6fr)]" : ""}`}
+        className={`grid items-start gap-5 ${!lesson ? "lg:grid-cols-[minmax(360px,1fr)_minmax(0,1fr)]" : ""}`}
       >
         {!lesson && (
           <section className="surface-card p-5 lg:sticky lg:top-5">
@@ -1069,7 +1105,8 @@ export function LessonBuilderExperience({
                 />
               </div>
               {sourceRecovery.status !== "idle" && (
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   className="text-destructive mb-3 min-h-11 text-sm font-semibold"
                   onClick={() => {
@@ -1078,7 +1115,7 @@ export function LessonBuilderExperience({
                   }}
                 >
                   Discard parameter draft
-                </button>
+                </Button>
               )}
               {showGenerateErrors && (
                 <p
@@ -1094,14 +1131,17 @@ export function LessonBuilderExperience({
                 </p>
               )}
               <div className="space-y-4">
-                <label className="grid gap-1.5 text-xs font-bold">
+                <label className="grid gap-1.5 text-sm font-bold">
                   <span>
                     Subject
                     {showGenerateErrors && missingFields.includes("Subject") ? (
                       <span className="text-red-600"> *</span>
                     ) : null}
                   </span>
-                  <select
+                  <Input
+                    list="lesson-subject-suggestions"
+                    maxLength={80}
+                    placeholder="Type any school subject"
                     value={source.subject}
                     onChange={(event) =>
                       setSource({ ...source, subject: event.target.value })
@@ -1110,13 +1150,14 @@ export function LessonBuilderExperience({
                     aria-invalid={
                       showGenerateErrors && missingFields.includes("Subject")
                     }
-                  >
+                  />
+                  <datalist id="lesson-subject-suggestions">
                     {SUBJECTS.map((item) => (
-                      <option key={item}>{item}</option>
+                      <option key={item} value={item} />
                     ))}
-                  </select>
+                  </datalist>
                 </label>
-                <label className="grid gap-1.5 text-xs font-bold">
+                <label className="grid gap-1.5 text-sm font-bold">
                   <span>
                     Grade level
                     {showGenerateErrors &&
@@ -1124,7 +1165,10 @@ export function LessonBuilderExperience({
                       <span className="text-red-600"> *</span>
                     ) : null}
                   </span>
-                  <select
+                  <Input
+                    list="lesson-grade-suggestions"
+                    maxLength={80}
+                    placeholder="Grade, age group, or mixed-age class"
                     value={source.gradeLevel}
                     onChange={(event) =>
                       setSource({ ...source, gradeLevel: event.target.value })
@@ -1134,13 +1178,14 @@ export function LessonBuilderExperience({
                       showGenerateErrors &&
                       missingFields.includes("Grade level")
                     }
-                  >
+                  />
+                  <datalist id="lesson-grade-suggestions">
                     {GRADES.map((item) => (
-                      <option key={item}>{item}</option>
+                      <option key={item} value={item} />
                     ))}
-                  </select>
+                  </datalist>
                 </label>
-                <label className="grid gap-1.5 text-xs font-bold">
+                <label className="grid gap-1.5 text-sm font-bold">
                   <span>
                     Topic / unit
                     {showGenerateErrors &&
@@ -1162,7 +1207,7 @@ export function LessonBuilderExperience({
                     }
                   />
                 </label>
-                <label className="grid gap-1.5 text-xs font-bold">
+                <label className="grid gap-1.5 text-sm font-bold">
                   <span>
                     Duration
                     {showGenerateErrors &&
@@ -1170,7 +1215,13 @@ export function LessonBuilderExperience({
                       <span className="text-red-600"> *</span>
                     ) : null}
                   </span>
-                  <select
+                  <Input
+                    type="number"
+                    aria-label="Duration"
+                    aria-describedby="lesson-duration-hint"
+                    min={15}
+                    max={240}
+                    step={1}
                     value={source.durationMinutes}
                     onChange={(event) =>
                       setSource({
@@ -1182,15 +1233,15 @@ export function LessonBuilderExperience({
                     aria-invalid={
                       showGenerateErrors && missingFields.includes("Duration")
                     }
+                  />
+                  <span
+                    id="lesson-duration-hint"
+                    className="text-muted-foreground text-xs font-normal"
                   >
-                    {[30, 45, 60, 75, 90].map((minutes) => (
-                      <option key={minutes} value={minutes}>
-                        {minutes} minutes
-                      </option>
-                    ))}
-                  </select>
+                    15–240 minutes
+                  </span>
                 </label>
-                <label className="grid gap-1.5 text-xs font-bold">
+                <label className="grid gap-1.5 text-sm font-bold">
                   Lessons to generate
                   <select
                     value={lessonCount}
@@ -1208,28 +1259,17 @@ export function LessonBuilderExperience({
                     )}
                   </select>
                 </label>
-                <AIEnhancedTextarea
-                  label="Learning objectives"
+                <PlanningTextarea
+                  label="Learning objectives (optional)"
                   value={source.objectives}
                   onChange={(objectives) =>
                     setSource({ ...source, objectives })
                   }
-                  onGetInsights={() =>
-                    void getFieldInsights(
-                      "Learning objectives",
-                      source.objectives,
-                    )
-                  }
-                  onRegenerate={() =>
-                    void regenerateField("Learning objectives")
-                  }
-                  insightsLoading={aiEnhancingField === "Learning objectives"}
-                  regenerateLoading={aiEnhancingField === "Learning objectives"}
                   placeholder="Example: Students will be able to divide fractions using visual models"
                   rows={3}
                 />
-                <label className="grid gap-1.5 text-xs font-bold">
-                  Standards
+                <label className="grid gap-1.5 text-sm font-bold">
+                  Standards (optional)
                   <input
                     value={source.standards}
                     maxLength={1000}
@@ -1240,21 +1280,87 @@ export function LessonBuilderExperience({
                     className={fieldClass}
                   />
                 </label>
-                <AIEnhancedTextarea
-                  label="Student needs"
+                <PlanningTextarea
+                  label="Student needs (optional)"
                   value={source.studentNeeds}
                   onChange={(studentNeeds) =>
                     setSource({ ...source, studentNeeds })
                   }
-                  onGetInsights={() =>
-                    void getFieldInsights("Student needs", source.studentNeeds)
-                  }
-                  onRegenerate={() => void regenerateField("Student needs")}
-                  insightsLoading={aiEnhancingField === "Student needs"}
-                  regenerateLoading={aiEnhancingField === "Student needs"}
                   placeholder="Example: Struggling readers, English language learners, gifted learners"
                   rows={2}
                 />
+                <details className="rounded-xl border px-3 py-2">
+                  <summary className="text-primary flex min-h-11 cursor-pointer items-center text-sm font-bold">
+                    More teaching context (optional)
+                  </summary>
+                  <div className="space-y-4 pt-3 pb-2">
+                    <p className="text-muted-foreground text-sm leading-6">
+                      Add what matters for your classroom. Describe learning
+                      needs without student names or personal records.
+                    </p>
+                    <label className="grid gap-1.5 text-sm font-bold">
+                      Curriculum / country
+                      <Input
+                        maxLength={500}
+                        value={source.curriculum ?? ""}
+                        onChange={(event) =>
+                          setSource({
+                            ...source,
+                            curriculum: event.target.value,
+                          })
+                        }
+                        placeholder="e.g. Swedish Lgr22, IB, or your local curriculum"
+                      />
+                    </label>
+                    <label className="grid gap-1.5 text-sm font-bold">
+                      Output language
+                      <Input
+                        maxLength={80}
+                        value={source.language ?? "English"}
+                        onChange={(event) =>
+                          setSource({ ...source, language: event.target.value })
+                        }
+                        placeholder="e.g. English, Swedish, or bilingual"
+                      />
+                    </label>
+                    <label className="grid gap-1.5 text-sm font-bold">
+                      Class size
+                      <Input
+                        type="number"
+                        min={1}
+                        max={200}
+                        value={source.classSize ?? ""}
+                        onChange={(event) =>
+                          setSource({
+                            ...source,
+                            classSize: event.target.value
+                              ? Number(event.target.value)
+                              : undefined,
+                          })
+                        }
+                      />
+                    </label>
+                    <PlanningTextarea
+                      label="Available materials and technology"
+                      value={source.availableMaterials ?? ""}
+                      onChange={(availableMaterials) =>
+                        setSource({ ...source, availableMaterials })
+                      }
+                      maxLength={1000}
+                      rows={2}
+                      placeholder="e.g. Paper and pencils; no devices or printer"
+                    />
+                    <PlanningTextarea
+                      label="Additional teacher instructions"
+                      value={source.additionalInstructions ?? ""}
+                      onChange={(additionalInstructions) =>
+                        setSource({ ...source, additionalInstructions })
+                      }
+                      rows={3}
+                      placeholder="e.g. Include outdoor learning, use local examples, avoid homework"
+                    />
+                  </div>
+                </details>
                 <fieldset>
                   <legend className="mb-1.5 text-xs font-bold">
                     Teaching style
@@ -1262,21 +1368,24 @@ export function LessonBuilderExperience({
                   <div className="grid grid-cols-3 gap-2">
                     {(["inquiry", "balanced", "direct"] as const).map(
                       (style) => (
-                        <button
+                        <Button
+                          variant="ghost"
                           key={style}
                           type="button"
+                          aria-pressed={source.teachingStyle === style}
                           onClick={() =>
                             setSource({ ...source, teachingStyle: style })
                           }
-                          className={`h-9 rounded-lg text-xs font-bold capitalize ${source.teachingStyle === style ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+                          className={`h-11 rounded-lg text-xs font-bold capitalize ${source.teachingStyle === style ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
                         >
                           {style}
-                        </button>
+                        </Button>
                       ),
                     )}
                   </div>
                 </fieldset>
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => void generate()}
                   disabled={
@@ -1284,7 +1393,7 @@ export function LessonBuilderExperience({
                     workspace.usage.remaining < lessonCount ||
                     source.topic.trim().length < 3
                   }
-                  className="bg-accent text-accent-foreground flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold disabled:opacity-50"
+                  className="bg-accent text-accent-foreground hover:bg-accent/90 flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold disabled:opacity-50"
                 >
                   {working ? (
                     <LoaderCircle className="size-4 animate-spin" />
@@ -1293,15 +1402,20 @@ export function LessonBuilderExperience({
                   )}
                   Generate{" "}
                   {lessonCount > 1 ? `${lessonCount} lessons` : "lesson"}
-                </button>
+                </Button>
               </div>
             </fieldset>
           </section>
         )}
 
-        <section className="min-w-0">
+        <section
+          ref={lessonResultRef}
+          tabIndex={lesson ? -1 : undefined}
+          aria-label={lesson ? "Lesson result" : undefined}
+          className="min-w-0 scroll-mt-5"
+        >
           {working && !lesson && (
-            <div className="surface-card grid min-h-80 place-items-center p-10 text-center">
+            <div className="surface-card grid min-h-110 place-items-center p-10 text-center">
               <div>
                 <LoaderCircle className="text-primary mx-auto size-10 animate-spin" />
                 <p className="mt-4 font-bold">Building your lesson...</p>
@@ -1309,10 +1423,21 @@ export function LessonBuilderExperience({
             </div>
           )}
           {!working && !lesson && (
-            <div className="surface-card grid min-h-80 place-items-center border-dashed p-10 text-center">
+            <div className="surface-card grid min-h-110 place-items-center border-dashed p-10 text-center">
               <div>
                 <Sparkles className="text-muted-foreground/30 mx-auto size-10" />
-                <p className="mt-4 font-bold">Ready to generate</p>
+                <h2 className="mt-4 font-serif text-2xl">
+                  Start with your teaching goal
+                </h2>
+                <p className="text-muted-foreground mx-auto mt-3 max-w-sm text-sm leading-6">
+                  Choose any subject and age group, describe your topic, and add
+                  the context your students need. Your lesson will be saved
+                  privately as a draft.
+                </p>
+                <p className="text-muted-foreground mx-auto mt-3 max-w-sm text-sm leading-6">
+                  Review and edit the result, then download a PDF or Word
+                  document. Publishing is your choice.
+                </p>
               </div>
             </div>
           )}

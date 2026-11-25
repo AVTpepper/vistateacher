@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import {
   isRecentAuthentication,
   SESSION_COOKIE_NAME,
+  SIGNED_IN_HOME,
   SESSION_MAX_AGE_MS,
 } from "@/lib/auth/policy";
 import { hasTrustedOrigin } from "@/lib/auth/request";
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = NextResponse.json({
-      next: profileExists ? "/dashboard" : "/onboarding",
+      next: profileExists ? SIGNED_IN_HOME : "/onboarding",
     });
     response.cookies.set(SESSION_COOKIE_NAME, sessionCookie, {
       httpOnly: true,

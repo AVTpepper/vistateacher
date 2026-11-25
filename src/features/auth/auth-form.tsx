@@ -22,7 +22,8 @@ import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField as Field } from "@/components/ui/form-field";
-import { hrefWithReturnTo, safeReturnTo } from "@/lib/auth/return-to";
+import { hrefWithReturnTo } from "@/lib/auth/return-to";
+import { authenticationDestination } from "@/lib/auth/destination";
 import { planIntentHref, type PlanIntent } from "@/lib/billing/plan-intent";
 import { getFirebaseClient } from "@/lib/firebase/client";
 import {
@@ -132,19 +133,6 @@ export function AuthForm({
   ];
   const passwordRegistration = form.register("password");
 
-  function destinationFor(next: string): string {
-    const safeDestination = safeReturnTo(returnTo);
-    if (next === "/onboarding")
-      return hrefWithReturnTo(
-        planIntentHref("/onboarding", planIntent),
-        safeDestination,
-      );
-    if (safeDestination) return safeDestination;
-    return planIntent && next === "/dashboard"
-      ? planIntentHref("/settings/billing", planIntent)
-      : planIntentHref(next, planIntent);
-  }
-
   async function completeProviderSignIn(user: User) {
     if (!user.emailVerified) {
       router.push(
@@ -152,7 +140,13 @@ export function AuthForm({
       );
       return;
     }
-    router.push(destinationFor(await establishSession(user)));
+    router.push(
+      authenticationDestination(
+        await establishSession(user),
+        returnTo,
+        planIntent,
+      ),
+    );
     router.refresh();
   }
 
@@ -297,16 +291,18 @@ export function AuthForm({
                     setIsPasswordFocused(false);
                   }}
                 />
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   aria-controls="password"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   aria-pressed={showPassword}
-                  className="text-primary absolute inset-y-0 right-3 text-xs font-bold hover:underline"
+                  className="text-primary absolute inset-y-0 right-1 min-w-11 px-2 text-xs hover:underline"
                   onClick={() => setShowPassword((visible) => !visible)}
                 >
                   {showPassword ? "Hide" : "Show"}
-                </button>
+                </Button>
               </div>
               {showPasswordRequirements && (
                 <ul

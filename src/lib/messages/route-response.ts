@@ -16,6 +16,11 @@ export function messageErrorResponse(error: unknown) {
       status: 409,
       message: "Messaging is unavailable for this conversation.",
     },
+    "connections-only": {
+      status: 403,
+      message:
+        "This teacher accepts messages from connections only. Send a connection request first.",
+    },
     "rate-limited": {
       status: 429,
       message:

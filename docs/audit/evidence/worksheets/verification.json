@@ -1,0 +1,217 @@
+{
+  "verifiedAt": "2026-11-24T21:51:47.968Z",
+  "environment": {
+    "firebase": "demo-vista-teacher emulators",
+    "aiProvider": "MOCK",
+    "baseURL": "http://127.0.0.1:3300",
+    "deployed": false
+  },
+  "checks": {
+    "optimizedBuild": true,
+    "typescript": true,
+    "fullUnitSuite": {
+      "passed": 197,
+      "files": 61
+    },
+    "finalAffectedUnitChecks": {
+      "passed": 26,
+      "files": 6,
+      "note": "Includes the final mixed-draft recovery regression after the full-suite snapshot."
+    },
+    "firestoreAndStorageIntegration": {
+      "passed": 54
+    },
+    "currentBrowserChecks": {
+      "passed": 12,
+      "projects": ["chromium", "mobile-chrome"],
+      "worksheetChecks": 4,
+      "existingLessonMessagingNotificationChecks": 8
+    },
+    "worksheetAccessibility": {
+      "scans": 10,
+      "violations": 0,
+      "standard": "Selected WCAG A/AA diagnostics"
+    },
+    "worksheetGeometry": {
+      "horizontalOverflows": 0,
+      "undersizedVisibleEnabledButtons": 0,
+      "targetPixels": 44,
+      "tolerancePixels": 1
+    },
+    "currentLinks": {
+      "passed": 77,
+      "checked": 77
+    },
+    "navigation": {
+      "passed": 27,
+      "checked": 27,
+      "widths": [1440, 1024, 390]
+    },
+    "historicalFixtures": {
+      "count": 27,
+      "note": "Removed temporary profiles from earlier screenshots, not current links; retained with actual HTTP status in navigation.json."
+    },
+    "nativePdfVisualReview": {
+      "passed": 2,
+      "renderer": "Full Chromium",
+      "studentPages": 2,
+      "answerKeyPages": 1
+    },
+    "pdfFontTracing": [
+      {
+        "route": "ai-lessons/[lessonId]",
+        "fonts": [
+          "DM-Serif-Display-Regular.ttf",
+          "JetBrains-Mono-Variable.ttf",
+          "Plus-Jakarta-Sans-Variable.ttf"
+        ]
+      },
+      {
+        "route": "worksheets/[worksheetId]",
+        "fonts": [
+          "DM-Serif-Display-Regular.ttf",
+          "JetBrains-Mono-Variable.ttf",
+          "Plus-Jakarta-Sans-Variable.ttf"
+        ]
+      }
+    ]
+  },
+  "screenshots": [
+    {
+      "file": "answer-key-pdf-preview.png",
+      "bytes": 151005,
+      "sha256": "68a76b9ccd457a433a62de5e3c18ebfc24409d7632e1ca42f2640a3635f4d382",
+      "width": 1000,
+      "height": 1200
+    },
+    {
+      "file": "chromium-answer-key.png",
+      "bytes": 111402,
+      "sha256": "b858567b925ab43ec5535403dac568df70a867807bc2b50a89f5aece36542e36",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "chromium-create.png",
+      "bytes": 114534,
+      "sha256": "4ac3ec89e62f779d81ecc1c82640fc6de65d8b58a05c0dc5806fe2bbd21835d2",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "chromium-editor.png",
+      "bytes": 105606,
+      "sha256": "7af0335c1a5b2ba0c3f3f0cd1bf70c308b0d23c01bd36ee73bc25709d410d8c8",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "chromium-list.png",
+      "bytes": 114748,
+      "sha256": "2373a8e17e372397b3392c3de10f35784e1af0375bcdcc24398eb7c3f4c9c145",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "chromium-question-mix.png",
+      "bytes": 89435,
+      "sha256": "c69c3b333f35d106c2bf5b16e0d2a4aef2a1ed8812098585482c833ac4c4ab60",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "chromium-student.png",
+      "bytes": 114077,
+      "sha256": "9f700faf67e122df94af48e196ff4ca6b0f8528d8259de915e845a0d1b59dc4e",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "mobile-chrome-answer-key.png",
+      "bytes": 283176,
+      "sha256": "ae0298bcd09e69fe50b813ed7b712b06e90195bd7b3719cb6880ad8f55d88e4d",
+      "width": 1082,
+      "height": 2202
+    },
+    {
+      "file": "mobile-chrome-create.png",
+      "bytes": 395791,
+      "sha256": "b671a98a9faf285b4c4dd630b43253ca0a475d2c113fa7e320d770b2f822347b",
+      "width": 1082,
+      "height": 2202
+    },
+    {
+      "file": "mobile-chrome-editor.png",
+      "bytes": 362627,
+      "sha256": "1f187c3455ea8d7b5b01a311430e210d3de0aa1c720adc4bf7c6bfbdc6d54891",
+      "width": 1082,
+      "height": 2202
+    },
+    {
+      "file": "mobile-chrome-list.png",
+      "bytes": 368760,
+      "sha256": "87489129c18f8f6d7871a02863559f6888b555e824c0cbb453c9c75bbaaa1a8a",
+      "width": 1082,
+      "height": 2202
+    },
+    {
+      "file": "mobile-chrome-question-mix.png",
+      "bytes": 223827,
+      "sha256": "1113446be2c318aa1b126d5ab322b535f41b18b1251b4933bd83a7f8abb010fc",
+      "width": 1082,
+      "height": 2202
+    },
+    {
+      "file": "mobile-chrome-student.png",
+      "bytes": 284212,
+      "sha256": "3178f3b0e91335446524497026ae58c15cf91ed0b0615746b2a0ad3a928a31b7",
+      "width": 1082,
+      "height": 2202
+    },
+    {
+      "file": "student-pdf-preview.png",
+      "bytes": 128081,
+      "sha256": "7b86435e47e718e5d2d4731a7c90d78c57eb08486a5860eaf1c5339735b22471",
+      "width": 1000,
+      "height": 1200
+    }
+  ],
+  "artifacts": [
+    {
+      "file": "sample-student-v2.pdf",
+      "bytes": 16260,
+      "sha256": "555de06e2d413ab53d225b0e54f59b9df5818a412f430c1d84be92064100de97",
+      "pages": 2
+    },
+    {
+      "file": "sample-answer-key-v2.pdf",
+      "bytes": 16632,
+      "sha256": "66f488e27df44bd981143f772f095291af192c89dc135b72a42200197f3a1de3",
+      "pages": 1
+    },
+    {
+      "file": "sample-student-v2.docx",
+      "bytes": 9109,
+      "sha256": "f833464afd0ca2256f71066a05b0f8ee414526156ba4e984dbb63e473585f6f8"
+    },
+    {
+      "file": "sample-answer-key-v2.docx",
+      "bytes": 9189,
+      "sha256": "9f4a950032a50959ea9a4179013cff552f6dbb590b16f9706b0b837fa0b3e49a"
+    }
+  ],
+  "limitations": [
+    "No real OpenAI content or cost evaluation; sample output is not classroom-ready.",
+    "Native Google Docs and Google Slides integration remains outstanding.",
+    "Additional PDF scripts, tagging/accessibility, ink-light printing and long-form save visibility need review.",
+    "Live Stripe, currency selection, email and production deployment have not been verified.",
+    "Community email delivery, larger-scale network/resource pagination and lesson job recovery/concurrency remain."
+  ],
+  "latestRegression": {
+    "verifiedAt": "2026-11-24T22:39:29.622Z",
+    "passedBrowserChecks": 4,
+    "source": "../notifications/verification.json",
+    "nativePdfPreviewReviewAt": "2026-11-24T21:51:47.968Z",
+    "note": "Screenshots and downloads regenerated by the passing desktop/mobile regression; PDF previews retain their original review date."
+  }
+}

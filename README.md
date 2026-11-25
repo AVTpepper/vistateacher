@@ -198,7 +198,7 @@ The current Next.js process listens on all local interfaces. However, when `NEXT
 - Admin credential errors: preserve private-key quotes and literal `\n` characters.
 - Rules startup errors: run `java -version` and install a supported Java runtime.
 - Localhost canonical URLs: set `NEXT_PUBLIC_APP_URL` at build and runtime.
-- Font build failures: allow build access to Google Fonts; `next/font` self-hosts the resulting assets.
+- Fonts: the existing brand fonts and their licenses are bundled under `public/fonts`; builds no longer require Google Fonts access.
 
 See [docs/manual-testing.md](docs/manual-testing.md), [docs/release.md](docs/release.md), [docs/architecture.md](docs/architecture.md), [docs/data-model.md](docs/data-model.md), [docs/security.md](docs/security.md), and [docs/build-plan.md](docs/build-plan.md).
 

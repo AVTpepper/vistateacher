@@ -8,7 +8,8 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { hrefWithReturnTo, safeReturnTo } from "@/lib/auth/return-to";
+import { hrefWithReturnTo } from "@/lib/auth/return-to";
+import { authenticationDestination } from "@/lib/auth/destination";
 import { planIntentHref, type PlanIntent } from "@/lib/billing/plan-intent";
 import { getFirebaseClient } from "@/lib/firebase/client";
 
@@ -81,18 +82,7 @@ export function VerifyEmailPanel({
         }
         throw new Error(result.error);
       }
-      const destination = safeReturnTo(returnTo);
-      router.push(
-        result.next === "/onboarding"
-          ? hrefWithReturnTo(
-              planIntentHref("/onboarding", planIntent),
-              destination,
-            )
-          : (destination ??
-              (planIntent && result.next === "/dashboard"
-                ? planIntentHref("/settings/billing", planIntent)
-                : planIntentHref(result.next, planIntent))),
-      );
+      router.push(authenticationDestination(result.next, returnTo, planIntent));
       router.refresh();
     } catch (caught) {
       const code =

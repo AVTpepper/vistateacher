@@ -5,6 +5,7 @@ import {
   BookOpen,
   Compass,
   Home,
+  FileText,
   LayoutDashboard,
   Mail,
   Menu,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import Link from "next/link";
+import { SIGNED_IN_HOME } from "@/lib/auth/policy";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 
@@ -50,9 +52,15 @@ const primaryNavigation = [
     group: "Teaching tools",
   },
   {
-    label: "AI Lesson Builder",
+    label: "Lessons",
     icon: Sparkles,
     href: "/ai-lessons",
+    group: "Teaching tools",
+  },
+  {
+    label: "Worksheets",
+    icon: FileText,
+    href: "/worksheets",
     group: "Teaching tools",
   },
 ] as const;
@@ -347,7 +355,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
               )}
             </button>
             <Link
-              href="/dashboard"
+              href={SIGNED_IN_HOME}
               aria-label="VistaTeacher home"
               className="flex shrink-0 items-center gap-2 lg:hidden"
             >
@@ -363,7 +371,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
             </Link>
           </div>
           <Link
-            href="/dashboard"
+            href={SIGNED_IN_HOME}
             className="hidden min-h-11 shrink-0 items-center gap-2.5 rounded-lg lg:flex"
           >
             <span
@@ -387,10 +395,7 @@ export function PlatformShell({ account, plan, children }: PlatformShellProps) {
               }}
             />
           </div>
-          <NotificationMenu
-            uid={account.uid}
-            onOpen={() => setUserMenuOpen(false)}
-          />
+          <NotificationMenu onOpen={() => setUserMenuOpen(false)} />
           <DropdownMenu.Root
             modal={false}
             open={userMenuOpen}
@@ -617,7 +622,7 @@ function PlatformFooter() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(3,minmax(0,1fr))]">
           <div>
             <Link
-              href="/dashboard"
+              href={SIGNED_IN_HOME}
               className="text-sidebar-foreground inline-flex items-center gap-2 font-serif text-lg"
             >
               <span

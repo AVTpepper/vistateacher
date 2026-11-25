@@ -21,7 +21,7 @@ async function signIn(page: Page, email: string) {
   await page.getByLabel("Password", { exact: true }).fill("VistaTeacher1!");
   await page.getByRole("button", { name: "Sign in" }).click();
   try {
-    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/app$/, { timeout: 30_000 });
   } catch (error) {
     throw new Error(
       `${String(error)}\nBrowser diagnostics:\n${diagnostics.join("\n") || "none"}`,
@@ -194,9 +194,8 @@ test("signs in a seeded educator and protects platform workflows", async ({
   await signIn(page, "community@vista.local");
 
   await expect(
-    page.getByRole("heading", { name: "Welcome back, Alex." }),
+    page.getByRole("heading", { name: "Community feed", exact: true }),
   ).toBeVisible();
-  await page.goto("/app");
   await expect(
     page.getByRole("link", { name: "Community feed" }),
   ).toBeVisible();
@@ -240,7 +239,7 @@ test("signs in a seeded educator and protects platform workflows", async ({
   await page.goto("/pricing");
   await expect(
     page.getByRole("link", { name: /^VistaTeacher(?: home)?$/ }).first(),
-  ).toHaveAttribute("href", "/dashboard");
+  ).toHaveAttribute("href", "/app");
   await expect(
     page.getByRole("link", { name: "Sign in", exact: true }),
   ).toHaveCount(0);
@@ -362,7 +361,7 @@ test("previews and manages contextual notifications", async ({
   await notification.getByRole("button", { name: "Archive" }).click();
   await page.getByRole("button", { name: "Archived" }).click();
   await expect(notification).toBeVisible();
-  await notification.getByRole("button", { name: "Restore" }).click();
+  await notification.getByRole("button", { name: "Unarchive" }).click();
 
   await page.getByRole("button", { name: "All", exact: true }).click();
   await notification.getByRole("button", { name: "Mark as unread" }).click();
@@ -421,7 +420,7 @@ test("keeps desktop platform navigation complete and within the viewport", async
     "Network",
     "Resources",
     "Forum",
-    "AI Lesson Builder",
+    "Lessons",
     "Messages",
   ]) {
     await expect(navigation.getByRole("link", { name: label })).toBeVisible();

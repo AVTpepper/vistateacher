@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { getRouteAccount } from "@/lib/auth/route-account";
 import { createLessonExport } from "@/lib/lessons/export";
+import { UnsupportedPdfTextError } from "@/lib/documents/pdf";
 import { lessonErrorResponse } from "@/lib/lessons/route-response";
 import { lessonExportFormatSchema } from "@/schemas/lesson";
 
@@ -44,6 +45,11 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (error instanceof UnsupportedPdfTextError)
+      return NextResponse.json(
+        { error: error.message, code: "unsupported-pdf-text" },
+        { status: 422 },
+      );
     const response = lessonErrorResponse(error);
     if (response) return response;
     throw error;

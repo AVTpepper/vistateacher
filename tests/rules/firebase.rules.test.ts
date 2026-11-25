@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 
 import {
   assertFails,
@@ -16,7 +17,29 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { getBytes, ref, uploadBytes } from "firebase/storage";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { adminDb } from "@/lib/firebase/admin";
+import {
+  createWorksheet,
+  getWorksheet,
+  getWorksheetWorkspace,
+  updateWorksheet,
+  deleteWorksheet,
+  regenerateWorksheet,
+  restoreWorksheetVersion,
+} from "@/lib/worksheets/server";
+import { createWorksheetExport } from "@/lib/worksheets/export";
+import * as worksheetProvider from "@/lib/worksheets/provider";
+import { createMockWorksheet } from "@/lib/worksheets/mock-provider";
+import { worksheetSourceSchema } from "@/schemas/worksheet";
 
 import {
   acceptConnectionRequest,
@@ -65,6 +88,9 @@ import {
   sendMessage,
   setUserBlocked,
   startConversation,
+  getNotifications,
+  getUnreadNotificationCount,
+  updateNotification,
 } from "@/lib/messages/server";
 import {
   createLesson,
@@ -85,6 +111,26 @@ import {
 import { AdminActionError, performAdminAction } from "@/lib/admin/server";
 import { getProfileView, getProfileViewers } from "@/lib/profiles/server";
 import { getDashboardData } from "@/lib/dashboard/server";
+import {
+  createTeachingExport,
+  getTeachingExportBytes,
+  getTeachingExport,
+  claimTeachingExport,
+  mutateTeachingExport,
+  publishTeachingExport,
+} from "@/lib/teaching-exports/server";
+import {
+  reserveGeneratedResource,
+  saveGeneratedResourceBytes,
+} from "@/lib/resources/server";
+import { createHash } from "node:crypto";
+import { adminStorage } from "@/lib/firebase/admin";
+import { adminAuth } from "@/lib/firebase/admin";
+import { Timestamp } from "firebase-admin/firestore";
+import {
+  enqueueAccountDeletion,
+  processAccountDeletion,
+} from "@/lib/accounts/deletion";
 const projectId = "demo-vista-teacher";
 const storageBucketUrl = `gs://${projectId}.appspot.com`;
 let testEnv: RulesTestEnvironment;
@@ -98,8 +144,875 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await testEnv.clearFirestore();
   await testEnv.clearStorage();
+});
+
+it("keeps Google snapshots private, publishes immutable server bytes once and preserves the copy after source deletion", async () => {
+  const db = adminDb();
+  await db
+    .doc("users/export-owner")
+    .set({ status: "active", displayName: "Export Teacher", resourceCount: 0 });
+  await db
+    .doc("users/export-peer")
+    .set({ status: "active", displayName: "Peer" });
+  const content = createMockWorksheet(worksheetBrief);
+  await db.doc("worksheets/export-source").set({
+    ownerId: "export-owner",
+    source: { ...worksheetBrief, studentNeeds: "PRIVATE BRIEF" },
+    content,
+    currentVersion: 1,
+  });
+  const input = {
+    kind: "worksheet" as const,
+    sourceId: "export-source",
+    version: 1,
+    mode: "student" as const,
+    destination: {
+      id: "drive-owner",
+      email: "teacher@example.com",
+      name: "Teacher",
+    },
+  };
+  const [first, retry] = await Promise.all([
+    createTeachingExport("export-owner", input),
+    createTeachingExport("export-owner", input),
+  ]);
+  expect(first.id).toBe(retry.id);
+  const ownerDb = testEnv.authenticatedContext("export-owner").firestore();
+  const peerDb = testEnv.authenticatedContext("export-peer").firestore();
+  for (const client of [ownerDb, peerDb]) {
+    await assertFails(
+      getDoc(doc(client, `users/export-owner/teachingExports/${first.id}`)),
+    );
+    await assertFails(
+      setDoc(doc(client, `users/export-owner/teachingExports/${first.id}`), {
+        state: "complete",
+      }),
+    );
+  }
+  await expect(
+    getTeachingExportBytes("export-peer", first.id),
+  ).rejects.toMatchObject({ code: "not-found" });
+  const snapshot = await getTeachingExportBytes("export-owner", first.id);
+  expect(snapshot.bytes.subarray(0, 2).toString()).toBe("PK");
+  expect(createHash("sha256").update(snapshot.bytes).digest("hex")).toBe(
+    first.binaryHash,
+  );
+  await db
+    .doc("worksheets/export-source")
+    .update({ currentVersion: 2, "content.title": "Newer teacher edit" });
+  expect((await createTeachingExport("export-owner", input)).title).toBe(
+    first.title,
+  );
+  expect(
+    (await getTeachingExportBytes("export-owner", first.id)).bytes,
+  ).toEqual(snapshot.bytes);
+  const claimed = await claimTeachingExport("export-owner", first.id);
+  await expect(
+    claimTeachingExport("export-owner", first.id),
+  ).rejects.toMatchObject({ code: "busy" });
+  await mutateTeachingExport("export-owner", first.id, {
+    action: "session",
+    claim: claimed.claim!,
+    uri: "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=rules-test",
+  });
+  await mutateTeachingExport("export-owner", first.id, {
+    action: "complete",
+    claim: claimed.claim!,
+    document: {
+      id: "private-doc",
+      title: first.title,
+      url: "https://docs.google.com/document/d/private-doc/edit",
+    },
+  });
+  const publish = { publicationId: randomUUID(), metadata: first.defaults };
+  // Emulate a stopped worker after the reviewed details were persisted. Firestore
+  // returns map keys in its own order; equivalent metadata must still resume.
+  await db.doc(`users/export-owner/teachingExports/${first.id}`).update({
+    publication: {
+      publicationId: publish.publicationId,
+      metadata: publish.metadata,
+      resourceId: null,
+      state: "pending",
+      claim: null,
+      leaseUntil: null,
+    },
+  });
+  const published = await publishTeachingExport(
+    "export-owner",
+    first.id,
+    publish,
+  );
+  expect(
+    await publishTeachingExport("export-owner", first.id, publish),
+  ).toEqual(published);
+  const resource = await db.doc(`resources/${published.resourceId}`).get();
+  const [stored] = await adminStorage()
+    .bucket()
+    .file(resource.data()!.filePath)
+    .download();
+  expect(stored).toEqual(snapshot.bytes);
+  expect(resource.data()?.status).toBe("active");
+  expect(JSON.stringify(resource.data())).not.toMatch(
+    /drive-owner|teacher@example|private-doc|PRIVATE BRIEF|rules-test/,
+  );
+  expect((await db.doc("users/export-owner").get()).data()?.resourceCount).toBe(
+    1,
+  );
+  const usage = await db
+    .collection("usage")
+    .where("uid", "==", "export-owner")
+    .get();
+  expect(usage.docs[0].data().resourceUploads).toBe(1);
+  await deleteWorksheet("export-owner", "export-source");
+  expect(
+    (await db.doc(`users/export-owner/teachingExports/${first.id}`).get())
+      .exists,
+  ).toBe(false);
+  expect(
+    (await db.doc(`resources/${published.resourceId}`).get()).data()?.status,
+  ).toBe("active");
+  expect(
+    (await db.doc("users/export-owner/exportState/limits").get()).data()
+      ?.snapshots,
+  ).toBe(0);
+  await expect(
+    getTeachingExport("export-owner", first.id),
+  ).rejects.toMatchObject({ code: "not-found" });
+});
+
+it("denies client replacement and public finalization of server-generated community files", async () => {
+  await adminDb()
+    .doc("users/generated-owner")
+    .set({ status: "active", resourceCount: 0 });
+  const bytes = Buffer.from("immutable reserved DOCX bytes");
+  const reservation = await reserveGeneratedResource("generated-owner", {
+    publicationId: "immutable-rules-intent",
+    bytesHash: createHash("sha256").update(bytes).digest("hex"),
+    byteLength: bytes.length,
+    metadata: {
+      title: "Frozen worksheet",
+      description: "A reviewed student worksheet.",
+      type: "worksheet",
+      subject: "Science",
+      gradeLevel: "Grade 6",
+      tags: [],
+      accessTier: "free",
+    },
+  });
+  const client = testEnv.authenticatedContext("generated-owner");
+  await assertFails(
+    uploadBytes(
+      ref(client.storage(storageBucketUrl), reservation.uploadPath),
+      bytes,
+      {
+        contentType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      },
+    ),
+  );
+  await saveGeneratedResourceBytes(
+    "generated-owner",
+    reservation.resourceId,
+    bytes,
+  );
+  await assertFails(
+    uploadBytes(
+      ref(client.storage(storageBucketUrl), reservation.uploadPath),
+      Buffer.alloc(bytes.length, 65),
+      {
+        contentType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      },
+    ),
+  );
+  await expect(
+    finalizeResourceUpload("generated-owner", reservation.resourceId),
+  ).rejects.toMatchObject({ code: "not-ready" });
+});
+
+it("defers account cleanup for pending export writes, then removes worksheets and private export records", async () => {
+  const uid = `export-deletion-${randomUUID()}`;
+  const db = adminDb();
+  await adminAuth().createUser({
+    uid,
+    email: `${uid}@vista.local`,
+    emailVerified: true,
+  });
+  await db
+    .doc(`users/${uid}`)
+    .set({ status: "active", displayName: "Teacher" });
+  await db.doc(`userPrivate/${uid}`).set({ email: `${uid}@vista.local` });
+  await db
+    .doc(`worksheets/${uid}`)
+    .set({ ownerId: uid, title: "Private worksheet" });
+  await db
+    .doc(`worksheets/${uid}/versions/v1`)
+    .set({ content: "Private history" });
+  await db
+    .doc(`users/${uid}/teachingExports/snapshot`)
+    .set({ bytes: Buffer.from("Private export") });
+  const receiptRef = db.doc(`users/${uid}/generatedResourcePublications/write`);
+  await receiptRef.set({
+    writeUntil: Timestamp.fromMillis(Date.now() + 60_000),
+  });
+  await enqueueAccountDeletion(uid);
+  expect(await processAccountDeletion(uid)).toBe("pending");
+  expect((await db.doc(`users/${uid}`).get()).data()?.status).toBe("deleted");
+  expect((await db.doc(`worksheets/${uid}`).get()).exists).toBe(true);
+  expect((await receiptRef.get()).exists).toBe(true);
+  expect(await processAccountDeletion(uid)).toBe("pending");
+  // Simulate the bounded grace elapsing without sleeping or external calls.
+  await receiptRef.update({ writeUntil: Timestamp.fromMillis(Date.now() - 1) });
+  await db
+    .doc(`accountDeletions/${uid}`)
+    .update({ retryAfter: Timestamp.fromMillis(Date.now() - 1) });
+  expect(await processAccountDeletion(uid)).toBe("complete");
+  for (const path of [
+    `users/${uid}`,
+    `worksheets/${uid}`,
+    `worksheets/${uid}/versions/v1`,
+    `users/${uid}/teachingExports/snapshot`,
+    receiptRef.path,
+  ])
+    expect((await db.doc(path).get()).exists).toBe(false);
+  await expect(adminAuth().getUser(uid)).rejects.toMatchObject({
+    code: "auth/user-not-found",
+  });
+});
+
+const worksheetBrief = worksheetSourceSchema.parse({
+  subject: "Science",
+  gradeLevel: "Grade 6",
+  topic: "Local food webs",
+  difficulty: "core",
+  language: "English",
+  questionCounts: {
+    multipleChoice: 1,
+    shortAnswer: 1,
+    extendedResponse: 1,
+    matching: 1,
+    fillInBlank: 1,
+    trueFalse: 1,
+  },
+});
+const lessonBrief = {
+  subject: "Science",
+  gradeLevel: "Grade 6",
+  topic: "Local food webs",
+  durationMinutes: 50,
+  objectives: "",
+  standards: "",
+  studentNeeds: "",
+  teachingStyle: "inquiry" as const,
+};
+const worksheetUsageRef = (uid: string) =>
+  adminDb().doc(`usage/${uid}_${new Date().toISOString().slice(0, 7)}`);
+
+describe("Notification delivery and complete inbox state", () => {
+  it("counts legacy and older unread rows, filters before pagination, and scopes mutations to the owner", async () => {
+    await seedNetworkUser("inbox-owner");
+    await seedNetworkUser("inbox-outsider");
+    const db = adminDb();
+    const batch = db.batch();
+    for (let index = 0; index < 195; index++)
+      batch.set(db.doc(`users/inbox-owner/notifications/item-${index}`), {
+        read: index >= 160,
+        ...(index < 125
+          ? index % 2
+            ? { archived: false }
+            : {}
+          : { archived: index < 160 }),
+        createdAt: new Date(Date.now() - 300_000 + index * 1000),
+        message: `Update ${index}`,
+        href: "/app",
+        type: "post-comment",
+      });
+    await batch.commit();
+    expect(await getUnreadNotificationCount("inbox-owner")).toBe(125);
+    const first = await getNotifications("inbox-owner");
+    expect(first.notifications.every((item) => item.read)).toBe(true);
+    expect(first.unreadCount).toBe(125);
+    const unread = await getNotifications("inbox-owner", undefined, "unread");
+    expect(unread.notifications).toHaveLength(30);
+    expect(
+      unread.notifications.every((item) => !item.read && !item.archived),
+    ).toBe(true);
+    const next = await getNotifications(
+      "inbox-owner",
+      unread.nextCursor!,
+      "unread",
+    );
+    expect(next.notifications).toHaveLength(30);
+    expect(
+      next.notifications.some((item) =>
+        unread.notifications.some((first) => first.id === item.id),
+      ),
+    ).toBe(false);
+    expect(next.unreadCount).toBe(125);
+    expect(
+      (
+        await getNotifications("inbox-owner", undefined, "archived")
+      ).notifications.every((item) => item.archived),
+    ).toBe(true);
+    await updateNotification("inbox-owner", "item-0", "archive");
+    await updateNotification("inbox-owner", "item-0", "archive");
+    expect(await getUnreadNotificationCount("inbox-owner")).toBe(124);
+    await updateNotification("inbox-owner", "item-0", "restore");
+    expect(await getUnreadNotificationCount("inbox-owner")).toBe(125);
+    await Promise.all([
+      updateNotification("inbox-owner", "item-0", "mark-read"),
+      updateNotification("inbox-owner", "item-0", "archive"),
+    ]);
+    expect(await getUnreadNotificationCount("inbox-owner")).toBe(124);
+    expect(
+      (await db.doc("users/inbox-owner/notifications/item-0").get()).data(),
+    ).toMatchObject({ read: true, archived: true });
+    await expect(
+      updateNotification("inbox-outsider", "item-0", "delete"),
+    ).rejects.toMatchObject({ code: "not-found" });
+    expect(await getUnreadNotificationCount("inbox-outsider")).toBe(0);
+  });
+
+  it("marks more than one batch while preserving archive history and updates after the action cutoff", async () => {
+    const db = adminDb();
+    const batch = db.batch();
+    for (let index = 0; index < 408; index++)
+      batch.set(db.doc(`users/bulk-owner/notifications/item-${index}`), {
+        read: false,
+        archived: index >= 405,
+        createdAt: new Date(Date.now() - 60_000 + index),
+      });
+    batch.set(db.doc("users/bulk-owner/notifications/future"), {
+      read: false,
+      archived: false,
+      createdAt: new Date(Date.now() + 60_000),
+    });
+    await batch.commit();
+    await updateNotification("bulk-owner", null, "mark-read");
+    expect(await getUnreadNotificationCount("bulk-owner")).toBe(1);
+    const remaining = await db
+      .collection("users/bulk-owner/notifications")
+      .where("read", "==", false)
+      .get();
+    expect(remaining.size).toBe(4);
+    expect(
+      remaining.docs.every(
+        (item) => item.id === "future" || item.data().archived === true,
+      ),
+    ).toBe(true);
+  });
+
+  it("honors future in-app preferences for feed, mentions, connections, and messages without blocking the domain action", async () => {
+    await seedNetworkUser("quiet-owner");
+    await seedNetworkUser("active-peer");
+    const db = adminDb();
+    await db
+      .doc("userPrivate/quiet-owner")
+      .set(
+        { notificationSettings: { email: true, inApp: false } },
+        { merge: true },
+      );
+    await db
+      .doc("users/quiet-owner/notifications/history")
+      .set({ read: false, archived: false, createdAt: new Date() });
+    const postId = await createPost("quiet-owner", {
+      type: "post",
+      content: "Discuss a teaching idea",
+      tags: [],
+      imageURLs: [],
+      fileAttachments: [],
+      linkURLs: [],
+      resourceId: null,
+    });
+    await setPostLiked("active-peer", postId, true);
+    await addPostComment("active-peer", {
+      postId,
+      content: "Thanks @quiet-owner",
+      mentionUids: ["quiet-owner"],
+    });
+    await followEducator("active-peer", "quiet-owner");
+    const conversation = await startConversation("active-peer", {
+      recipientId: "quiet-owner",
+      content: "A useful teaching conversation",
+    });
+    expect(
+      (await db.collection("users/quiet-owner/notifications").get()).docs.map(
+        (item) => item.id,
+      ),
+    ).toEqual(["history"]);
+    expect((await db.doc(`posts/${postId}`).get()).data()).toMatchObject({
+      likeCount: 1,
+      commentCount: 1,
+    });
+    expect(
+      (
+        await db
+          .collection(`conversations/${conversation.conversationId}/messages`)
+          .get()
+      ).size,
+    ).toBe(1);
+    await db
+      .doc("userPrivate/quiet-owner")
+      .update({ "notificationSettings.inApp": true });
+    await addPostComment("active-peer", {
+      postId,
+      content: "A new comment for @quiet-owner after opting in",
+      mentionUids: ["quiet-owner"],
+    });
+    expect(
+      (await db.collection("users/quiet-owner/notifications").get()).size,
+    ).toBe(2);
+    expect(
+      (
+        await db
+          .collection("users/quiet-owner/notifications")
+          .where("type", "==", "post-comment")
+          .get()
+      ).empty,
+    ).toBe(true);
+    await db
+      .doc("blocks/quiet-owner_active-peer")
+      .set({ blockerId: "quiet-owner", blockedId: "active-peer" });
+    await addPostComment("active-peer", {
+      postId,
+      content: "A public comment without an alert",
+      mentionUids: [],
+    });
+    expect(
+      (await db.collection("users/quiet-owner/notifications").get()).size,
+    ).toBe(2);
+  });
+});
+
+describe("Worksheet persistence and access", () => {
+  it("protects private worksheets and history in rules and every server mutation/export", async () => {
+    await seedNetworkUser("worksheet-owner");
+    await seedNetworkUser("worksheet-outsider");
+    const created = await createWorksheet(
+      "worksheet-owner",
+      worksheetBrief,
+      randomUUID(),
+    );
+    const owner = testEnv.authenticatedContext("worksheet-owner").firestore();
+    const outsider = testEnv
+      .authenticatedContext("worksheet-outsider")
+      .firestore();
+    await assertSucceeds(getDoc(doc(owner, "worksheets", created.id)));
+    await assertSucceeds(
+      getDoc(doc(owner, "worksheets", created.id, "versions", "v1")),
+    );
+    await assertFails(getDoc(doc(outsider, "worksheets", created.id)));
+    await assertFails(
+      getDoc(doc(outsider, "worksheets", created.id, "versions", "v1")),
+    );
+    await assertFails(
+      updateDoc(doc(owner, "worksheets", created.id), { currentVersion: 99 }),
+    );
+    await assertFails(
+      setDoc(doc(owner, "worksheets", created.id, "versions", "v99"), {
+        content: created.content,
+      }),
+    );
+    for (const action of [
+      () => getWorksheet("worksheet-outsider", created.id),
+      () =>
+        updateWorksheet("worksheet-outsider", created.id, created.content, 1),
+      () =>
+        regenerateWorksheet("worksheet-outsider", created.id, 1, randomUUID()),
+      () =>
+        createWorksheetExport("worksheet-outsider", created.id, "docx", "key"),
+      () => deleteWorksheet("worksheet-outsider", created.id),
+    ])
+      await expect(action()).rejects.toMatchObject({ code: "not-found" });
+    expect(
+      (await getWorksheetWorkspace("worksheet-outsider")).worksheets,
+    ).toEqual([]);
+    await adminDb()
+      .doc("users/worksheet-owner")
+      .update({ status: "suspended" });
+    await expect(
+      createWorksheetExport("worksheet-owner", created.id, "docx", "student"),
+    ).rejects.toMatchObject({ code: "inactive" });
+  });
+  it("replays generation requests without charging again and rejects changed request payloads", async () => {
+    await seedNetworkUser("worksheet-owner");
+    const requestId = randomUUID();
+    const first = await createWorksheet(
+      "worksheet-owner",
+      worksheetBrief,
+      requestId,
+    );
+    const replay = await createWorksheet(
+      "worksheet-owner",
+      worksheetBrief,
+      requestId,
+    );
+    expect(replay.id).toBe(first.id);
+    expect(replay.currentVersion).toBe(1);
+    expect(
+      (await worksheetUsageRef("worksheet-owner").get()).data()?.aiLessons,
+    ).toBe(1);
+    await expect(
+      createWorksheet(
+        "worksheet-owner",
+        { ...worksheetBrief, topic: "Another topic" },
+        requestId,
+      ),
+    ).rejects.toMatchObject({ code: "conflict" });
+    await expect(
+      createLesson("worksheet-owner", lessonBrief),
+    ).rejects.toMatchObject({ code: "rate-limited" });
+  });
+  it("prevents two stale edits from overwriting one another and keeps keys aligned", async () => {
+    await seedNetworkUser("worksheet-owner");
+    const first = await createWorksheet(
+      "worksheet-owner",
+      worksheetBrief,
+      randomUUID(),
+    );
+    const results = await Promise.allSettled([
+      updateWorksheet(
+        "worksheet-owner",
+        first.id,
+        { ...first.content, title: "Teacher edit A" },
+        1,
+      ),
+      updateWorksheet(
+        "worksheet-owner",
+        first.id,
+        { ...first.content, title: "Teacher edit B" },
+        1,
+      ),
+    ]);
+    expect(
+      results.filter((result) => result.status === "fulfilled"),
+    ).toHaveLength(1);
+    const failure = results.find(
+      (result) => result.status === "rejected",
+    ) as PromiseRejectedResult;
+    expect(failure.reason.code).toBe("conflict");
+    const current = await getWorksheet("worksheet-owner", first.id);
+    expect(current.currentVersion).toBe(2);
+    expect(current.versions).toHaveLength(2);
+    await expect(
+      updateWorksheet(
+        "worksheet-owner",
+        first.id,
+        { ...current.content, answerKey: current.content.answerKey.slice(1) },
+        2,
+      ),
+    ).rejects.toMatchObject({ code: "invalid-content" });
+    expect(
+      (await worksheetUsageRef("worksheet-owner").get()).data()?.aiLessons,
+    ).toBe(1);
+    expect(
+      (
+        await createWorksheetExport(
+          "worksheet-owner",
+          first.id,
+          "docx",
+          "student",
+        )
+      ).fileName,
+    ).toContain("student-v2");
+    const restored = await restoreWorksheetVersion(
+      "worksheet-owner",
+      first.id,
+      1,
+      2,
+    );
+    expect(restored.currentVersion).toBe(3);
+    expect(restored.content).toEqual(first.content);
+    expect(restored.versions[0].kind).toBe("restored");
+    await expect(
+      restoreWorksheetVersion("worksheet-owner", first.id, 1, 2),
+    ).rejects.toMatchObject({ code: "conflict" });
+    await deleteWorksheet("worksheet-owner", first.id);
+    expect(
+      (await adminDb().collection(`worksheets/${first.id}/versions`).get())
+        .empty,
+    ).toBe(true);
+  });
+  it("shares the quota atomically between simultaneous lesson and worksheet requests", async () => {
+    await seedNetworkUser("worksheet-owner");
+    await worksheetUsageRef("worksheet-owner").set({
+      uid: "worksheet-owner",
+      aiLessons: 2,
+    });
+    const results = await Promise.allSettled([
+      createLesson("worksheet-owner", lessonBrief),
+      createWorksheet("worksheet-owner", worksheetBrief, randomUUID()),
+    ]);
+    expect(
+      results.filter((result) => result.status === "fulfilled"),
+    ).toHaveLength(1);
+    expect(
+      (
+        results.find(
+          (result) => result.status === "rejected",
+        ) as PromiseRejectedResult
+      ).reason.code,
+    ).toBe("limit-reached");
+    expect(
+      (await worksheetUsageRef("worksheet-owner").get()).data()?.aiLessons,
+    ).toBe(3);
+    expect(
+      (await getWorksheetWorkspace("worksheet-owner")).usage.remaining,
+    ).toBe(0);
+  });
+  it("refunds failed requests and keeps the last saved version after failed regeneration", async () => {
+    await seedNetworkUser("worksheet-owner");
+    const provider = vi
+      .spyOn(worksheetProvider, "generateWorksheet")
+      .mockRejectedValueOnce(new Error("Provider unavailable"));
+    await expect(
+      createWorksheet("worksheet-owner", worksheetBrief, randomUUID()),
+    ).rejects.toMatchObject({ code: "generation-failed" });
+    expect(
+      (await worksheetUsageRef("worksheet-owner").get()).data()?.aiLessons,
+    ).toBe(0);
+    expect(
+      (
+        await adminDb()
+          .collection("worksheets")
+          .where("ownerId", "==", "worksheet-owner")
+          .get()
+      ).empty,
+    ).toBe(true);
+    await worksheetUsageRef("worksheet-owner").update({
+      lastAiLessonAt: new Date(0),
+    });
+    const first = await createWorksheet(
+      "worksheet-owner",
+      worksheetBrief,
+      randomUUID(),
+    );
+    await worksheetUsageRef("worksheet-owner").update({
+      lastAiLessonAt: new Date(0),
+    });
+    provider.mockRejectedValueOnce(new Error("Provider unavailable"));
+    await expect(
+      regenerateWorksheet("worksheet-owner", first.id, 1, randomUUID()),
+    ).rejects.toMatchObject({ code: "generation-failed" });
+    const current = await getWorksheet("worksheet-owner", first.id);
+    expect(current.content).toEqual(first.content);
+    expect(current.currentVersion).toBe(1);
+    expect(
+      (await worksheetUsageRef("worksheet-owner").get()).data()?.aiLessons,
+    ).toBe(1);
+    expect(
+      (await adminDb().doc(`worksheets/${first.id}`).get()).data()
+        ?.generationStatus,
+    ).toBe("idle");
+  });
+  it("locks edits and deletion while generation is running", async () => {
+    await seedNetworkUser("worksheet-owner");
+    const first = await createWorksheet(
+      "worksheet-owner",
+      worksheetBrief,
+      randomUUID(),
+    );
+    await worksheetUsageRef("worksheet-owner").update({
+      lastAiLessonAt: new Date(0),
+    });
+    let finish!: () => void;
+    let started!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    vi.spyOn(worksheetProvider, "generateWorksheet").mockImplementationOnce(
+      async () => {
+        started();
+        await gate;
+        return createMockWorksheet(worksheetBrief);
+      },
+    );
+    const generation = regenerateWorksheet(
+      "worksheet-owner",
+      first.id,
+      1,
+      randomUUID(),
+    );
+    await ready;
+    await expect(
+      updateWorksheet("worksheet-owner", first.id, first.content, 1),
+    ).rejects.toMatchObject({ code: "busy" });
+    await expect(
+      deleteWorksheet("worksheet-owner", first.id),
+    ).rejects.toMatchObject({ code: "busy" });
+    finish();
+    expect((await generation).currentVersion).toBe(2);
+  });
+  it("checks source ownership and keeps the authorized lesson snapshot for regeneration", async () => {
+    await seedNetworkUser("worksheet-owner");
+    await seedNetworkUser("worksheet-outsider");
+    const lesson = await createLesson("worksheet-owner", lessonBrief);
+    await expect(
+      createWorksheet(
+        "worksheet-outsider",
+        { ...worksheetBrief, sourceLessonId: lesson.id },
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: "not-found" });
+    await worksheetUsageRef("worksheet-owner").update({
+      lastAiLessonAt: new Date(0),
+    });
+    const first = await createWorksheet(
+      "worksheet-owner",
+      { ...worksheetBrief, sourceLessonId: lesson.id },
+      randomUUID(),
+    );
+    expect(first.reference).toEqual({
+      lessonId: lesson.id,
+      title: lesson.title,
+      version: 1,
+    });
+    await deleteLesson("worksheet-owner", lesson.id);
+    await worksheetUsageRef("worksheet-owner").update({
+      lastAiLessonAt: new Date(0),
+    });
+    expect(
+      (await regenerateWorksheet("worksheet-owner", first.id, 1, randomUUID()))
+        .reference,
+    ).toEqual(first.reference);
+  });
+  it("recovers an abandoned creation once across concurrent workspace visits", async () => {
+    await seedNetworkUser("worksheet-owner");
+    const id = "abandoned-worksheet";
+    const jobId = `worksheet-owner_${randomUUID()}`;
+    const db = adminDb();
+    await worksheetUsageRef("worksheet-owner").set({
+      aiLessons: 1,
+      aiWorksheetCreations: 1,
+    });
+    await db.doc(`worksheets/${id}`).set({
+      ownerId: "worksheet-owner",
+      content: null,
+      generationStatus: "generating",
+      generationRequestId: jobId,
+      updatedAt: new Date(),
+    });
+    await db.doc(`worksheetGenerationRequests/${jobId}`).set({
+      ownerId: "worksheet-owner",
+      worksheetId: id,
+      status: "pending",
+      isNew: true,
+      period: new Date().toISOString().slice(0, 7),
+      expiresAt: new Date(0),
+    });
+    await Promise.all([
+      getWorksheetWorkspace("worksheet-owner"),
+      getWorksheetWorkspace("worksheet-owner"),
+    ]);
+    expect(
+      (await worksheetUsageRef("worksheet-owner").get()).data()?.aiLessons,
+    ).toBe(0);
+    expect(
+      (await worksheetUsageRef("worksheet-owner").get()).data()
+        ?.aiWorksheetCreations,
+    ).toBe(0);
+    expect((await db.doc(`worksheets/${id}`).get()).exists).toBe(false);
+    expect(
+      (await db.doc(`worksheetGenerationRequests/${jobId}`).get()).data()
+        ?.failure,
+    ).toBe("expired");
+  });
+  it("rejects a late provider response after an expired regeneration was recovered", async () => {
+    await seedNetworkUser("worksheet-owner");
+    const first = await createWorksheet(
+      "worksheet-owner",
+      worksheetBrief,
+      randomUUID(),
+    );
+    await worksheetUsageRef("worksheet-owner").update({
+      lastAiLessonAt: new Date(0),
+    });
+    let finish!: () => void;
+    let started!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    vi.spyOn(worksheetProvider, "generateWorksheet").mockImplementationOnce(
+      async () => {
+        started();
+        await gate;
+        return {
+          ...first.content,
+          title: "Late content must not replace the saved worksheet",
+        };
+      },
+    );
+    const generation = regenerateWorksheet(
+      "worksheet-owner",
+      first.id,
+      1,
+      randomUUID(),
+    );
+    // Attach a rejection handler before resolving the deferred provider.
+    const outcome = generation.then(
+      () => "unexpected-success",
+      (error) => error.code,
+    );
+    await ready;
+    const jobId = (await adminDb().doc(`worksheets/${first.id}`).get()).data()!
+      .generationRequestId;
+    await adminDb()
+      .doc(`worksheetGenerationRequests/${jobId}`)
+      .update({ expiresAt: new Date(0) });
+    await getWorksheetWorkspace("worksheet-owner");
+    finish();
+    expect(await outcome).toBe("conflict");
+    const current = await getWorksheet("worksheet-owner", first.id);
+    expect(current.currentVersion).toBe(1);
+    expect(current.content).toEqual(first.content);
+    expect(current.generationStatus).toBe("idle");
+    expect(
+      (await worksheetUsageRef("worksheet-owner").get()).data()?.aiLessons,
+    ).toBe(1);
+    expect(
+      (await worksheetUsageRef("worksheet-owner").get()).data()?.aiRefinements,
+    ).toBe(0);
+  });
+  it("paginates saved worksheets and rejects another account's cursor", async () => {
+    await seedNetworkUser("worksheet-owner");
+    await seedNetworkUser("worksheet-outsider");
+    const content = createMockWorksheet(worksheetBrief);
+    const batch = adminDb().batch();
+    for (let index = 0; index < 25; index++)
+      batch.set(adminDb().doc(`worksheets/page-${index}`), {
+        ownerId: "worksheet-owner",
+        source: worksheetBrief,
+        content,
+        currentVersion: 1,
+        updatedAt: new Date(1000 * index),
+      });
+    await batch.commit();
+    const first = await getWorksheetWorkspace("worksheet-owner");
+    const second = await getWorksheetWorkspace(
+      "worksheet-owner",
+      first.nextCursor!,
+    );
+    expect(first.worksheets).toHaveLength(20);
+    expect(second.worksheets).toHaveLength(5);
+    expect(second.nextCursor).toBeNull();
+    expect(
+      new Set(
+        [...first.worksheets, ...second.worksheets].map((item) => item.id),
+      ).size,
+    ).toBe(25);
+    await expect(
+      getWorksheetWorkspace("worksheet-outsider", first.nextCursor!),
+    ).rejects.toMatchObject({ code: "invalid-cursor" });
+  });
 });
 
 afterAll(async () => testEnv.cleanup());
@@ -166,6 +1079,20 @@ async function seedNetworkUser(
       plan: "free",
       status: "free",
       trialConsumed: false,
+      updatedAt: serverTimestamp(),
+    });
+    // Positive messaging fixtures explicitly accept non-connection messages.
+    // Missing preferences in the product continue to default to connections only.
+    await setDoc(doc(context.firestore(), "userPrivate", uid), {
+      email: `${uid}@vista.local`,
+      contactDetails: { professionalEmail: "", phone: "" },
+      privacySettings: {
+        shareContactInfo: false,
+        allowMessagesFromNonConnections: true,
+      },
+      notificationSettings: { email: true, inApp: true },
+      accountDeletion: { requestedAt: null },
+      createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
   });
@@ -1095,6 +2022,9 @@ describe("Firestore rules", () => {
   it("deduplicates Stripe events and ignores older lifecycle updates", async () => {
     await seedActiveUser("billing-owner");
     await seedSubscription("billing-owner");
+    await adminDb()
+      .doc("userPrivate/billing-owner")
+      .set({ notificationSettings: { inApp: false, email: false } });
     const currentEvent = {
       id: "evt-current",
       type: "subscription.updated" as const,
@@ -1106,7 +2036,7 @@ describe("Firestore rules", () => {
       interval: "month" as const,
       status: "active" as const,
       currentPeriodEnd: new Date("2026-09-04T12:00:00.000Z"),
-      cancelAtPeriodEnd: false,
+      cancelAtPeriodEnd: true,
     };
 
     await expect(reconcileBillingEvent(currentEvent)).resolves.toMatchObject({
@@ -1115,6 +2045,23 @@ describe("Firestore rules", () => {
     await expect(reconcileBillingEvent(currentEvent)).resolves.toMatchObject({
       applied: false,
     });
+    expect(
+      (
+        await adminDb()
+          .doc("users/billing-owner/notifications/evt-current")
+          .get()
+      ).data(),
+    ).toMatchObject({
+      type: "billing-cancellation-scheduled",
+      read: false,
+      archived: false,
+    });
+    const delivered = await adminDb()
+      .doc("users/billing-owner/notifications/evt-current")
+      .get();
+    expect(delivered.data()?.createdAt.toMillis()).toBeGreaterThan(
+      Date.now() - 60_000,
+    );
     await expect(
       reconcileBillingEvent({
         ...currentEvent,
@@ -1322,9 +2269,7 @@ describe("Firestore rules", () => {
       expect(like.exists()).toBe(true);
       expect(bookmark.exists()).toBe(true);
       expect(likeNotification.data()?.href).toBe(`/post/${postId}`);
-      expect(commentNotification.data()?.href).toBe(
-        `/post/${postId}#comment-${commentId}`,
-      );
+      expect(commentNotification.exists()).toBe(false);
       expect(postMention.data()?.href).toBe(`/post/${postId}`);
       expect(commentMention.data()?.href).toBe(
         `/post/${postId}#comment-${commentId}`,
@@ -1837,9 +2782,7 @@ describe("Firestore rules", () => {
         parentReplyId: replyId,
         accepted: false,
       });
-      expect(replyNotification.data()?.href).toBe(
-        `/forum/${threadId}#reply-${replyId}`,
-      );
+      expect(replyNotification.exists()).toBe(false);
       expect(nestedReplyNotification.data()).toMatchObject({
         message: "author replied to your forum comment.",
         href: `/forum/${threadId}#reply-${nestedReplyId}`,

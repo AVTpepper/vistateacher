@@ -9,12 +9,12 @@ export function createMockLesson(source: LessonSourceInput): LessonPlanInput {
   const closingMinutes = Math.max(5, Math.round(source.durationMinutes * 0.15));
   const mainMinutes = source.durationMinutes - warmUpMinutes - closingMinutes;
   return lessonPlanSchema.parse({
-    title: `${source.topic}: A ${source.teachingStyle} lesson`,
+    title: `${source.topic}: A ${source.teachingStyle} lesson`.slice(0, 160),
     subject: source.subject,
     gradeLevel: source.gradeLevel,
     durationMinutes: source.durationMinutes,
     objectives: source.objectives
-      ? [source.objectives]
+      ? boundedItems(source.objectives)
       : [
           `Explain the central ideas in ${source.topic}.`,
           `Apply learning about ${source.topic} to a new example.`,
@@ -50,6 +50,16 @@ export function createMockLesson(source: LessonSourceInput): LessonPlanInput {
         "Invite students to compare two valid strategies and evaluate their efficiency.",
       ],
     },
-    standards: source.standards ? [source.standards] : [],
+    standards: source.standards ? boundedItems(source.standards) : [],
   });
+}
+
+function boundedItems(value: string): string[] {
+  return (
+    value
+      .trim()
+      .match(/[\s\S]{1,300}/g)
+      ?.map((item) => item.trim())
+      .filter(Boolean) ?? []
+  );
 }

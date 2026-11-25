@@ -1,0 +1,253 @@
+{
+  "capturedAt": "2026-11-24T16:40:40.010Z",
+  "pages": [
+    {
+      "file": "src/app/page.tsx",
+      "route": "/"
+    },
+    {
+      "file": "src/app/about/page.tsx",
+      "route": "/about"
+    },
+    {
+      "file": "src/app/account-deletion/page.tsx",
+      "route": "/account-deletion"
+    },
+    {
+      "file": "src/app/cookies/page.tsx",
+      "route": "/cookies"
+    },
+    {
+      "file": "src/app/help/page.tsx",
+      "route": "/help"
+    },
+    {
+      "file": "src/app/pricing/page.tsx",
+      "route": "/pricing"
+    },
+    {
+      "file": "src/app/privacy/page.tsx",
+      "route": "/privacy"
+    },
+    {
+      "file": "src/app/terms/page.tsx",
+      "route": "/terms"
+    },
+    {
+      "file": "src/app/(auth)/forgot-password/page.tsx",
+      "route": "/forgot-password"
+    },
+    {
+      "file": "src/app/(auth)/sign-in/page.tsx",
+      "route": "/sign-in"
+    },
+    {
+      "file": "src/app/(auth)/sign-up/page.tsx",
+      "route": "/sign-up"
+    },
+    {
+      "file": "src/app/(auth)/verify-email/page.tsx",
+      "route": "/verify-email"
+    },
+    {
+      "file": "src/app/(platform)/admin/page.tsx",
+      "route": "/admin"
+    },
+    {
+      "file": "src/app/(platform)/ai-lessons/page.tsx",
+      "route": "/ai-lessons"
+    },
+    {
+      "file": "src/app/(platform)/app/page.tsx",
+      "route": "/app"
+    },
+    {
+      "file": "src/app/(platform)/dashboard/page.tsx",
+      "route": "/dashboard"
+    },
+    {
+      "file": "src/app/(platform)/discover/page.tsx",
+      "route": "/discover"
+    },
+    {
+      "file": "src/app/(platform)/forum/page.tsx",
+      "route": "/forum"
+    },
+    {
+      "file": "src/app/(platform)/information/page.tsx",
+      "route": "/information"
+    },
+    {
+      "file": "src/app/(platform)/messages/page.tsx",
+      "route": "/messages"
+    },
+    {
+      "file": "src/app/(platform)/network/page.tsx",
+      "route": "/network"
+    },
+    {
+      "file": "src/app/(platform)/notifications/page.tsx",
+      "route": "/notifications"
+    },
+    {
+      "file": "src/app/(platform)/onboarding/page.tsx",
+      "route": "/onboarding"
+    },
+    {
+      "file": "src/app/(platform)/profile/page.tsx",
+      "route": "/profile"
+    },
+    {
+      "file": "src/app/(platform)/resources/page.tsx",
+      "route": "/resources"
+    },
+    {
+      "file": "src/app/(platform)/settings/page.tsx",
+      "route": "/settings"
+    },
+    {
+      "file": "src/app/(platform)/support/page.tsx",
+      "route": "/support"
+    },
+    {
+      "file": "src/app/educators/[uid]/page.tsx",
+      "route": "/educators/[uid]"
+    },
+    {
+      "file": "src/app/(platform)/admin/content/page.tsx",
+      "route": "/admin/content"
+    },
+    {
+      "file": "src/app/(platform)/admin/deletions/page.tsx",
+      "route": "/admin/deletions"
+    },
+    {
+      "file": "src/app/(platform)/admin/reports/page.tsx",
+      "route": "/admin/reports"
+    },
+    {
+      "file": "src/app/(platform)/admin/users/page.tsx",
+      "route": "/admin/users"
+    },
+    {
+      "file": "src/app/(platform)/admin/verification/page.tsx",
+      "route": "/admin/verification"
+    },
+    {
+      "file": "src/app/(platform)/forum/new/page.tsx",
+      "route": "/forum/new"
+    },
+    {
+      "file": "src/app/(platform)/forum/[threadId]/page.tsx",
+      "route": "/forum/[threadId]"
+    },
+    {
+      "file": "src/app/(platform)/lessons/[lessonId]/page.tsx",
+      "route": "/lessons/[lessonId]"
+    },
+    {
+      "file": "src/app/(platform)/messages/new/page.tsx",
+      "route": "/messages/new"
+    },
+    {
+      "file": "src/app/(platform)/post/[postId]/page.tsx",
+      "route": "/post/[postId]"
+    },
+    {
+      "file": "src/app/(platform)/profile/views/page.tsx",
+      "route": "/profile/views"
+    },
+    {
+      "file": "src/app/(platform)/profile/[uid]/page.tsx",
+      "route": "/profile/[uid]"
+    },
+    {
+      "file": "src/app/(platform)/resources/new/page.tsx",
+      "route": "/resources/new"
+    },
+    {
+      "file": "src/app/(platform)/resources/[resourceId]/page.tsx",
+      "route": "/resources/[resourceId]"
+    },
+    {
+      "file": "src/app/(platform)/settings/billing/page.tsx",
+      "route": "/settings/billing"
+    },
+    {
+      "file": "src/app/(platform)/settings/profile/page.tsx",
+      "route": "/settings/profile"
+    },
+    {
+      "file": "src/app/(platform)/settings/security/page.tsx",
+      "route": "/settings/security"
+    },
+    {
+      "file": "src/app/(platform)/settings/billing/checkout/page.tsx",
+      "route": "/settings/billing/checkout"
+    },
+    {
+      "file": "src/app/(platform)/settings/billing/manage/page.tsx",
+      "route": "/settings/billing/manage"
+    }
+  ],
+  "apis": [
+    "/api/ai-lessons",
+    "/api/feed",
+    "/api/feedback",
+    "/api/forum",
+    "/api/messages",
+    "/api/notifications",
+    "/api/onboarding",
+    "/api/presence",
+    "/api/profile",
+    "/api/search",
+    "/api/settings",
+    "/api/admin/actions",
+    "/api/admin/deletions",
+    "/api/ai-lessons/[lessonId]",
+    "/api/auth/client-token",
+    "/api/auth/logout",
+    "/api/auth/session",
+    "/api/billing/checkout",
+    "/api/billing/portal",
+    "/api/billing/subscription",
+    "/api/billing/trial",
+    "/api/billing/webhook",
+    "/api/creation-drafts/[type]",
+    "/api/feed/[postId]",
+    "/api/forum/[threadId]",
+    "/api/messages/blocks",
+    "/api/messages/[conversationId]",
+    "/api/network/accept",
+    "/api/network/decline",
+    "/api/network/follow",
+    "/api/profile/cover",
+    "/api/profile/photo",
+    "/api/resources/upload",
+    "/api/resources/[resourceId]",
+    "/api/settings/deletion",
+    "/api/ai-lessons/[lessonId]/duplicate",
+    "/api/ai-lessons/[lessonId]/regenerate",
+    "/api/billing/checkout/cancel",
+    "/api/feed/[postId]/bookmark",
+    "/api/feed/[postId]/comments",
+    "/api/feed/[postId]/like",
+    "/api/feed/[postId]/report",
+    "/api/feed/[postId]/share",
+    "/api/forum/[threadId]/answer",
+    "/api/forum/[threadId]/like",
+    "/api/forum/[threadId]/replies",
+    "/api/forum/[threadId]/report",
+    "/api/messages/[conversationId]/attachments",
+    "/api/messages/[conversationId]/report",
+    "/api/messages/[conversationId]/[messageId]",
+    "/api/profile/[uid]/summary",
+    "/api/resources/[resourceId]/download",
+    "/api/resources/[resourceId]/reviews",
+    "/api/settings/deletion/status",
+    "/api/ai-lessons/[lessonId]/export/[format]",
+    "/api/feed/[postId]/comments/[commentId]",
+    "/api/forum/[threadId]/replies/[replyId]",
+    "/api/messages/[conversationId]/attachments/[attachmentId]"
+  ]
+}

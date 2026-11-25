@@ -535,7 +535,7 @@ export async function reconcileBillingEvent(
         href: "/settings/billing",
         read: false,
         archived: false,
-        createdAt: Timestamp.fromDate(event.createdAt),
+        createdAt: FieldValue.serverTimestamp(),
       });
     }
     return { applied, communicationKind, uid };

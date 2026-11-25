@@ -150,7 +150,7 @@ export function ProfileView({
                       connectionDirection={data.connectionDirection}
                       mode="connect"
                     />
-                    {data.connectionStatus === "accepted" ? (
+                    {data.canMessage ? (
                       <Button asChild size="sm" variant="outline">
                         <Link
                           href={`/messages?compose=${encodeURIComponent(profile.uid)}`}
@@ -164,7 +164,7 @@ export function ProfileView({
                         disabled
                         size="sm"
                         variant="outline"
-                        title={`Connect with ${profile.displayName} to send a message.`}
+                        title="Messaging is unavailable. This teacher may accept messages from connections only."
                       >
                         <MessageCircle aria-hidden="true" />
                         Message

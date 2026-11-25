@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { requestJson } from "@/lib/http/client";
 
 export function FollowButton({
   targetUid,
@@ -26,72 +27,33 @@ export function FollowButton({
   const [pending, setPending] = useState(false);
 
   async function handleConnect() {
-    if (status === "pending" && direction === "incoming") {
-      // Accept incoming request
-      setStatus("accepted");
-      setDirection(null);
-      setPending(true);
-      const response = await fetch("/api/network/accept", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetUid }),
-      });
-      setPending(false);
-      if (!response.ok) {
-        setStatus("none");
-        setDirection("incoming");
-        const result = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        toast.error(result?.error ?? "We couldn't accept this connection.");
-        return;
-      }
+    if (pending) return;
+    const previous = { status, direction };
+    const accepting = status === "pending" && direction === "incoming";
+    const removing = !accepting && status !== "none";
+    setStatus(accepting ? "accepted" : removing ? "none" : "pending");
+    setDirection(accepting || removing ? null : "outgoing");
+    setPending(true);
+    try {
+      await requestJson(
+        accepting ? "/api/network/accept" : "/api/network/follow",
+        {
+          method: removing ? "DELETE" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targetUid }),
+        },
+      );
       router.refresh();
-    } else if (status === "accepted" || status === "pending") {
-      // Unfollow/disconnect
-      const next = "none";
-      setStatus(next);
-      setDirection(null);
-      setPending(true);
-      const response = await fetch("/api/network/follow", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetUid }),
-      });
+    } catch (error) {
+      setStatus(previous.status);
+      setDirection(previous.direction);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "We couldn't update this connection.",
+      );
+    } finally {
       setPending(false);
-      if (!response.ok) {
-        setStatus(status);
-        setDirection(connectionDirection);
-        const result = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        toast.error(result?.error ?? "We couldn't update this connection.");
-        return;
-      }
-      router.refresh();
-    } else {
-      // Send connection request
-      const next = "pending";
-      setStatus(next);
-      setDirection("outgoing");
-      setPending(true);
-      const response = await fetch("/api/network/follow", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetUid }),
-      });
-      setPending(false);
-      if (!response.ok) {
-        setStatus("none");
-        setDirection(null);
-        const result = (await response.json().catch(() => null)) as {
-          error?: string;
-          code?: string;
-        } | null;
-        toast.error(result?.error ?? "We couldn't update this connection.");
-        return;
-      }
-      router.refresh();
     }
   }
 
@@ -100,50 +62,48 @@ export function FollowButton({
   const hasIncomingRequest = status === "pending" && direction === "incoming";
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={handleConnect}
-        disabled={pending}
-        className={cn(
-          "flex h-9 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition-colors disabled:opacity-60",
-          isConnected
-            ? "bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            : isRequestSent
-              ? "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-900 dark:text-amber-100 dark:hover:bg-amber-800"
-              : hasIncomingRequest
-                ? "bg-success/10 text-success hover:bg-success/20"
-                : "bg-primary text-primary-foreground hover:opacity-90",
-          className,
-        )}
-      >
-        {pending ? (
-          <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
-        ) : isConnected ? (
-          <UserCheck aria-hidden="true" className="size-3.5" />
-        ) : isRequestSent ? (
-          <X aria-hidden="true" className="size-3.5" />
-        ) : hasIncomingRequest ? (
-          <UserCheck aria-hidden="true" className="size-3.5" />
-        ) : (
-          <UserPlus aria-hidden="true" className="size-3.5" />
-        )}
-        {mode === "connect"
-          ? isConnected
-            ? "Connected"
-            : isRequestSent
-              ? "Request sent"
-              : hasIncomingRequest
-                ? "Accept request"
-                : "Connect"
-          : isConnected
-            ? "Following"
-            : isRequestSent
-              ? "Request sent"
-              : hasIncomingRequest
-                ? "Accept request"
-                : "Follow"}
-      </button>
-    </>
+    <Button
+      type="button"
+      onClick={handleConnect}
+      disabled={pending}
+      aria-busy={pending}
+      title={
+        isConnected
+          ? "Remove connection"
+          : isRequestSent
+            ? "Cancel connection request"
+            : undefined
+      }
+      variant={isConnected || isRequestSent ? "outline" : "default"}
+      size="sm"
+      className={className}
+    >
+      {pending ? (
+        <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
+      ) : isConnected ? (
+        <UserCheck aria-hidden="true" className="size-3.5" />
+      ) : isRequestSent ? (
+        <X aria-hidden="true" className="size-3.5" />
+      ) : hasIncomingRequest ? (
+        <UserCheck aria-hidden="true" className="size-3.5" />
+      ) : (
+        <UserPlus aria-hidden="true" className="size-3.5" />
+      )}
+      {mode === "connect"
+        ? isConnected
+          ? "Connected"
+          : isRequestSent
+            ? "Request sent"
+            : hasIncomingRequest
+              ? "Accept request"
+              : "Connect"
+        : isConnected
+          ? "Following"
+          : isRequestSent
+            ? "Request sent"
+            : hasIncomingRequest
+              ? "Accept request"
+              : "Follow"}
+    </Button>
   );
 }

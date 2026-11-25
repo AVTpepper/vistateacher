@@ -12,9 +12,10 @@ import {
   MessageSquare,
   Trash2,
   UserPlus,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -22,12 +23,14 @@ import {
   groupNotifications,
   type NotificationGroup,
 } from "@/features/notifications/notification-groups";
-import type { NotificationPage } from "@/lib/messages/server";
+import type {
+  NotificationAction,
+  NotificationFilter,
+  NotificationPage,
+} from "@/lib/messages/server";
 import { cn } from "@/lib/utils";
-
-type NotificationFilter = "all" | "unread" | "archived";
-type NotificationAction =
-  "mark-read" | "mark-unread" | "archive" | "restore" | "delete";
+import { requestNotificationJson as requestJson } from "./client";
+import { useNotifications } from "./notification-provider";
 
 export function NotificationsExperience({
   initialPage,
@@ -35,12 +38,16 @@ export function NotificationsExperience({
   initialPage: NotificationPage;
 }) {
   const [page, setPage] = useState(initialPage);
+  const notifications = useNotifications();
   const [pending, setPending] = useState(false);
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const unread = page.notifications.filter(
-    (item) => !item.read && !item.archived,
-  ).length;
+  const contentRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const actionFocus = useRef<{ element: HTMLElement; index: number } | null>(
+    null,
+  );
+  const unread = notifications.page?.unreadCount ?? page.unreadCount;
   const visibleNotifications = groupNotifications(
     page.notifications.filter((item) => {
       if (filter === "archived") return item.archived;
@@ -49,64 +56,134 @@ export function NotificationsExperience({
     }),
   );
 
+  useEffect(() => {
+    const target = actionFocus.current;
+    if (pending || !target) return;
+    actionFocus.current = null;
+    if (
+      document.activeElement !== document.body &&
+      document.activeElement !== target.element
+    )
+      return;
+    if (document.contains(target.element)) target.element.focus();
+    else {
+      const links =
+        contentRef.current?.querySelectorAll<HTMLAnchorElement>("article a");
+      const next = links?.[Math.min(target.index, links.length - 1)];
+      (next ?? headingRef.current)?.focus();
+    }
+  }, [pending]);
+
   async function updateNotification(
     notificationIds: string[] | null,
     action: NotificationAction,
     groupKey?: string,
   ) {
-    if (notificationIds) setPendingKey(groupKey ?? notificationIds[0] ?? null);
-    else setPending(true);
-    const responses = await Promise.all(
-      (notificationIds ?? [null]).map((notificationId) =>
-        fetch("/api/notifications", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notificationId, action }),
-        }),
-      ),
-    );
-    if (notificationIds) setPendingKey(null);
-    else setPending(false);
-    if (responses.some((response) => !response.ok)) {
-      toast.error("We couldn't update notifications.");
-      return false;
+    if (pending) return false;
+    const element = document.activeElement;
+    if (
+      element instanceof HTMLElement &&
+      contentRef.current?.contains(element)
+    ) {
+      const rows = [...contentRef.current.querySelectorAll("article")];
+      actionFocus.current = {
+        element,
+        index: Math.max(0, rows.indexOf(element.closest("article")!)),
+      };
     }
-    setPage((current) => ({
-      ...current,
-      notifications:
-        action === "delete"
-          ? current.notifications.filter(
-              (item) => !notificationIds?.includes(item.id),
-            )
-          : current.notifications.map((item) => {
-              if (notificationIds && !notificationIds.includes(item.id))
+    setPending(true);
+    setPendingKey(groupKey ?? notificationIds?.[0] ?? null);
+    try {
+      const ids = notificationIds ?? [null];
+      const responses = await Promise.allSettled(
+        ids.map((notificationId) =>
+          requestJson("/api/notifications", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ notificationId, action }),
+          }),
+        ),
+      );
+      const succeeded = ids.filter(
+        (_, index) => responses[index].status === "fulfilled",
+      );
+      const allSucceeded = responses.every(
+        (response) => response.status === "fulfilled",
+      );
+      if (!allSucceeded)
+        toast.error(
+          "Some notifications couldn't be updated. Please try again.",
+        );
+      setPage((current) => ({
+        ...current,
+        notifications:
+          action === "delete"
+            ? current.notifications.filter(
+                (item) => !succeeded.includes(item.id),
+              )
+            : current.notifications.map((item) => {
+                if (!succeeded.includes(null) && !succeeded.includes(item.id))
+                  return item;
+                if (action === "mark-read")
+                  return succeeded.includes(null) && item.archived
+                    ? item
+                    : { ...item, read: true };
+                if (action === "mark-unread") return { ...item, read: false };
+                if (action === "archive") return { ...item, archived: true };
+                if (action === "restore") return { ...item, archived: false };
                 return item;
-              if (action === "mark-read") return { ...item, read: true };
-              if (action === "mark-unread") return { ...item, read: false };
-              if (action === "archive") return { ...item, archived: true };
-              if (action === "restore") return { ...item, archived: false };
-              return item;
-            }),
-    }));
-    return true;
+              }),
+      }));
+      await notifications.refresh();
+      return allSucceeded;
+    } finally {
+      setPendingKey(null);
+      setPending(false);
+    }
+  }
+
+  async function selectFilter(value: NotificationFilter) {
+    if (pending) return;
+    setPending(true);
+    try {
+      const result = await requestJson<NotificationPage>(
+        `/api/notifications?filter=${value}`,
+      );
+      setPage(result);
+      setFilter(value);
+      await notifications.refresh(false);
+    } catch {
+      toast.error("We couldn't load notifications. Please try again.");
+    } finally {
+      setPending(false);
+    }
   }
 
   async function loadMore() {
     if (!page.nextCursor || pending) return;
     setPending(true);
-    const response = await fetch(
-      `/api/notifications?cursor=${encodeURIComponent(page.nextCursor)}`,
-    );
-    const result = (await response
-      .json()
-      .catch(() => null)) as NotificationPage | null;
-    setPending(false);
-    if (!response.ok || !result)
-      return toast.error("We couldn't load more notifications.");
-    setPage((current) => ({
-      notifications: [...current.notifications, ...result.notifications],
-      nextCursor: result.nextCursor,
-    }));
+    try {
+      const result = await requestJson<NotificationPage>(
+        `/api/notifications?filter=${filter}&cursor=${encodeURIComponent(page.nextCursor)}`,
+      );
+      setPage((current) => ({
+        notifications: [
+          ...current.notifications,
+          ...result.notifications.filter(
+            (item) =>
+              !current.notifications.some(
+                (existing) => existing.id === item.id,
+              ),
+          ),
+        ],
+        nextCursor: result.nextCursor,
+        unreadCount: result.unreadCount,
+      }));
+    } catch {
+      toast.error("We couldn't load more notifications. Please try again.");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -114,25 +191,46 @@ export function NotificationsExperience({
       <div className="mx-auto max-w-3xl">
         <header className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
           <div>
-            <h1 className="font-serif text-3xl">Notifications</h1>
+            <h1 ref={headingRef} tabIndex={-1} className="font-serif text-3xl">
+              Notifications
+            </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Updates from your educator community.
+              {unread} unread notification{unread === 1 ? "" : "s"} in your
+              inbox.
             </p>
           </div>
-          {unread > 0 && (
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               disabled={pending}
-              onClick={() => void updateNotification(null, "mark-read")}
+              onClick={() => void selectFilter(filter)}
               className="text-primary hover:bg-muted flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold disabled:opacity-50"
             >
-              <CheckCheck aria-hidden="true" className="size-4" />
-              Mark all read
+              <RefreshCw aria-hidden="true" className="size-4" />
+              Refresh
             </button>
-          )}
+            {unread > 0 && filter !== "archived" && (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => void updateNotification(null, "mark-read")}
+                title="Marks unread inbox notifications across all pages. Archived notifications stay unchanged."
+                className="text-primary hover:bg-muted flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold disabled:opacity-50"
+              >
+                <CheckCheck aria-hidden="true" className="size-4" />
+                Mark all read
+              </button>
+            )}
+          </div>
         </header>
+        {notifications.error && (
+          <p role="status" className="bg-muted mb-4 rounded-lg p-3 text-sm">
+            Notification counts may be out of date. Use Refresh to try again.
+          </p>
+        )}
 
         <div
+          role="group"
           aria-label="Notification filters"
           className="bg-muted mb-4 flex w-full gap-1 rounded-lg p-1 sm:w-fit"
         >
@@ -141,9 +239,10 @@ export function NotificationsExperience({
               key={value}
               type="button"
               aria-pressed={filter === value}
-              onClick={() => setFilter(value)}
+              disabled={pending}
+              onClick={() => void selectFilter(value)}
               className={cn(
-                "min-h-11 flex-1 rounded-md px-4 text-sm font-semibold capitalize sm:flex-none",
+                "min-h-11 flex-1 rounded-md px-4 text-sm font-semibold capitalize disabled:opacity-50 sm:flex-none",
                 filter === value
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
@@ -154,13 +253,19 @@ export function NotificationsExperience({
           ))}
         </div>
 
+        {filter === "archived" && (
+          <p className="text-muted-foreground mb-3 text-sm">
+            Archived notifications keep their read status. Unarchiving an unread
+            update returns it to your inbox count.
+          </p>
+        )}
         {visibleNotifications.length ? (
-          <div className="surface-card overflow-hidden">
+          <div ref={contentRef} className="surface-card overflow-hidden">
             {visibleNotifications.map((notification) => (
               <NotificationRow
                 key={notification.key}
                 notification={notification}
-                pending={pendingKey === notification.key}
+                pending={pending || pendingKey === notification.key}
                 onAction={(action) =>
                   void updateNotification(
                     notification.ids,
@@ -178,14 +283,18 @@ export function NotificationsExperience({
               className="text-muted-foreground/30 mx-auto size-9"
             />
             <h2 className="mt-3 font-serif text-xl">
-              {filter === "archived"
-                ? "No archived updates"
-                : "You're all caught up"}
+              {page.nextCursor
+                ? "No updates on this page"
+                : filter === "archived"
+                  ? "No archived updates"
+                  : "You're all caught up"}
             </h2>
             <p className="text-muted-foreground mt-1 text-sm">
-              {filter === "archived"
-                ? "Notifications you archive will appear here."
-                : "New community updates will appear here."}
+              {page.nextCursor
+                ? "Load more to check older notifications."
+                : filter === "archived"
+                  ? "Notifications you archive will appear here."
+                  : "New community updates will appear here."}
             </p>
           </div>
         )}
@@ -256,7 +365,7 @@ function NotificationRow({
             )}
           </NotificationActionButton>
           <NotificationActionButton
-            label={notification.archived ? "Restore" : "Archive"}
+            label={notification.archived ? "Unarchive" : "Archive"}
             disabled={pending}
             onClick={() =>
               onAction(notification.archived ? "restore" : "archive")

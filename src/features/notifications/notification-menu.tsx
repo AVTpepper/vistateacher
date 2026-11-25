@@ -5,125 +5,31 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import {
-  collection,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-} from "firebase/firestore";
 import { toast } from "sonner";
 
 import { groupNotifications } from "@/features/notifications/notification-groups";
-import { refreshFirebaseClientAuth } from "@/lib/firebase/client-auth";
-import type { NotificationItem, NotificationPage } from "@/lib/messages/server";
+import { useNotifications } from "./notification-provider";
 import { cn } from "@/lib/utils";
+import { requestNotificationJson as requestJson } from "./client";
 
-export function NotificationMenu({
-  uid,
-  onOpen,
-}: {
-  uid: string;
-  onOpen?: () => void;
-}) {
+export function NotificationMenu({ onOpen }: { onOpen?: () => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [page, setPage] = useState<NotificationPage | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { page, loading, error, refresh } = useNotifications();
   const menuRef = useRef<HTMLDivElement>(null);
-  const pendingReads = useRef<Promise<Response>[]>([]);
-  const liveConnected = useRef(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetch("/api/notifications", { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) return;
-        if (!liveConnected.current) {
-          setPage((await response.json()) as NotificationPage);
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => setLoading(false));
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-    let cancelled = false;
-    let receivedInitialSnapshot = false;
-
-    void refreshFirebaseClientAuth()
-      .then((client) => {
-        if (cancelled) return;
-        const notificationQuery = query(
-          collection(client.db, `users/${uid}/notifications`),
-          orderBy("createdAt", "desc"),
-          limit(30),
-        );
-        unsubscribe = onSnapshot(
-          notificationQuery,
-          (snapshot) => {
-            liveConnected.current = true;
-            const notifications = snapshot.docs.map((document) => {
-              const data = document.data();
-              const createdAt = data.createdAt?.toDate?.() as Date | undefined;
-              return {
-                id: document.id,
-                type: String(data.type ?? "update"),
-                actorId: typeof data.actorId === "string" ? data.actorId : null,
-                actorName:
-                  typeof data.actorName === "string" ? data.actorName : null,
-                entityId:
-                  typeof data.entityId === "string" ? data.entityId : null,
-                message: String(data.message ?? "You have a new update."),
-                href: String(data.href ?? "/app"),
-                read: data.read === true,
-                archived: data.archived === true,
-                createdAt: (createdAt ?? new Date()).toISOString(),
-              } satisfies NotificationItem;
-            });
-            setPage({ notifications, nextCursor: null });
-            setLoading(false);
-
-            if (receivedInitialSnapshot) {
-              const additions = snapshot
-                .docChanges()
-                .filter((change) => change.type === "added");
-              if (additions.length) {
-                const newest = notifications.find(
-                  (item) => item.id === additions[0]?.doc.id,
-                );
-                if (newest) {
-                  toast.message(newest.message, {
-                    action: {
-                      label: "View",
-                      onClick: () => router.push(newest.href),
-                    },
-                  });
-                }
-              }
-            }
-            receivedInitialSnapshot = true;
-          },
-          () => setLoading(false),
-        );
-      })
-      .catch(() => setLoading(false));
-
-    return () => {
-      cancelled = true;
-      unsubscribe?.();
-    };
-  }, [router, uid]);
-
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const pendingReads = useRef<Promise<void>[]>([]);
+  const pendingIds = useRef(new Set<string>());
   useEffect(() => {
     if (!open) return;
     const handlePointerDown = (event: PointerEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
@@ -135,21 +41,16 @@ export function NotificationMenu({
 
   const active = page?.notifications.filter((item) => !item.archived) ?? [];
   const recent = groupNotifications(active).slice(0, 5);
-  const unread = active.filter((item) => !item.read).length;
+  const unread = page?.unreadCount ?? 0;
 
   function updateReadState(notificationIds: string[], read: boolean) {
-    setPage((current) =>
-      current
-        ? {
-            ...current,
-            notifications: current.notifications.map((item) =>
-              notificationIds.includes(item.id) ? { ...item, read } : item,
-            ),
-          }
-        : current,
+    const availableIds = notificationIds.filter(
+      (id) => !pendingIds.current.has(id),
     );
-    for (const notificationId of notificationIds) {
-      const request = fetch("/api/notifications", {
+    if (!availableIds.length) return;
+    for (const notificationId of availableIds) {
+      pendingIds.current.add(notificationId);
+      const request: Promise<void> = requestJson("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -157,29 +58,43 @@ export function NotificationMenu({
           action: read ? "mark-read" : "mark-unread",
         }),
         keepalive: true,
-      });
+      })
+        .then(() => refresh())
+        .catch(() => {
+          toast.error(
+            "We couldn't update this notification. Please try again.",
+          );
+        })
+        .finally(() => {
+          pendingIds.current.delete(notificationId);
+          pendingReads.current = pendingReads.current.filter(
+            (pending) => pending !== request,
+          );
+        });
       pendingReads.current.push(request);
-      void request.finally(() => {
-        pendingReads.current = pendingReads.current.filter(
-          (pending) => pending !== request,
-        );
-      });
     }
   }
 
   return (
     <div ref={menuRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         aria-label={
-          unread ? `Notifications, ${unread} unread` : "Notifications"
+          unread
+            ? `Notifications, ${unread} unread${error ? ", updates unavailable" : ""}`
+            : error
+              ? "Notifications, updates unavailable"
+              : "Notifications"
         }
         aria-controls="notification-menu"
         aria-expanded={open}
-        aria-haspopup="true"
         onClick={() => {
           setOpen((value) => !value);
-          if (!open) onOpen?.();
+          if (!open) {
+            onOpen?.();
+            void refresh();
+          }
         }}
         className="relative grid size-11 shrink-0 place-items-center rounded-xl text-white/80 hover:bg-white/10 hover:text-white"
       >
@@ -199,6 +114,7 @@ export function NotificationMenu({
           />
           <div
             id="notification-menu"
+            role="region"
             aria-label="Recent notifications"
             className="bg-card text-card-foreground border-border fixed inset-x-3 top-16 z-50 overflow-hidden rounded-b-xl border-2 shadow-xl sm:absolute sm:inset-x-auto sm:top-12 sm:right-0 sm:w-96 sm:rounded-xl"
           >
@@ -211,6 +127,20 @@ export function NotificationMenu({
               )}
             </div>
             <div className="max-h-[min(28rem,calc(100dvh-9rem))] overflow-y-auto">
+              {error && (
+                <div role="status" className="bg-muted px-4 py-3 text-sm">
+                  {page
+                    ? "Updates may be out of date."
+                    : "We couldn't load notifications."}
+                  <button
+                    type="button"
+                    onClick={() => void refresh()}
+                    className="text-primary ml-2 min-h-11 px-2 font-bold"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
               {loading ? (
                 <div className="text-muted-foreground flex min-h-28 items-center justify-center gap-2 text-sm">
                   <LoaderCircle
@@ -273,7 +203,7 @@ export function NotificationMenu({
                     </button>
                   </div>
                 ))
-              ) : (
+              ) : !error ? (
                 <div className="px-5 py-10 text-center">
                   <Bell
                     aria-hidden="true"
@@ -283,7 +213,7 @@ export function NotificationMenu({
                     You&apos;re all caught up
                   </p>
                 </div>
-              )}
+              ) : null}
             </div>
             <Link
               href="/notifications"

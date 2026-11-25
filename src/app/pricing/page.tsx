@@ -13,6 +13,7 @@ import {
 import { billingPlans } from "@/features/billing/plan-details";
 import { PLAN_ENTITLEMENTS } from "@/lib/entitlements/plan-entitlements";
 import { getCurrentAccount } from "@/lib/auth/session";
+import { SIGNED_IN_HOME } from "@/lib/auth/policy";
 import { planIntentHref } from "@/lib/billing/plan-intent";
 import { getBillingState } from "@/lib/billing/server";
 import { billingIntervalSchema } from "@/schemas/billing";
@@ -46,7 +47,7 @@ export default async function PricingPage({
     <ContentPage
       eyebrow="Simple plans"
       title="Connect for free. Add Plus for more AI planning."
-      intro="Connections, messaging, community resource sharing, and standard lesson exports are free. Plus gives you more AI actions for lesson preparation, full analytics, and Plus resources."
+      intro="Connections, messaging, community resource sharing, and standard PDF and Word exports are free. Plus gives you more AI actions for lessons and worksheets, plus full analytics."
     >
       <MarketingFlow>
         <div
@@ -58,7 +59,7 @@ export default async function PricingPage({
               key={value}
               href={`/pricing?interval=${value}`}
               aria-current={interval === value ? "true" : undefined}
-              className={`flex min-h-10 items-center justify-center rounded-md px-3 text-sm font-bold transition-colors ${
+              className={`flex min-h-11 items-center justify-center rounded-md px-3 text-sm font-bold transition-colors ${
                 interval === value
                   ? "bg-card text-primary shadow-sm"
                   : "text-foreground hover:bg-card/60"
@@ -148,7 +149,7 @@ export default async function PricingPage({
                           ? account.onboarded
                             ? plan.id === "plus"
                               ? "/settings/billing"
-                              : "/dashboard"
+                              : SIGNED_IN_HOME
                             : planIntentHref(
                                 "/onboarding",
                                 plan.id === "plus"
@@ -169,7 +170,7 @@ export default async function PricingPage({
                             ? "Current plan"
                             : plan.id === "plus"
                               ? "View billing"
-                              : "Go to dashboard"
+                              : "Go to community feed"
                           : "Continue setup"
                         : plan.id === "plus"
                           ? "Choose Plus"
@@ -182,9 +183,9 @@ export default async function PricingPage({
           })}
         </div>
         <p className="text-muted-foreground mt-6 text-sm">
-          Paid memberships are processed securely by Stripe and can be managed
-          from account settings. Plus renews automatically at the selected
-          interval until renewal is turned off.
+          Prices are in US dollars. Paid memberships are processed securely by
+          Stripe and can be managed from account settings. Plus renews
+          automatically at the selected interval until renewal is turned off.
         </p>
         <section
           className="mt-10 border-t pt-8"
@@ -209,7 +210,7 @@ export default async function PricingPage({
                   eyebrow: "Good ideas deserve to be shared",
                   title: "Resources and exports",
                   description:
-                    "Resources are files shared by members. Exports turn your lessons into PDF or Word files. Standard exports are free, even when your AI allowance is used up. Plus-only resources require Plus access.",
+                    "Community resources are free to share and download. Exports turn your lessons into PDF or Word files. Standard exports are free, even when your AI allowance is used up.",
                   tags: ["Community resources", "PDF", "Word"],
                 },
                 {

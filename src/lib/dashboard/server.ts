@@ -8,6 +8,7 @@ import {
 } from "@/lib/entitlements/plan-entitlements";
 import { getFeedPage, type FeedPost } from "@/lib/feed/server";
 import { adminDb } from "@/lib/firebase/admin";
+import { getUnreadNotificationCount } from "@/lib/messages/server";
 import { getForumPage, type ForumThreadSummary } from "@/lib/forum/server";
 import {
   projectAnalytics,
@@ -185,11 +186,11 @@ async function getDashboardActionItems(
   uid: string,
 ): Promise<DashboardActionItem[]> {
   const db = adminDb();
-  const [resourceDrafts, lessons, notifications, ownedResources] =
+  const [resourceDrafts, lessons, unreadCount, ownedResources] =
     await Promise.all([
       listIncompleteResources(uid),
       db.collection("lessons").where("ownerId", "==", uid).limit(100).get(),
-      db.collection(`users/${uid}/notifications`).limit(100).get(),
+      getUnreadNotificationCount(uid),
       listOwnedResources(uid),
     ]);
   const items: DashboardActionItem[] = resourceDrafts
@@ -217,11 +218,6 @@ async function getDashboardActionItems(
         href: `/ai-lessons?lesson=${encodeURIComponent(lesson.id)}`,
       });
     });
-  const unreadCount = notifications.docs.filter(
-    (notification) =>
-      notification.data().read !== true &&
-      notification.data().archived !== true,
-  ).length;
   if (unreadCount > 0)
     items.push({
       id: "unread_notifications",

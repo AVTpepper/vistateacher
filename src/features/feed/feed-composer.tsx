@@ -243,7 +243,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="bg-muted text-muted-foreground hover:bg-muted/70 flex-1 rounded-lg px-4 py-2.5 text-left text-sm transition-colors"
+          className="bg-muted text-muted-foreground hover:bg-muted/70 min-h-11 flex-1 rounded-lg px-4 py-2.5 text-left text-sm transition-colors"
         >
           {expanded
             ? "Share with the community"
@@ -269,7 +269,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
                 aria-pressed={type === value}
                 onClick={() => updateDraft("type", value)}
                 className={cn(
-                  "flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors",
+                  "flex h-11 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors",
                   type === value
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:text-foreground",
@@ -311,7 +311,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
             maxLength={160}
             onChange={(event) => updateDraft("tags", event.target.value)}
             placeholder="Tags, separated by commas"
-            className="bg-muted text-foreground placeholder:text-muted-foreground mt-2 h-10 w-full rounded-lg px-3 text-base outline-none md:text-xs"
+            className="bg-muted text-foreground placeholder:text-muted-foreground mt-2 h-11 w-full rounded-lg px-3 text-base outline-none md:text-xs"
           />
           {imageURL && (
             <div className="bg-muted mt-3 flex items-center justify-between rounded-lg px-3 py-2 text-xs">
@@ -377,13 +377,13 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
                     }
                   }}
                   placeholder="https://example.com"
-                  className="bg-background text-foreground placeholder:text-muted-foreground h-10 min-w-0 flex-1 rounded-lg border px-3 text-base outline-none md:text-sm"
+                  className="bg-background text-foreground placeholder:text-muted-foreground h-11 min-w-0 flex-1 rounded-lg border px-3 text-base outline-none md:text-sm"
                 />
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={attachWebLink}
-                    className="bg-primary text-primary-foreground h-10 rounded-lg px-3 text-sm font-bold"
+                    className="bg-primary text-primary-foreground h-11 rounded-lg px-3 text-sm font-bold"
                   >
                     Attach link
                   </button>
@@ -408,7 +408,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
                 disabled={uploading || Boolean(imageURL)}
-                className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold disabled:opacity-50"
+                className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold disabled:opacity-50"
               >
                 <ImagePlus aria-hidden="true" className="size-4" />
                 Add image
@@ -417,7 +417,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading || Boolean(fileAttachment)}
-                className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold disabled:opacity-50"
+                className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold disabled:opacity-50"
               >
                 <FileUp aria-hidden="true" className="size-4" />
                 Add file
@@ -426,7 +426,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
                 type="button"
                 onClick={() => setLinkEditorOpen(true)}
                 disabled={Boolean(linkURL) || linkEditorOpen}
-                className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold disabled:opacity-50"
+                className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold disabled:opacity-50"
               >
                 <Link2 aria-hidden="true" className="size-4" />
                 Add web link
@@ -472,7 +472,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
               <button
                 type="button"
                 onClick={() => setExpanded(false)}
-                className="text-muted-foreground hover:bg-muted h-9 rounded-lg px-3 text-sm"
+                className="text-muted-foreground hover:bg-muted h-11 rounded-lg px-3 text-sm"
               >
                 Cancel
               </button>
@@ -480,7 +480,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
                 type="button"
                 onClick={() => void submit()}
                 disabled={!content.trim() || submitting || uploading}
-                className="bg-primary text-primary-foreground h-9 rounded-lg px-5 text-sm font-bold disabled:opacity-50"
+                className="bg-primary text-primary-foreground h-11 rounded-lg px-5 text-sm font-bold disabled:opacity-50"
               >
                 {uploading ? "Uploading" : submitting ? "Posting" : "Post"}
               </button>
@@ -497,7 +497,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
                 updateDraft("type", value);
                 setExpanded(true);
               }}
-              className="text-muted-foreground hover:bg-secondary hover:text-primary group flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors"
+              className="text-muted-foreground hover:bg-secondary hover:text-primary group flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors"
             >
               <Icon
                 aria-hidden="true"

@@ -27,7 +27,7 @@ describe("short onboarding", () => {
   it("completes with essential details and preserves a return destination", async () => {
     const fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ next: "/dashboard" }),
+      json: async () => ({ next: "/app" }),
     });
     vi.stubGlobal("fetch", fetch);
     render(
@@ -51,7 +51,7 @@ describe("short onboarding", () => {
       .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ next: "/dashboard" }),
+        json: async () => ({ next: "/app" }),
       });
     vi.stubGlobal("fetch", fetch);
     render(

@@ -103,29 +103,36 @@ export function PrivacySettingsForm({
           onChange={(checked) =>
             setSettings((current) => ({
               ...current,
-              privacySettings: { shareContactInfo: checked },
+              privacySettings: {
+                ...current.privacySettings,
+                shareContactInfo: checked,
+              },
+            }))
+          }
+        />
+        <ToggleRow
+          label="Allow messages from teachers I'm not connected with"
+          description="When off, only accepted connections can send you messages. You can still block any teacher."
+          checked={settings.privacySettings.allowMessagesFromNonConnections}
+          onChange={(checked) =>
+            setSettings((current) => ({
+              ...current,
+              privacySettings: {
+                ...current.privacySettings,
+                allowMessagesFromNonConnections: checked,
+              },
             }))
           }
         />
         <div className="mt-6 border-t pt-6">
           <h3 className="text-sm font-bold">Notifications</h3>
-          <ToggleRow
-            label="Email notifications"
-            description="Receive community and product updates by email. Essential security and billing messages are always sent."
-            checked={settings.notificationSettings.email}
-            onChange={(checked) =>
-              setSettings((current) => ({
-                ...current,
-                notificationSettings: {
-                  ...current.notificationSettings,
-                  email: checked,
-                },
-              }))
-            }
-          />
+          <p className="text-muted-foreground mt-3 text-xs leading-5">
+            Community email updates are not available yet. Account security and
+            essential billing emails are handled separately.
+          </p>
           <ToggleRow
             label="In-app notifications"
-            description="Show activity updates inside VistaTeacher."
+            description="Receive new community activity alerts inside VistaTeacher. Existing notifications and essential billing updates remain available. Messages still arrive in your inbox."
             checked={settings.notificationSettings.inApp}
             onChange={(checked) =>
               setSettings((current) => ({
@@ -307,6 +314,10 @@ function DeletionPanel({
                   • Your profile, uploads, posts, lessons, settings, and sent
                   messages will be removed. Other participants keep their own
                   message history.
+                </li>
+                <li>
+                  • Google Docs already exported to your Drive remain there.
+                  Delete those files separately in Google Drive.
                 </li>
                 <li>
                   • If you are on Plus, billing will end at the current billing

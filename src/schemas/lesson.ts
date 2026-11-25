@@ -1,13 +1,8 @@
 import { z } from "zod";
+import { teachingContextSchema } from "@/schemas/teaching-context";
 
-export const lessonSourceSchema = z.object({
-  subject: z.string().trim().min(1).max(80),
-  gradeLevel: z.string().trim().min(1).max(80),
-  topic: z.string().trim().min(3).max(240),
+export const lessonSourceSchema = teachingContextSchema.extend({
   durationMinutes: z.number().int().min(15).max(240),
-  objectives: z.string().trim().max(2_000).default(""),
-  standards: z.string().trim().max(1_000).default(""),
-  studentNeeds: z.string().trim().max(2_000).default(""),
   teachingStyle: z.enum(["inquiry", "balanced", "direct"]),
 });
 

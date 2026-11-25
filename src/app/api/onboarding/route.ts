@@ -2,7 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { SESSION_COOKIE_NAME } from "@/lib/auth/policy";
+import { SESSION_COOKIE_NAME, SIGNED_IN_HOME } from "@/lib/auth/policy";
 import { hasTrustedOrigin } from "@/lib/auth/request";
 import { verifySessionCookie } from "@/lib/auth/session";
 import { adminDb } from "@/lib/firebase/admin";
@@ -140,5 +140,5 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ next: "/dashboard" });
+  return NextResponse.json({ next: SIGNED_IN_HOME });
 }

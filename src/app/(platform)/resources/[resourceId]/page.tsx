@@ -112,7 +112,8 @@ export default async function ResourcePage({
                     {resource.ratingAverage.toFixed(1)}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {resource.ratingCount} reviews
+                    {resource.ratingCount}{" "}
+                    {resource.ratingCount === 1 ? "review" : "reviews"}
                   </p>
                 </div>
                 <div>
@@ -123,7 +124,9 @@ export default async function ResourcePage({
                   <p className="mt-1 text-lg font-bold">
                     {resource.downloadCount.toLocaleString()}
                   </p>
-                  <p className="text-muted-foreground text-xs">downloads</p>
+                  <p className="text-muted-foreground text-xs">
+                    {resource.downloadCount === 1 ? "download" : "downloads"}
+                  </p>
                 </div>
               </div>
               {resource.sourceLessonId ? (

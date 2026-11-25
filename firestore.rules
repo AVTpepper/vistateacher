@@ -142,6 +142,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /worksheets/{worksheetId} {
+      allow read: if ownsExisting("ownerId");
+      allow write: if false;
+      match /versions/{versionId} {
+        allow read: if signedIn()
+          && get(/databases/$(database)/documents/worksheets/$(worksheetId)).data.ownerId == request.auth.uid;
+        allow write: if false;
+      }
+    }
+
     match /lessons/{lessonId} {
       allow read: if ownsExisting("ownerId") || isAdmin();
       allow write: if false;

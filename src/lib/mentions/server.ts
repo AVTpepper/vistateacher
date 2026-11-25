@@ -1,9 +1,8 @@
 import "server-only";
 
-import { FieldValue } from "firebase-admin/firestore";
-
 import { adminDb } from "@/lib/firebase/admin";
 import type { MentionTarget } from "@/lib/mentions/types";
+import { writeCommunityNotification } from "@/lib/notifications/delivery";
 
 export async function resolveMentions(
   transaction: FirebaseFirestore.Transaction,
@@ -44,26 +43,19 @@ export function writeMentionNotifications(
     entityKey: string;
     context: "post" | "comment" | "forum discussion" | "forum comment";
     href: string;
+    recipients: ReadonlySet<string>;
   },
 ): void {
-  const db = adminDb();
   for (const mention of input.mentions) {
-    if (mention.uid === input.actorId) continue;
-    transaction.set(
-      db.doc(
-        `users/${mention.uid}/notifications/mention_${input.entityKey}_${input.actorId}`,
-      ),
-      {
-        type: "mention",
-        actorId: input.actorId,
-        actorName: input.actorName,
-        entityId: input.entityId,
-        message: `${input.actorName} mentioned you in a ${input.context}.`,
-        href: input.href,
-        read: false,
-        archived: false,
-        createdAt: FieldValue.serverTimestamp(),
-      },
-    );
+    writeCommunityNotification(transaction, input.recipients, {
+      recipientId: mention.uid,
+      id: `mention_${input.entityKey}_${input.actorId}`,
+      type: "mention",
+      actorId: input.actorId,
+      actorName: input.actorName,
+      entityId: input.entityId,
+      message: `${input.actorName} mentioned you in a ${input.context}.`,
+      href: input.href,
+    });
   }
 }

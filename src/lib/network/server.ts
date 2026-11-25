@@ -1,5 +1,10 @@
 import "server-only";
 
+import {
+  prepareCommunityNotifications,
+  writeCommunityNotification,
+} from "@/lib/notifications/delivery";
+
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import {
@@ -303,6 +308,11 @@ export async function followEducator(
       burstNow,
     );
     if (!nextBurst) throw new NetworkActionError("rate-limited");
+    const recipients = await prepareCommunityNotifications(
+      transaction,
+      followerUid,
+      [followingUid],
+    );
     transaction.set(
       usageRef,
       {
@@ -322,20 +332,16 @@ export async function followEducator(
       status: "pending",
       createdAt: now,
     });
-    transaction.set(
-      db.doc(`users/${followingUid}/notifications/follow_${followerUid}`),
-      {
-        type: "follow",
-        actorId: followerUid,
-        actorName: follower.displayName,
-        entityId: followerUid,
-        message: `${follower.displayName} sent you a connection request.`,
-        href: `/profile/${followerUid}`,
-        read: false,
-        archived: false,
-        createdAt: now,
-      },
-    );
+    writeCommunityNotification(transaction, recipients, {
+      recipientId: followingUid,
+      id: `follow_${followerUid}`,
+      type: "follow",
+      actorId: followerUid,
+      actorName: follower.displayName,
+      entityId: followerUid,
+      message: `${follower.displayName} sent you a connection request.`,
+      href: `/profile/${followerUid}`,
+    });
   });
 }
 
@@ -430,6 +436,11 @@ export async function acceptConnectionRequest(
     const followData = followSnapshot.data() as Record<string, unknown>;
     if (followData.status !== "pending") return;
 
+    const recipients = await prepareCommunityNotifications(
+      transaction,
+      followingUid,
+      [followerUid],
+    );
     if (reverseFollowSnapshot.exists) {
       if (reverseFollowSnapshot.data()?.status === "accepted") {
         transaction.delete(followRef);
@@ -454,19 +465,15 @@ export async function acceptConnectionRequest(
       connectionCount: following.connectionCount + 1,
       updatedAt: now,
     });
-    transaction.set(
-      db.doc(`users/${followerUid}/notifications/accept_${followingUid}`),
-      {
-        type: "accept",
-        actorId: followingUid,
-        actorName: following.displayName,
-        entityId: followingUid,
-        message: `${following.displayName} accepted your connection request.`,
-        href: `/profile/${followingUid}`,
-        read: false,
-        archived: false,
-        createdAt: now,
-      },
-    );
+    writeCommunityNotification(transaction, recipients, {
+      recipientId: followerUid,
+      id: `accept_${followingUid}`,
+      type: "accept",
+      actorId: followingUid,
+      actorName: following.displayName,
+      entityId: followingUid,
+      message: `${following.displayName} accepted your connection request.`,
+      href: `/profile/${followingUid}`,
+    });
   });
 }

@@ -7,6 +7,13 @@ import { useLayoutEffect, useRef } from "react";
 
 import { cn } from "@/lib/utils";
 
+const settingsNavigation = [
+  { href: "/settings/profile", label: "Edit profile", icon: UserRound },
+  { href: "/settings", label: "Privacy & account", icon: LockKeyhole },
+  { href: "/settings/security", label: "Login & security", icon: ShieldCheck },
+  { href: "/settings/billing", label: "Plan & billing", icon: CreditCard },
+] as const;
+
 export default function SettingsLayout({
   children,
 }: {
@@ -49,66 +56,24 @@ export default function SettingsLayout({
           aria-label="Settings navigation"
           className="surface-card h-fit space-y-1 p-2"
         >
-          <Link
-            href="/settings/profile"
-            scroll={false}
-            onClick={preserveScroll}
-            aria-current={isActive("/settings/profile") ? "page" : undefined}
-            className={cn(
-              "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
-              isActive("/settings/profile")
-                ? "bg-primary text-primary-foreground hover:opacity-90"
-                : "hover:bg-muted",
-            )}
-          >
-            <UserRound aria-hidden="true" className="size-4" />
-            Edit profile
-          </Link>
-          <Link
-            href="/settings"
-            scroll={false}
-            onClick={preserveScroll}
-            aria-current={isActive("/settings") ? "page" : undefined}
-            className={cn(
-              "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
-              isActive("/settings")
-                ? "bg-primary text-primary-foreground hover:opacity-90"
-                : "hover:bg-muted",
-            )}
-          >
-            <LockKeyhole aria-hidden="true" className="size-4" />
-            Privacy & account
-          </Link>
-          <Link
-            href="/settings/security"
-            scroll={false}
-            onClick={preserveScroll}
-            aria-current={isActive("/settings/security") ? "page" : undefined}
-            className={cn(
-              "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
-              isActive("/settings/security")
-                ? "bg-primary text-primary-foreground"
-                : "hover:bg-muted",
-            )}
-          >
-            <ShieldCheck aria-hidden="true" className="size-4" />
-            Login &amp; security
-          </Link>
-          <Link
-            href="/settings/billing"
-            scroll={false}
-            onClick={preserveScroll}
-            aria-current={isActive("/settings/billing") ? "page" : undefined}
-            className={cn(
-              "flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
-              isActive("/settings/billing")
-                ? "bg-primary text-primary-foreground hover:opacity-90"
-                : "hover:bg-muted",
-            )}
-          >
-            <CreditCard aria-hidden="true" className="size-4" />
-            Plan & billing
-          </Link>
+          {settingsNavigation.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              scroll={false}
+              onClick={preserveScroll}
+              aria-current={isActive(href) ? "page" : undefined}
+              className={cn(
+                "flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-colors",
+                isActive(href)
+                  ? "bg-primary text-primary-foreground hover:opacity-90"
+                  : "hover:bg-muted",
+              )}
+            >
+              <Icon aria-hidden="true" className="size-4" />
+              {label}
+            </Link>
+          ))}
         </nav>
         <div className="min-w-0">{children}</div>
       </div>

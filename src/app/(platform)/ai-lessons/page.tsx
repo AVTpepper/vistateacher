@@ -23,6 +23,7 @@ export default async function AiLessonsPage({
         viewerUid={account.uid}
         initialWorkspace={workspace}
         initialLesson={lesson}
+        sampleMode={process.env.AI_PROVIDER === "MOCK"}
       />
     </div>
   );

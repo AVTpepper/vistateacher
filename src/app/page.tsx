@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { LandingPage } from "@/features/marketing/landing-page";
 import { getCurrentAccount } from "@/lib/auth/session";
+import { SIGNED_IN_HOME } from "@/lib/auth/policy";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 
 export default async function Home() {
   const account = await getCurrentAccount();
-  if (account) redirect(account.onboarded ? "/dashboard" : "/onboarding");
+  if (account) redirect(account.onboarded ? SIGNED_IN_HOME : "/onboarding");
 
   return <LandingPage />;
 }

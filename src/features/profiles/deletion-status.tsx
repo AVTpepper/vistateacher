@@ -7,6 +7,7 @@ import { requestJson } from "@/lib/http/client";
 export function DeletionStatusPanel() {
   const [status, setStatus] = useState("loading");
   const [phase, setPhase] = useState("");
+  const [retryAfter, setRetryAfter] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const receipt = window.location.hash.slice(1);
@@ -14,13 +15,17 @@ export function DeletionStatusPanel() {
     let timer: ReturnType<typeof setTimeout>;
     const check = async () => {
       try {
-        const result = await requestJson<{ status: string; phase: string }>(
-          "/api/settings/deletion/status",
-          { headers: { "x-deletion-receipt": receipt } },
-        );
+        const result = await requestJson<{
+          status: string;
+          phase: string;
+          retryAfter?: string;
+        }>("/api/settings/deletion/status", {
+          headers: { "x-deletion-receipt": receipt },
+        });
         if (!active) return;
         setStatus(result.status);
         setPhase(result.phase);
+        setRetryAfter(result.retryAfter ?? null);
         if (["pending", "processing"].includes(result.status))
           timer = setTimeout(() => void check(), 5_000);
       } catch {
@@ -49,7 +54,9 @@ export function DeletionStatusPanel() {
               : "Your account access has been blocked. Some data still needs removal; an administrator can retry your deletion. Keep this page link and contact support."
             : status === "unavailable"
               ? "We couldn't retrieve your deletion status. Check your connection and retry."
-              : "We are canceling billing and removing your account data. This page updates automatically."}
+              : status === "pending" && retryAfter
+                ? `Your account access is blocked. Cleanup is waiting for a file upload to finish. An administrator can resume deletion after ${new Date(retryAfter).toLocaleString("en-US")}. Keep this page link and contact support if it remains pending.`
+                : "We are canceling billing and removing your account data. This page updates automatically."}
       </div>
       <div className="flex flex-wrap gap-2">
         <Button

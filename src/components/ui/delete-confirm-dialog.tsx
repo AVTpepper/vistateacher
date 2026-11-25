@@ -10,10 +10,12 @@ export function DeleteConfirmDialog({
   children,
   itemName,
   onConfirm,
+  consequence,
 }: {
   children: React.ReactNode;
   itemName: string;
   onConfirm: () => Promise<void>;
+  consequence?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -57,6 +59,7 @@ export function DeleteConfirmDialog({
           <Dialog.Description className="text-muted-foreground mt-2 text-sm">
             This action cannot be undone. Please confirm you want to permanently
             delete this {itemName.toLowerCase()}.
+            {consequence && <> {consequence}</>}
           </Dialog.Description>
           {error && (
             <p role="alert" className="text-destructive mt-4 text-sm">

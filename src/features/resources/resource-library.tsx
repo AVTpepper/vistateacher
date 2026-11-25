@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useDeferredValue, useState } from "react";
 
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
+import { Button } from "@/components/ui/button";
 import type {
   IncompleteResource,
   ResourceSummary,
@@ -182,7 +183,7 @@ export function ResourceLibrary({
           aria-label={filters ? "Hide filters" : "Show filters"}
           aria-expanded={filters}
           className={cn(
-            "surface-card text-muted-foreground flex h-11 shrink-0 items-center gap-2 px-3 text-sm font-semibold",
+            "surface-card text-muted-foreground flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 px-3 text-sm font-semibold",
             filters && "border-primary text-primary",
           )}
         >
@@ -250,18 +251,21 @@ export function ResourceLibrary({
           { value: "video", label: "Videos" },
           { value: "activity", label: "Activities" },
         ].map((item) => (
-          <button
+          <Button
             type="button"
             key={item.value}
+            variant={type === item.value ? "default" : "outline"}
+            size="sm"
+            aria-pressed={type === item.value}
             onClick={() => setType(item.value)}
             className={cn(
-              "surface-card text-muted-foreground shrink-0 rounded-full px-4 py-2 text-xs font-semibold",
+              "shrink-0 rounded-full",
               type === item.value &&
                 "bg-primary text-primary-foreground border-primary",
             )}
           >
             {item.label}
-          </button>
+          </Button>
         ))}
       </div>
       <p className="text-muted-foreground mb-4 text-sm">

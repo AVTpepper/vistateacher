@@ -6,7 +6,7 @@ async function signIn(page: Page, email = "community@vista.local") {
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password", { exact: true }).fill("VistaTeacher1!");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/app$/, { timeout: 30_000 });
 }
 
 test("feed selection survives reload and browser history", async ({ page }) => {

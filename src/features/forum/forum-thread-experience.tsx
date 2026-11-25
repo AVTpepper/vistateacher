@@ -363,7 +363,9 @@ export function ForumThreadExperience({
           </div>
         )}
         <div className="text-muted-foreground mt-5 flex flex-wrap items-center gap-4 border-t pt-4 text-sm">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             type="button"
             aria-pressed={thread.liked}
             onClick={() => void toggleLike(null, !thread.liked)}
@@ -376,7 +378,7 @@ export function ForumThreadExperience({
               />
               {thread.likeCount} {thread.likeCount === 1 ? "like" : "likes"}
             </span>
-          </button>
+          </Button>
           <span className="flex items-center gap-1.5">
             <Eye aria-hidden="true" className="size-4" />
             {thread.viewCount.toLocaleString()} views
@@ -618,27 +620,31 @@ function CommentCard({
                   rows={4}
                   onSave={onEdit}
                   trigger={
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       type="button"
                       aria-label="Edit comment"
                       title="Edit comment"
-                      className="text-muted-foreground hover:bg-muted hover:text-foreground grid size-8 place-items-center rounded-lg"
+                      className="text-muted-foreground"
                     >
                       <MessageSquare aria-hidden="true" className="size-4" />
-                    </button>
+                    </Button>
                   }
                 />
               )}
               {reply.canModerate && (
                 <DeleteConfirmDialog itemName="comment" onConfirm={onDelete}>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     type="button"
                     aria-label="Delete comment"
                     title="Delete comment"
-                    className="text-destructive hover:bg-muted grid size-8 place-items-center rounded-lg"
+                    className="text-destructive"
                   >
                     <Trash2 aria-hidden="true" className="size-4" />
-                  </button>
+                  </Button>
                 </DeleteConfirmDialog>
               )}
             </div>
@@ -647,7 +653,9 @@ function CommentCard({
             <MentionText content={reply.content} mentions={reply.mentions} />
           </p>
           <div className="text-muted-foreground mt-3 flex items-center gap-4 border-t pt-3 text-xs">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
               aria-pressed={reply.liked}
               onClick={() => onLike(!reply.liked)}
@@ -658,8 +666,10 @@ function CommentCard({
                 className={`size-3.5 ${reply.liked ? "fill-current" : ""}`}
               />
               {reply.likeCount} {reply.likeCount === 1 ? "like" : "likes"}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
               aria-expanded={replying}
               onClick={() => setReplying((current) => !current)}
@@ -667,7 +677,7 @@ function CommentCard({
             >
               <MessageSquare aria-hidden="true" className="size-3.5" />
               Reply
-            </button>
+            </Button>
           </div>
           {replying && (
             <div className="bg-muted/35 mt-3 rounded-xl border p-3">
@@ -778,27 +788,31 @@ function CommentResponse({
                   rows={4}
                   onSave={onEdit}
                   trigger={
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       type="button"
                       aria-label="Edit comment"
                       title="Edit comment"
-                      className="text-muted-foreground hover:bg-muted hover:text-foreground grid size-8 place-items-center rounded-lg"
+                      className="text-muted-foreground"
                     >
                       <MessageSquare aria-hidden="true" className="size-3.5" />
-                    </button>
+                    </Button>
                   }
                 />
               )}
               {reply.canModerate && (
                 <DeleteConfirmDialog itemName="comment" onConfirm={onDelete}>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     type="button"
                     aria-label="Delete comment"
                     title="Delete comment"
-                    className="text-destructive hover:bg-muted grid size-8 place-items-center rounded-lg"
+                    className="text-destructive"
                   >
                     <Trash2 aria-hidden="true" className="size-3.5" />
-                  </button>
+                  </Button>
                 </DeleteConfirmDialog>
               )}
             </div>
@@ -806,7 +820,9 @@ function CommentResponse({
           <p className="text-foreground/80 mt-2 text-sm leading-6 whitespace-pre-wrap">
             <MentionText content={reply.content} mentions={reply.mentions} />
           </p>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             type="button"
             aria-pressed={reply.liked}
             onClick={() => onLike(!reply.liked)}
@@ -817,7 +833,7 @@ function CommentResponse({
               className={`size-3.5 ${reply.liked ? "fill-current" : ""}`}
             />
             {reply.likeCount} {reply.likeCount === 1 ? "like" : "likes"}
-          </button>
+          </Button>
         </div>
       </div>
     </article>

@@ -1,5 +1,6 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Timestamp } from "firebase-admin/firestore";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMemoryFirestore } from "../../../tests/memory-firestore";
 import {
   enqueueAccountDeletion,
@@ -42,8 +43,21 @@ describe("account deletion workflow", () => {
       stripeCustomerId: "cus_one",
     });
   });
+  afterEach(() => vi.restoreAllMocks());
   it("cancels billing, revokes access, removes owned data, and returns a private completion receipt", async () => {
     db.documents.set("posts/owned", { authorId: "owner" });
+    db.documents.set("worksheets/owned", { ownerId: "owner" });
+    db.documents.set("worksheets/owned/versions/v1", {
+      content: "Private worksheet",
+    });
+    db.documents.set("worksheets/peer", { ownerId: "peer" });
+    db.documents.set("users/owner/teachingExports/private-doc", {
+      bytes: Buffer.from("private export"),
+      uploadSessionUri: "private-session",
+    });
+    db.documents.set("users/owner/generatedResourcePublications/receipt", {
+      cleanupPending: true,
+    });
     db.documents.set("posts/peer", {
       authorId: "peer",
       commentCount: 1,
@@ -107,8 +121,17 @@ describe("account deletion workflow", () => {
     expect(auth.revokeRefreshTokens).toHaveBeenCalledWith("owner");
     expect(auth.deleteUser).toHaveBeenCalledWith("owner");
     expect(db.documents.has("users/owner")).toBe(false);
+    expect(db.documents.has("users/owner/teachingExports/private-doc")).toBe(
+      false,
+    );
+    expect(
+      db.documents.has("users/owner/generatedResourcePublications/receipt"),
+    ).toBe(false);
     expect(db.documents.has("userPrivate/owner")).toBe(false);
     expect(db.documents.has("posts/owned")).toBe(false);
+    expect(db.documents.has("worksheets/owned")).toBe(false);
+    expect(db.documents.has("worksheets/owned/versions/v1")).toBe(false);
+    expect(db.documents.has("worksheets/peer")).toBe(true);
     expect(db.documents.get("posts/peer")?.commentCount).toBe(0);
     expect(db.documents.get("forumThreads/peer")?.acceptedReplyId).toBeNull();
     expect(
@@ -148,6 +171,43 @@ describe("account deletion workflow", () => {
     expect(await processAccountDeletion("owner")).toBe("complete");
     expect(provider.updateSubscriptionCancellation).toHaveBeenCalledTimes(1);
     expect(await processAccountDeletion("owner")).toBe("complete");
+    expect(auth.deleteUser).toHaveBeenCalledTimes(1);
+  });
+  it("keeps content and private cleanup receipts until possible generated writes expire", async () => {
+    const writeUntil = Timestamp.fromMillis(Date.now() + 15 * 60 * 1000);
+    db.documents.set("resources/in-flight", { authorId: "owner" });
+    db.documents.set("users/owner/generatedResourcePublications/in-flight", {
+      writeUntil,
+    });
+    const receipt = await enqueueAccountDeletion("owner");
+    expect(await processAccountDeletion("owner")).toBe("pending");
+    expect(await getDeletionReceipt(receipt)).toEqual({
+      status: "pending",
+      phase: "data",
+      retryAfter: writeUntil.toDate().toISOString(),
+    });
+    expect(db.documents.get("users/owner")?.status).toBe("deleted");
+    expect(db.documents.has("resources/in-flight")).toBe(true);
+    expect(
+      db.documents.has("users/owner/generatedResourcePublications/in-flight"),
+    ).toBe(true);
+    expect(auth.revokeRefreshTokens).toHaveBeenCalledWith("owner");
+    expect(auth.deleteUser).not.toHaveBeenCalled();
+    expect(bucket.deleteFiles).not.toHaveBeenCalled();
+    expect(db.documents.get("accountDeletions/owner")).toMatchObject({
+      status: "pending",
+      phase: "data",
+      leaseUntil: null,
+      retryAfter: writeUntil,
+    });
+    expect(await processAccountDeletion("owner")).toBe("pending");
+    expect(provider.updateSubscriptionCancellation).toHaveBeenCalledTimes(1);
+    vi.spyOn(Date, "now").mockReturnValue(writeUntil.toMillis() + 1);
+    expect(await processAccountDeletion("owner")).toBe("complete");
+    expect(db.documents.has("resources/in-flight")).toBe(false);
+    expect(
+      db.documents.has("users/owner/generatedResourcePublications/in-flight"),
+    ).toBe(false);
     expect(auth.deleteUser).toHaveBeenCalledTimes(1);
   });
 });

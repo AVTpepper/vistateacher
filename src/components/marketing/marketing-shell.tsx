@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { SIGNED_IN_HOME } from "@/lib/auth/policy";
 
 export function MarketingHeader({ signedIn = false }: { signedIn?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -86,7 +87,7 @@ export function MarketingHeader({ signedIn = false }: { signedIn?: boolean }) {
               className="hidden min-[420px]:inline-flex"
               size="sm"
             >
-              <Link href="/dashboard">Dashboard</Link>
+              <Link href={SIGNED_IN_HOME}>Community feed</Link>
             </Button>
           ) : (
             <>
@@ -172,11 +173,11 @@ export function MarketingHeader({ signedIn = false }: { signedIn?: boolean }) {
               size="sm"
             >
               <Link
-                href="/dashboard"
+                href={SIGNED_IN_HOME}
                 onClick={() => setMenuOpen(false)}
                 tabIndex={menuOpen ? 0 : -1}
               >
-                Dashboard
+                Community feed
               </Link>
             </Button>
           ) : (

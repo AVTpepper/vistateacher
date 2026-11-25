@@ -1,4 +1,5 @@
 export const SESSION_COOKIE_NAME = "__session";
+export const SIGNED_IN_HOME = "/app";
 export const SESSION_MAX_AGE_MS = 5 * 24 * 60 * 60 * 1000;
 export const MAX_AUTH_AGE_SECONDS = 5 * 60;
 

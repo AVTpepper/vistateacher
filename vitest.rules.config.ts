@@ -12,6 +12,11 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    env: {
+      GCLOUD_PROJECT: "demo-vista-teacher",
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "demo-vista-teacher.appspot.com",
+      AI_PROVIDER: "MOCK",
+    },
     globals: true,
     include: ["tests/rules/**/*.test.ts"],
     testTimeout: 20_000,

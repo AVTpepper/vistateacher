@@ -1,6 +1,11 @@
 import "server-only";
 
 import {
+  prepareCommunityNotifications,
+  writeCommunityNotification,
+} from "@/lib/notifications/delivery";
+
+import {
   FieldPath,
   FieldValue,
   Timestamp,
@@ -428,6 +433,11 @@ export async function createPost(
     const tags = [
       ...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US"))),
     ];
+    const recipients = await prepareCommunityNotifications(
+      transaction,
+      authorId,
+      [...mentions.map((mention) => mention.uid)],
+    );
     transaction.create(postRef, {
       authorId,
       type: input.type,
@@ -450,6 +460,7 @@ export async function createPost(
       updatedAt: FieldValue.serverTimestamp(),
     });
     writeMentionNotifications(transaction, {
+      recipients,
       mentions,
       actorId: authorId,
       actorName,
@@ -518,6 +529,9 @@ export async function updatePost(
         : (await resolveMentions(transaction, input.mentionUids)).filter(
             (mention) => input.content.includes(`@${mention.displayName}`),
           );
+    const recipients = await prepareCommunityNotifications(transaction, uid, [
+      ...mentions.map((mention) => mention.uid),
+    ]);
     transaction.update(postRef, {
       mentions,
       type: input.type,
@@ -534,6 +548,7 @@ export async function updatePost(
       mentionsFromData(post.data()?.mentions).map((mention) => mention.uid),
     );
     writeMentionNotifications(transaction, {
+      recipients,
       mentions: mentions.filter((mention) => !previousUids.has(mention.uid)),
       actorId: uid,
       actorName: String(user.data()?.displayName ?? "An educator"),
@@ -578,6 +593,9 @@ export async function setPostLiked(
     ]);
     assertInteractivePost(post);
     if (liked === like.exists) return;
+    const recipients = await prepareCommunityNotifications(transaction, uid, [
+      String(post.data()?.authorId ?? ""),
+    ]);
     if (liked) {
       transaction.create(likeRef, {
         postId,
@@ -597,16 +615,15 @@ export async function setPostLiked(
         `users/${ownerId}/notifications/post-like_${postId}_${uid}`,
       );
       if (liked) {
-        transaction.set(notificationRef, {
+        writeCommunityNotification(transaction, recipients, {
+          recipientId: ownerId,
+          id: `post-like_${postId}_${uid}`,
           type: "post-like",
           actorId: uid,
           actorName: String(actor.data()?.displayName ?? "An educator"),
           entityId: postId,
           message: `${String(actor.data()?.displayName ?? "An educator")} liked your post.`,
           href: `/post/${postId}`,
-          read: false,
-          archived: false,
-          createdAt: FieldValue.serverTimestamp(),
         });
       } else transaction.delete(notificationRef);
     }
@@ -688,6 +705,10 @@ export async function addPostComment(
       throw new FeedActionError("inactive");
     const mentions = await resolveMentions(transaction, input.mentionUids);
     const actorName = String(user.data()?.displayName ?? "An educator");
+    const recipients = await prepareCommunityNotifications(transaction, uid, [
+      String(post.data()?.authorId ?? ""),
+      ...mentions.map((mention) => mention.uid),
+    ]);
     transaction.create(commentRef, {
       authorId: uid,
       content: input.content,
@@ -697,6 +718,7 @@ export async function addPostComment(
       updatedAt: FieldValue.serverTimestamp(),
     });
     writeMentionNotifications(transaction, {
+      recipients,
       mentions,
       actorId: uid,
       actorName,
@@ -709,21 +731,21 @@ export async function addPostComment(
       commentCount: nonnegativeCount(post.data()?.commentCount) + 1,
     });
     const ownerId = String(post.data()?.authorId ?? "");
-    if (ownerId && ownerId !== uid) {
-      transaction.create(
-        db.doc(`users/${ownerId}/notifications/post-comment_${commentRef.id}`),
-        {
-          type: "post-comment",
-          actorId: uid,
-          actorName,
-          entityId: input.postId,
-          message: `${actorName} commented on your post.`,
-          href: `/post/${input.postId}#comment-${commentRef.id}`,
-          read: false,
-          archived: false,
-          createdAt: FieldValue.serverTimestamp(),
-        },
-      );
+    if (
+      ownerId &&
+      ownerId !== uid &&
+      !mentions.some((mention) => mention.uid === ownerId)
+    ) {
+      writeCommunityNotification(transaction, recipients, {
+        recipientId: ownerId,
+        id: `post-comment_${commentRef.id}`,
+        type: "post-comment",
+        actorId: uid,
+        actorName,
+        entityId: input.postId,
+        message: `${actorName} commented on your post.`,
+        href: `/post/${input.postId}#comment-${commentRef.id}`,
+      });
     }
   });
   return commentRef.id;
@@ -808,6 +830,9 @@ export async function updatePostComment(
         : (await resolveMentions(transaction, input.mentionUids)).filter(
             (mention) => input.content.includes(`@${mention.displayName}`),
           );
+    const recipients = await prepareCommunityNotifications(transaction, uid, [
+      ...mentions.map((mention) => mention.uid),
+    ]);
     transaction.update(commentRef, {
       mentions,
       content: input.content,
@@ -818,6 +843,7 @@ export async function updatePostComment(
       mentionsFromData(comment.data()?.mentions).map((mention) => mention.uid),
     );
     writeMentionNotifications(transaction, {
+      recipients,
       mentions: mentions.filter((mention) => !previousUids.has(mention.uid)),
       actorId: uid,
       actorName: String(actor.data()?.displayName ?? "An educator"),

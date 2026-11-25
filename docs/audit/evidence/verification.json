@@ -1,0 +1,172 @@
+{
+  "verifiedAt": "2026-11-25T17:29:04.905Z",
+  "readiness": "not-ready-for-public-launch",
+  "environment": {
+    "firebase": "demo-vista-teacher emulators",
+    "aiProvider": "MOCK",
+    "baseURL": "http://127.0.0.1:3300",
+    "deployed": false
+  },
+  "checks": {
+    "optimizedBuild": {
+      "passed": true,
+      "command": "next build",
+      "includesTypeScript": true,
+      "pdfFontTracing": [
+        {
+          "route": "ai-lessons/[lessonId]",
+          "fonts": [
+            "DM-Serif-Display-Regular.ttf",
+            "JetBrains-Mono-Variable.ttf",
+            "Plus-Jakarta-Sans-Variable.ttf"
+          ]
+        },
+        {
+          "route": "worksheets/[worksheetId]",
+          "fonts": [
+            "DM-Serif-Display-Regular.ttf",
+            "JetBrains-Mono-Variable.ttf",
+            "Plus-Jakarta-Sans-Variable.ttf"
+          ]
+        }
+      ],
+      "buildId": "qwl3t7b7W0cdJvV1-Vlwk"
+    },
+    "lint": {
+      "passed": true,
+      "scope": "All src plus changed rules/browser tests and Next config"
+    },
+    "unit": {
+      "passed": 295,
+      "files": 68,
+      "command": "vitest run --pool=threads --maxWorkers=2",
+      "note": "Full suite after native Docs, pending publication recovery and account-deletion upload guard."
+    },
+    "changedControls": {
+      "passed": 3,
+      "files": 2
+    },
+    "firestoreAndStorageRules": {
+      "passed": 60,
+      "files": 1
+    },
+    "browser": {
+      "passedDistinctScenarios": 12,
+      "skippedDistinctScenarios": 2,
+      "projects": ["chromium", "mobile-chrome"],
+      "scope": [
+        "Community-first sign-in and platform navigation",
+        "Protected permalink return destination and clipboard sharing",
+        "Unsafe external return destination",
+        "Recipient messaging privacy, connections and blocks",
+        "Message privacy settings persistence",
+        "Teacher context, generation, editing, menus, deletion cancellation and exports",
+        "405-record mark-all-read"
+      ],
+      "note": "Nine scenarios passed in the combined run; the three checks affected by old dashboard and fixed-port assumptions passed after their expectations were corrected. Permalink and unsafe-return checks run only on desktop in their existing specs."
+    },
+    "focusedControlInteractions": {
+      "passed": 2,
+      "scope": ["Rating selection", "Forum edit cancellation"]
+    },
+    "nativePdfNavigation": {
+      "passed": 1,
+      "browser": "Full Chromium with channel chromium",
+      "note": "Default headless shell downloads PDFs instead of displaying them."
+    },
+    "links": {
+      "checked": 77,
+      "successful": 77,
+      "historicalTemporaryProfiles": 27,
+      "scope": "Current links collected from primary pages plus stable links from initial inventories. Removed historical test profiles are separately recorded."
+    },
+    "navigationJourneys": {
+      "checked": 27,
+      "successful": 27,
+      "widths": [1440, 1024, 390]
+    },
+    "accessibility": {
+      "pageScans": 8,
+      "violations": 0,
+      "generatedLessonAssertions": 2,
+      "standard": "Selected WCAG A/AA diagnostics; additional manual and assistive-technology review remains",
+      "worksheetScans": 10,
+      "worksheetViolations": 0,
+      "notificationScans": 10,
+      "notificationViolations": 0,
+      "googleDocsDialogScans": 16,
+      "googleDocsViolations": 0
+    },
+    "screenshots": {
+      "before": 38,
+      "afterRouteCaptures": 52,
+      "generatedResults": 2,
+      "focusedControls": 2,
+      "pageExceptions": 0,
+      "horizontalOverflows": 0,
+      "expectedPrivateLesson404s": 2,
+      "worksheetApplication": 12,
+      "worksheetPdfPreviews": 2,
+      "notifications": 10,
+      "googleDocs": 16
+    },
+    "visibleEnabledButtonTargets": {
+      "checked": 465,
+      "targetPixels": 44,
+      "measurementTolerancePixels": 1,
+      "undersized": 0,
+      "scope": "Initial 465-button inventory; worksheet release additionally asserts all visible enabled buttons on ten sampled desktop/mobile states."
+    },
+    "finalAffectedUnitChecks": {
+      "passed": 17,
+      "files": 4
+    },
+    "currentBrowserRelease": {
+      "passed": 6,
+      "skipped": 0,
+      "projects": ["chromium", "mobile-chrome"],
+      "scope": "Focused native Docs, snapshot publication and recovery release; Google network mocked"
+    },
+    "worksheetRelease": "worksheets/verification.json",
+    "notificationRelease": "notifications/verification.json",
+    "googleDocsRelease": "google-docs/verification.json",
+    "previousNotificationBrowserRegression": {
+      "passed": 18,
+      "skipped": 0,
+      "projects": ["chromium", "mobile-chrome"],
+      "notificationChecks": 6,
+      "worksheetChecks": 4,
+      "lessonMessagingNotificationChecks": 8
+    },
+    "format": {
+      "passed": true,
+      "scope": "All src plus changed tests, config, indexes and Google setup notes"
+    }
+  },
+  "externalVerification": {
+    "liveOpenAI": false,
+    "stripeCheckoutAndWebhooks": false,
+    "googleDocsOAuthAndExport": false,
+    "liveEmailDelivery": false
+  },
+  "outstanding": [
+    "Real Google Docs OAuth/sharing/conversion verification and later Google Slides delivery",
+    "PDF shaping and font coverage for additional scripts",
+    "Real AI quality, language adherence, latency and cost evaluation",
+    "Stripe currency choice and sandbox checkout/webhook verification",
+    "Community email delivery and pagination for larger network/discovery/resource lists",
+    "Production email, uploads, moderation, account deletion, monitoring and deployment verification",
+    "Apply worksheet-level save conflicts, idempotency and abandoned-job recovery to lessons; improve long worksheet editing and print usability."
+  ],
+  "evidence": {
+    "before": "before/audit.json",
+    "after": "after/audit.json",
+    "navigation": "navigation.json",
+    "routeInventory": "project-inventory.json",
+    "worksheets": "worksheets/verification.json",
+    "currentRouteInventory": "project-inventory-current.json",
+    "notifications": "notifications/verification.json",
+    "googleDocs": "google-docs/verification.json"
+  },
+  "previousVerificationAt": "2026-11-24T21:51:47.968Z"
+}

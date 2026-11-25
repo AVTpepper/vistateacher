@@ -11,6 +11,7 @@ import { FeedComposer } from "@/features/feed/feed-composer";
 import { PostCard } from "@/features/feed/post-card";
 import type { FeedPage, FeedPost } from "@/lib/feed/server";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import type { CreatePostInput, FeedView } from "@/schemas/feed";
 
 interface FeedExperienceProps {
@@ -177,7 +178,21 @@ export function FeedExperience({
 
   return (
     <div className="mx-auto w-full max-w-2xl min-w-0 space-y-4">
-      <h1 className="sr-only">Community feed</h1>
+      <h1 className="font-serif text-2xl">Community feed</h1>
+      <nav aria-label="Teaching tools" className="flex flex-wrap gap-2">
+        <Button asChild size="sm" variant="outline">
+          <Link href="/ai-lessons">Create a lesson</Link>
+        </Button>
+        <Button asChild size="sm" variant="outline">
+          <Link href="/worksheets/new">Create a worksheet</Link>
+        </Button>
+        <Button asChild size="sm" variant="outline">
+          <Link href="/resources?view=mine">My resources</Link>
+        </Button>
+        <Button asChild size="sm" variant="outline">
+          <Link href="/resources/new">Share a resource</Link>
+        </Button>
+      </nav>
       <nav aria-label="Feed views" className="surface-card flex gap-1 p-1">
         {tabs.map((tab) => (
           <Link
@@ -257,14 +272,15 @@ export function FeedExperience({
         )
       )}
       {nextCursor && (
-        <button
+        <Button
           type="button"
           onClick={() => void loadMore()}
           disabled={loading}
-          className="bg-card text-primary hover:bg-secondary h-11 w-full rounded-xl border text-sm font-bold disabled:opacity-50"
+          variant="outline"
+          className="w-full"
         >
           {loading ? "Loading..." : "Load more posts"}
-        </button>
+        </Button>
       )}
     </div>
   );

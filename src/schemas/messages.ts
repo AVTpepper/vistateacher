@@ -75,6 +75,8 @@ export const blockUserSchema = z.object({
 
 export const notificationQuerySchema = z.object({
   cursor: z.string().trim().min(1).max(512).optional(),
+  filter: z.enum(["all", "unread", "archived"]).default("all"),
+  summary: z.enum(["true", "false"]).default("false"),
 });
 
 export const notificationActionSchema = z

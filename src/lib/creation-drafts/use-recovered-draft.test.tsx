@@ -52,6 +52,32 @@ describe("draft recovery", () => {
     render(<Editor owner="bob" />);
     expect(screen.getByLabelText("Title")).toHaveValue("");
   });
+  it("recovers mixed question types while rejecting malformed discriminated entries", () => {
+    const initial = {
+      items: [
+        { type: "choice", prompt: "", options: [{ text: "" }] },
+        { type: "short", prompt: "", responseLines: 3 },
+      ],
+    };
+    function MixedEditor() {
+      const draft = useRecoveredDraft("mixed", initial);
+      return (
+        <p>{draft.restored ? "Recovered mixed draft" : "New mixed draft"}</p>
+      );
+    }
+    localStorage.setItem("vista:draft:v1:mixed", JSON.stringify(initial));
+    const view = render(<MixedEditor />);
+    expect(screen.getByText("Recovered mixed draft")).toBeInTheDocument();
+    view.unmount();
+    localStorage.setItem(
+      "vista:draft:v1:mixed",
+      JSON.stringify({
+        items: [{ type: "choice", prompt: "missing options" }],
+      }),
+    );
+    render(<MixedEditor />);
+    expect(screen.getByText("New mixed draft")).toBeInTheDocument();
+  });
 
   it("ignores malformed cached values", () => {
     localStorage.setItem(
@@ -60,6 +86,21 @@ describe("draft recovery", () => {
     );
     render(<Editor />);
     expect(screen.getByLabelText("Title")).toHaveValue("");
+  });
+  it("recovers a changed resource type in ordinary form objects", () => {
+    localStorage.setItem(
+      "vista:draft:v1:resource",
+      JSON.stringify({ type: "worksheet", title: "My worksheet" }),
+    );
+    function ResourceEditor() {
+      const draft = useRecoveredDraft("resource", {
+        type: "activity",
+        title: "",
+      });
+      return <p>{draft.value.type}</p>;
+    }
+    render(<ResourceEditor />);
+    expect(screen.getByText("worksheet")).toBeInTheDocument();
   });
 
   it("restores an explicitly cleared optional field even when the server draft has a value", () => {

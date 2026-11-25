@@ -1,0 +1,240 @@
+{
+  "verifiedAt": "2026-11-24T22:39:29.622Z",
+  "environment": {
+    "firebase": "demo-vista-teacher emulators",
+    "aiProvider": "MOCK",
+    "baseURL": "http://127.0.0.1:3300",
+    "deployed": false,
+    "buildId": "6B7uhWAbMfdidEJJgNY2l"
+  },
+  "checks": {
+    "optimizedBuild": true,
+    "typescript": true,
+    "fullUnitSuite": {
+      "passed": 209,
+      "files": 63,
+      "note": "An initial unrestricted-worker run timed out in an unrelated worksheet test; the full rerun passed with two workers."
+    },
+    "finalAffectedUnitChecks": {
+      "passed": 17,
+      "files": 4,
+      "note": "Includes two new focus regressions after the full-suite snapshot."
+    },
+    "firestoreAndStorageIntegration": {
+      "passed": 57
+    },
+    "finalCutoffAndEssentialBillingChecks": {
+      "passed": 4
+    },
+    "desktopAndMobileRegression": {
+      "passed": 18,
+      "notificationChecks": 6,
+      "lessonMessagingAndWorksheetChecks": 12
+    },
+    "contextualNotificationJourney": {
+      "passed": 1,
+      "project": "chromium"
+    },
+    "finalNotificationCaptures": {
+      "passed": 6,
+      "screenshots": 10,
+      "projects": ["chromium", "mobile-chrome"]
+    },
+    "accessibility": {
+      "scans": 10,
+      "violations": 0,
+      "scope": "Main content in each captured state; opened notification region is also included in menu/recovery states."
+    },
+    "horizontalOverflows": 0,
+    "lint": true,
+    "formatting": true
+  },
+  "behavior": [
+    "Complete active-unread count independent of newest 30/100 rows; legacy missing archived fields supported",
+    "Server-filtered all/unread/archived pagination",
+    "Idempotent transactional item changes, concurrent read/archive convergence, and owner isolation",
+    "405 active records marked read, archived history and post-cutoff items preserved",
+    "Community preference and both block directions checked during the transaction read phase across all producers",
+    "Mention plus owner reply generates one alert; messages still deliver when community alerts are off",
+    "Essential billing notices remain available when community preferences are off; late events use actual delivery time",
+    "Last known count retained after failed fetch; retry, 20-second request timeout, account cleanup and ordered refresh",
+    "Escape focus return and row-removal focus without overriding a teacher's subsequent focus choice"
+  ],
+  "browsers": [
+    {
+      "name": "notifications-browser",
+      "startTime": "2026-11-24T22:31:28.942Z",
+      "duration": 186505.006,
+      "expected": 18,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    {
+      "name": "notifications-capture",
+      "startTime": "2026-11-24T22:35:47.918Z",
+      "duration": 84274.494,
+      "expected": 6,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    {
+      "name": "notifications-contextual",
+      "startTime": "2026-11-24T22:38:32.376Z",
+      "duration": 12474.961,
+      "expected": 1,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "notifications/chromium/archived.png",
+      "bytes": 114185,
+      "sha256": "11c63898b3ab1c81fc6d3041d60c317e89389bf7bb1b519f81b7319775bfb1c5",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "notifications/chromium/menu.png",
+      "bytes": 153089,
+      "sha256": "cd3764703bb208bfdd1fcb9ba227586682d1c315f20cabf6891d2b213feaa8a6",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "notifications/chromium/recovery.png",
+      "bytes": 121561,
+      "sha256": "31cbe75a4586f5bcfecd5a693c63b032ab209474a8e00db3f8923613f19c1d8b",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "notifications/chromium/settings.png",
+      "bytes": 138348,
+      "sha256": "cd335ef98c45309d0ac6ba110559bbbcffd6c31d77d20e8e0b2fe351fce75468",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "notifications/chromium/unread.png",
+      "bytes": 110239,
+      "sha256": "7ef44ab36c8681044ba3f6abbee473803d3ec14f56dc8330cabfe0d4d6c63a4d",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "file": "notifications/mobile-chrome/archived.png",
+      "bytes": 375839,
+      "sha256": "fce349d121abbc08b1b8bf385436e901ad0ca3a6b3636f5cb8340ab1f3bc94ca",
+      "width": 1082,
+      "height": 2202
+    },
+    {
+      "file": "notifications/mobile-chrome/menu.png",
+      "bytes": 249191,
+      "sha256": "26a2ec62149bbe81a6d06c30ecd8660a26673ca523cfafa66ba7be9a96acd6b9",
+      "width": 1082,
+      "height": 2202
+    },
+    {
+      "file": "notifications/mobile-chrome/recovery.png",
+      "bytes": 226101,
+      "sha256": "15adec41159b5d50612d34990daa347571b5c3f5a2e2489f6fcbb1528e9bf420",
+      "width": 1082,
+      "height": 2202
+    },
+    {
+      "file": "notifications/mobile-chrome/settings.png",
+      "bytes": 353418,
+      "sha256": "84ac2b3664f679b7346465e99cd66c8e9750d168657827466facae4d3e360ed7",
+      "width": 1082,
+      "height": 2202
+    },
+    {
+      "file": "notifications/mobile-chrome/unread.png",
+      "bytes": 347631,
+      "sha256": "849b0dac08cb4b2941f8c30ad2a4f5fe0f7fd616db39c4f2000b1871be7f5c87",
+      "width": 1082,
+      "height": 2202
+    }
+  ],
+  "limits": [
+    "Changes to older notifications on other devices can take up to 60 seconds while visible; dashboard action text is refreshed on page load.",
+    "Community email delivery is not implemented; Settings explicitly describes its availability.",
+    "Legacy-compatible list filling can read archived history; monitor scan costs and plan a canonical inbox-state migration for very large histories.",
+    "Emulator tests do not prove deployed indexes, provider configuration or production email delivery."
+  ],
+  "sourceHashes": [
+    {
+      "file": "src/lib/notifications/delivery.ts",
+      "sha256": "94fa67c83c6ad69408920ede48012f7bc44c96f417ee5890e8250fd50aaee581"
+    },
+    {
+      "file": "src/lib/messages/server.ts",
+      "sha256": "290712467a95edc3703a8ebe9779d0cd36be1b48a4d0a4e0d0b753004d606391"
+    },
+    {
+      "file": "src/lib/billing/server.ts",
+      "sha256": "3867ea4c8f87389a8d8d2680d8056194b788af9163e626882c2f8b15b957e235"
+    },
+    {
+      "file": "src/lib/feed/server.ts",
+      "sha256": "f1babc3bd2198e6642b34d8ffe5a0515286aafdfcea361815892bfef54b86fe8"
+    },
+    {
+      "file": "src/lib/forum/server.ts",
+      "sha256": "36de5af3024f2f263794b3373e812de8a66e92322f515ce3e21e8000ef15fecc"
+    },
+    {
+      "file": "src/lib/mentions/server.ts",
+      "sha256": "7fd6f0813dbb63bd36d3a08786ac5f7e1009f6a038f69d1f808e22eff0d1b600"
+    },
+    {
+      "file": "src/lib/network/server.ts",
+      "sha256": "3d27c7159d81c752743d0ed04eaae8891b159801f7124a8068ab9330a6925bc9"
+    },
+    {
+      "file": "src/lib/resources/server.ts",
+      "sha256": "893aa40696f88ec4cad917d73812a7a8e2cbc09355b2d202d909721d2878a7ea"
+    },
+    {
+      "file": "src/lib/dashboard/server.ts",
+      "sha256": "d199a02a276a6e34d331d8def222e3dbf9d4fcfef3e0e6afed655b7b9bb64c76"
+    },
+    {
+      "file": "src/features/notifications/client.ts",
+      "sha256": "74d80b150033f9dafdd124c584c5750642ce1b7abca0826698609ccef9065906"
+    },
+    {
+      "file": "src/features/notifications/notification-provider.tsx",
+      "sha256": "5be265cb767447f25664fe51a382a67179c5e43248db531fcb861238cb8a1b7d"
+    },
+    {
+      "file": "src/features/notifications/notification-menu.tsx",
+      "sha256": "b77ec225de28cd8eb222b3f30c725a14d0b49a85c1b0f4d0ae3e6889aaf2be0b"
+    },
+    {
+      "file": "src/features/notifications/notifications-experience.tsx",
+      "sha256": "549d2a4735e0b4bc2ea64638e4ea38254a87f9512423e5c9479125e96e008612"
+    },
+    {
+      "file": "src/features/profiles/privacy-settings-form.tsx",
+      "sha256": "dea2fc76ff496479feaa65f63ffca510a25f756949c00a8651e0e86cef42d68b"
+    },
+    {
+      "file": "src/app/api/notifications/route.ts",
+      "sha256": "23015d6b88ef64dc9029a454967b965e68ccdeb59d16c35ead5acf1a1a13f585"
+    },
+    {
+      "file": "src/schemas/messages.ts",
+      "sha256": "aae11f64a8eb658f827b387dd121ba0f44b05a0356c0d3f43881645c64bdfb31"
+    },
+    {
+      "file": "src/app/(platform)/layout.tsx",
+      "sha256": "9fab790ace639a1172b3dccc3f332cdfc3ed087edb9444448a99945939b08c9d"
+    }
+  ]
+}

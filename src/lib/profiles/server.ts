@@ -7,6 +7,7 @@ import { adminDb } from "@/lib/firebase/admin";
 import { resolveConnectionRelationship } from "@/lib/network/server";
 import { isRecentlyOnline } from "@/lib/presence/policy";
 import { canViewContactDetails } from "@/lib/profiles/privacy";
+import { canReceiveMessage } from "@/lib/messages/privacy";
 import {
   createSearchKeywords,
   normalizeSearchText,
@@ -31,6 +32,7 @@ export interface ProfileView {
   connectionDirection: "incoming" | "outgoing" | null;
   canViewOnlineStatus: boolean;
   isOnline: boolean;
+  canMessage: boolean;
 }
 
 export interface ProfileViewer {
@@ -156,13 +158,19 @@ export async function getProfileView(
     profileSnapshot.data()?.lastActiveAt instanceof Timestamp
       ? profileSnapshot.data()!.lastActiveAt.toDate()
       : null;
-  const [relationship] = await Promise.all([
+  const [relationship, , outgoingBlock, incomingBlock] = await Promise.all([
     viewerUid && !isOwner
       ? resolveConnectionRelationship(viewerUid, uid)
       : Promise.resolve(null),
     viewerUid && !isOwner
       ? recordUniqueProfileView(uid, viewerUid)
       : Promise.resolve(),
+    viewerUid && !isOwner
+      ? db.doc(`blocks/${viewerUid}_${uid}`).get()
+      : Promise.resolve(null),
+    viewerUid && !isOwner
+      ? db.doc(`blocks/${uid}_${viewerUid}`).get()
+      : Promise.resolve(null),
   ]);
   const canViewContact = canViewContactDetails(
     uid,
@@ -184,6 +192,15 @@ export async function getProfileView(
     contactDetails:
       canViewContact && privateUser ? privateUser.contactDetails : null,
     isOwner,
+    canMessage:
+      Boolean(viewerUid && !isOwner && profile.status === "active") &&
+      canReceiveMessage({
+        connected: connectionStatus === "accepted",
+        allowNonConnections:
+          privateUser?.privacySettings.allowMessagesFromNonConnections === true,
+        blocked:
+          outgoingBlock?.exists === true || incomingBlock?.exists === true,
+      }),
     connectionStatus,
     connectionDirection,
     canViewOnlineStatus:

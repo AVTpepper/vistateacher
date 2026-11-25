@@ -1,5 +1,12 @@
 import "server-only";
 
+import { createHash, randomUUID } from "node:crypto";
+
+import {
+  prepareCommunityNotifications,
+  writeCommunityNotification,
+} from "@/lib/notifications/delivery";
+
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { adminDb, adminStorage } from "@/lib/firebase/admin";
@@ -16,8 +23,35 @@ import type {
   ResourceType,
   UpdateResourceInput,
 } from "@/schemas/resource";
+import { resourceMetadataSchema } from "@/schemas/resource";
 
 const RESOURCE_LIMIT = 100;
+const GENERATED_RESOURCE_MIME =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+// Keep a retry marker beyond the Storage client's bounded upload retries. A
+// cancelled upload can finish remotely after the process handling it has gone.
+const GENERATED_WRITE_GRACE_MS = 15 * 60 * 1000;
+const GENERATED_CLEANUP_BATCH = 10;
+
+export type GeneratedResourceMetadata = Omit<
+  ReserveResourceInput,
+  "draftResourceId" | "fileName" | "fileType" | "fileSize"
+>;
+
+export interface GeneratedResourceReservation {
+  resourceId: string;
+  uploadPath: string;
+  state: "uploading" | "active";
+}
+
+/** Internal hooks only. Complete every transaction read in beforeCommit. */
+export interface ResourceFinalizationHooks {
+  beforeCommit: (transaction: FirebaseFirestore.Transaction) => Promise<void>;
+  onCommit?: (
+    transaction: FirebaseFirestore.Transaction,
+    resourceId: string,
+  ) => void;
+}
 
 export interface ResourceSummary {
   id: string;
@@ -118,6 +152,73 @@ function number(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+function sha256(value: string | Buffer): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function generatedReceiptRef(uid: string, resourceId: string) {
+  const match = /^generated_([a-f0-9]{64})$/.exec(resourceId);
+  return match
+    ? adminDb().doc(`users/${uid}/generatedResourcePublications/${match[1]}`)
+    : null;
+}
+
+function liveGeneratedWriters(data: FirebaseFirestore.DocumentData) {
+  const writers: Record<string, Timestamp> = {};
+  if (data.writeClaims && typeof data.writeClaims === "object") {
+    for (const [claim, until] of Object.entries(data.writeClaims))
+      if (until instanceof Timestamp && until.toMillis() > Date.now())
+        writers[claim] = until;
+  } else if (
+    data.writeUntil instanceof Timestamp &&
+    data.writeUntil.toMillis() > Date.now()
+  ) {
+    // Preserve a pre-claim upload lease during an in-place deployment.
+    writers.legacy = data.writeUntil;
+  }
+  return writers;
+}
+
+function generatedWriteUntil(writers: Record<string, Timestamp>) {
+  return Timestamp.fromMillis(
+    Math.max(0, ...Object.values(writers).map((until) => until.toMillis())),
+  );
+}
+
+function uploadingResourceData(
+  uid: string,
+  input: ReserveResourceInput,
+  uploadPath: string,
+  period: string,
+) {
+  return {
+    authorId: uid,
+    title: input.title,
+    titleLower: input.title.toLocaleLowerCase("en-US"),
+    description: input.description,
+    type: input.type,
+    subject: input.subject,
+    subjectLower: input.subject.toLocaleLowerCase("en-US"),
+    gradeLevel: input.gradeLevel,
+    tags: [...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US")))],
+    accessTier: "free",
+    filePath: uploadPath,
+    fileName: input.fileName,
+    fileType: input.fileType,
+    fileSize: input.fileSize,
+    thumbnailURL: null,
+    downloadCount: 0,
+    ratingTotal: 0,
+    ratingAverage: 0,
+    ratingCount: 0,
+    status: "uploading",
+    moderationStatus: "pending",
+    completionStatus: "complete",
+    usagePeriod: period,
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+}
+
 function summary(
   id: string,
   data: FirebaseFirestore.DocumentData,
@@ -195,34 +296,7 @@ export async function reserveResourceUpload(
       },
       { merge: true },
     );
-    const resourceData = {
-      authorId: uid,
-      title: input.title,
-      titleLower: input.title.toLocaleLowerCase("en-US"),
-      description: input.description,
-      type: input.type,
-      subject: input.subject,
-      subjectLower: input.subject.toLocaleLowerCase("en-US"),
-      gradeLevel: input.gradeLevel,
-      tags: [
-        ...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US"))),
-      ],
-      accessTier: "free",
-      filePath: uploadPath,
-      fileName: input.fileName,
-      fileType: input.fileType,
-      fileSize: input.fileSize,
-      thumbnailURL: null,
-      downloadCount: 0,
-      ratingTotal: 0,
-      ratingAverage: 0,
-      ratingCount: 0,
-      status: "uploading",
-      moderationStatus: "pending",
-      completionStatus: "complete",
-      usagePeriod: period,
-      updatedAt: FieldValue.serverTimestamp(),
-    };
+    const resourceData = uploadingResourceData(uid, input, uploadPath, period);
     if (input.draftResourceId) transaction.update(resourceRef, resourceData);
     else
       transaction.create(resourceRef, {
@@ -234,9 +308,226 @@ export async function reserveResourceUpload(
   return { resourceId: resourceRef.id, uploadPath, uploadsRemaining };
 }
 
+/**
+ * Reserves one immutable server-generated copy per private publication intent.
+ * The private receipt survives resource removal, so retries cannot republish it.
+ */
+export async function reserveGeneratedResource(
+  uid: string,
+  input: {
+    publicationId: string;
+    metadata: GeneratedResourceMetadata;
+    bytesHash: string;
+    byteLength: number;
+  },
+  hooks?: ResourceFinalizationHooks,
+): Promise<GeneratedResourceReservation> {
+  const parsed = resourceMetadataSchema.safeParse(input.metadata);
+  if (
+    !parsed.success ||
+    !input.publicationId ||
+    input.publicationId.length > 200 ||
+    !/^[a-f0-9]{64}$/.test(input.bytesHash) ||
+    !Number.isSafeInteger(input.byteLength) ||
+    input.byteLength <= 0 ||
+    input.byteLength > 25 * 1024 * 1024
+  )
+    throw new ResourceActionError("invalid-upload");
+
+  const metadata = {
+    ...parsed.data,
+    accessTier: "free" as const,
+    tags: [
+      ...new Set(parsed.data.tags.map((tag) => tag.toLocaleLowerCase("en-US"))),
+    ],
+  };
+  const intentHash = sha256(
+    JSON.stringify({
+      metadata,
+      bytesHash: input.bytesHash,
+      byteLength: input.byteLength,
+    }),
+  );
+  const key = sha256(JSON.stringify([uid, input.publicationId]));
+  const db = adminDb();
+  const resourceRef = db.doc(`resources/generated_${key}`);
+  const receiptRef = db.doc(
+    `users/${uid}/generatedResourcePublications/${key}`,
+  );
+  const uploadPath = `resources/${uid}/${resourceRef.id}/resource.docx`;
+  const period = periodKey();
+  const usageRef = db.doc(`usage/${uid}_${period}`);
+
+  return db.runTransaction(async (transaction) => {
+    const [user, usage, receipt, resource] = await transaction.getAll(
+      db.doc(`users/${uid}`),
+      usageRef,
+      receiptRef,
+      resourceRef,
+    );
+    const decision = canReserveResource({
+      status: user.data()?.status ?? "deleted",
+    });
+    if (!decision.allowed) throw new ResourceActionError(decision.reason);
+    if (receipt.exists) {
+      if (receipt.data()?.intentHash !== intentHash)
+        throw new ResourceActionError("invalid-upload");
+      const data = resource.data();
+      if (!resource.exists) throw new ResourceActionError("not-ready");
+      if (data?.authorId !== uid) throw new ResourceActionError("not-owner");
+      if (
+        data?.generatedPublicationId !== input.publicationId ||
+        data?.generatedBytesHash !== input.bytesHash ||
+        data?.fileSize !== input.byteLength ||
+        data?.filePath !== uploadPath ||
+        (data?.status !== "uploading" && data?.status !== "active")
+      )
+        throw new ResourceActionError("not-ready");
+      await hooks?.beforeCommit(transaction);
+      hooks?.onCommit?.(transaction, resourceRef.id);
+      return {
+        resourceId: resourceRef.id,
+        uploadPath,
+        state: data.status as "uploading" | "active",
+      };
+    }
+    if (resource.exists) throw new ResourceActionError("not-ready");
+    await hooks?.beforeCommit(transaction);
+    const fileName = `${metadata.title.replace(/[\\/:*?"<>|\p{Cc}]/gu, "_")}.docx`;
+    transaction.create(resourceRef, {
+      ...uploadingResourceData(
+        uid,
+        {
+          ...metadata,
+          fileName,
+          fileType: GENERATED_RESOURCE_MIME,
+          fileSize: input.byteLength,
+        },
+        uploadPath,
+        period,
+      ),
+      generatedPublicationId: input.publicationId,
+      generatedBytesHash: input.bytesHash,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    transaction.create(receiptRef, {
+      resourceId: resourceRef.id,
+      intentHash,
+      cleanupPending: false,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    transaction.set(
+      usageRef,
+      {
+        uid,
+        period,
+        resourceUploads: number(usage.data()?.resourceUploads) + 1,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+    hooks?.onCommit?.(transaction, resourceRef.id);
+    return { resourceId: resourceRef.id, uploadPath, state: "uploading" };
+  });
+}
+
+/** Writes only the exact DOCX bytes recorded by an internal reservation. */
+export async function saveGeneratedResourceBytes(
+  uid: string,
+  resourceId: string,
+  bytes: Buffer,
+): Promise<void> {
+  const db = adminDb();
+  const resourceRef = db.doc(`resources/${resourceId}`);
+  const receiptRef = generatedReceiptRef(uid, resourceId);
+  if (!receiptRef) throw new ResourceActionError("not-ready");
+  const writeClaim = randomUUID();
+  const data = await db.runTransaction(async (transaction) => {
+    const [resource, user, receipt] = await transaction.getAll(
+      resourceRef,
+      db.doc(`users/${uid}`),
+      receiptRef,
+    );
+    if (!resource.exists) throw new ResourceActionError("not-found");
+    const data = resource.data()!;
+    if (data.authorId !== uid) throw new ResourceActionError("not-owner");
+    if (user.data()?.status !== "active")
+      throw new ResourceActionError("inactive");
+    if (
+      data.status !== "uploading" ||
+      typeof data.generatedPublicationId !== "string" ||
+      data.fileType !== GENERATED_RESOURCE_MIME ||
+      data.filePath !== `resources/${uid}/${resourceId}/resource.docx` ||
+      receipt.data()?.resourceId !== resourceId ||
+      receipt.data()?.cleanupPending === true
+    )
+      throw new ResourceActionError("not-ready");
+    if (
+      bytes.length !== data.fileSize ||
+      sha256(bytes) !== data.generatedBytesHash
+    )
+      throw new ResourceActionError("invalid-upload");
+    const writeClaims = liveGeneratedWriters(receipt.data()!);
+    writeClaims[writeClaim] = Timestamp.fromMillis(
+      Date.now() + GENERATED_WRITE_GRACE_MS,
+    );
+    transaction.update(receiptRef, {
+      writeClaims,
+      writeUntil: generatedWriteUntil(writeClaims),
+    });
+    return data;
+  });
+  const file = adminStorage().bucket().file(data.filePath);
+  let uploadConfirmed = false;
+  try {
+    try {
+      await file.save(bytes, {
+        resumable: false,
+        timeout: 30_000,
+        contentType: GENERATED_RESOURCE_MIME,
+        metadata: { cacheControl: "private, no-store" },
+      });
+      uploadConfirmed = true;
+    } catch (error) {
+      if (!(await resourceRef.get()).exists)
+        await cancelResourceUpload(uid, resourceId);
+      throw error;
+    }
+    const current = await resourceRef.get();
+    if (
+      !current.exists ||
+      current.data()?.authorId !== uid ||
+      current.data()?.generatedBytesHash !== data.generatedBytesHash ||
+      (current.data()?.status !== "uploading" &&
+        current.data()?.status !== "active")
+    ) {
+      // Cancellation records a durable retry before trying Storage. Do not lose
+      // the cleanup handle if deletion fails or another upload is still in flight.
+      await cancelResourceUpload(uid, resourceId);
+      throw new ResourceActionError("not-ready");
+    }
+  } finally {
+    // An ambiguous network failure may still commit remotely. Preserve its
+    // bounded grace; only confirmed completed uploads can release it early.
+    if (uploadConfirmed)
+      await db.runTransaction(async (transaction) => {
+        const receipt = await transaction.get(receiptRef);
+        if (!receipt.exists || receipt.data()?.resourceId !== resourceId)
+          return;
+        const writeClaims = liveGeneratedWriters(receipt.data()!);
+        delete writeClaims[writeClaim];
+        transaction.update(receiptRef, {
+          writeClaims,
+          writeUntil: generatedWriteUntil(writeClaims),
+        });
+      });
+  }
+}
+
 export async function finalizeResourceUpload(
   uid: string,
   resourceId: string,
+  hooks?: ResourceFinalizationHooks,
 ): Promise<void> {
   const db = adminDb();
   const resourceRef = db.doc(`resources/${resourceId}`);
@@ -244,7 +535,12 @@ export async function finalizeResourceUpload(
   if (!resource.exists) throw new ResourceActionError("not-found");
   const data = resource.data()!;
   if (data.authorId !== uid) throw new ResourceActionError("not-owner");
-  if (data.status !== "uploading") throw new ResourceActionError("not-ready");
+  const generated = typeof data.generatedPublicationId === "string";
+  if (
+    (generated && !hooks) ||
+    (data.status !== "uploading" && !(generated && data.status === "active"))
+  )
+    throw new ResourceActionError("not-ready");
 
   let metadata;
   try {
@@ -253,7 +549,7 @@ export async function finalizeResourceUpload(
       .file(String(data.filePath))
       .getMetadata();
   } catch {
-    await cancelResourceUpload(uid, resourceId);
+    if (!generated) await cancelResourceUpload(uid, resourceId);
     throw new ResourceActionError("invalid-upload");
   }
   if (
@@ -261,20 +557,52 @@ export async function finalizeResourceUpload(
     Number(metadata.size) !== data.fileSize ||
     Number(metadata.size) > 25 * 1024 * 1024
   ) {
-    await adminStorage()
-      .bucket()
-      .file(String(data.filePath))
-      .delete({ ignoreNotFound: true });
-    await cancelResourceUpload(uid, resourceId);
+    if (!generated) {
+      await adminStorage()
+        .bucket()
+        .file(String(data.filePath))
+        .delete({ ignoreNotFound: true });
+      await cancelResourceUpload(uid, resourceId);
+    }
     throw new ResourceActionError("invalid-upload");
+  }
+  if (generated) {
+    let storedBytes: Buffer;
+    try {
+      [storedBytes] = await adminStorage()
+        .bucket()
+        .file(String(data.filePath))
+        .download();
+    } catch {
+      throw new ResourceActionError("invalid-upload");
+    }
+    if (sha256(storedBytes) !== data.generatedBytesHash)
+      throw new ResourceActionError("invalid-upload");
   }
 
   await db.runTransaction(async (transaction) => {
-    const current = await transaction.get(resourceRef);
+    const [current, user] = await transaction.getAll(
+      resourceRef,
+      db.doc(`users/${uid}`),
+    );
     if (!current.exists || current.data()?.authorId !== uid)
       throw new ResourceActionError("not-owner");
-    if (current.data()?.status !== "uploading")
+    if (user.data()?.status !== "active")
+      throw new ResourceActionError("inactive");
+    if (
+      current.data()?.filePath !== data.filePath ||
+      current.data()?.fileType !== data.fileType ||
+      current.data()?.fileSize !== data.fileSize ||
+      current.data()?.generatedBytesHash !== data.generatedBytesHash ||
+      (current.data()?.status !== "uploading" &&
+        !(generated && current.data()?.status === "active"))
+    )
       throw new ResourceActionError("not-ready");
+    await hooks?.beforeCommit(transaction);
+    if (current.data()?.status === "active") {
+      hooks?.onCommit?.(transaction, resourceId);
+      return;
+    }
     transaction.update(resourceRef, {
       status: "active",
       moderationStatus: "approved",
@@ -293,6 +621,7 @@ export async function finalizeResourceUpload(
     transaction.update(db.doc(`users/${uid}`), {
       resourceCount: FieldValue.increment(1),
     });
+    hooks?.onCommit?.(transaction, resourceId);
   });
 }
 
@@ -302,16 +631,43 @@ export async function cancelResourceUpload(
 ): Promise<void> {
   const db = adminDb();
   const resourceRef = db.doc(`resources/${resourceId}`);
+  const possibleReceiptRef = generatedReceiptRef(uid, resourceId);
   let filePath = "";
+  let generated = false;
   await db.runTransaction(async (transaction) => {
     const resource = await transaction.get(resourceRef);
-    if (!resource.exists) throw new ResourceActionError("not-found");
+    if (!resource.exists) {
+      const receipt = possibleReceiptRef
+        ? await transaction.get(possibleReceiptRef)
+        : null;
+      if (!receipt?.exists || receipt.data()?.resourceId !== resourceId)
+        throw new ResourceActionError("not-found");
+      generated = true;
+      filePath = `resources/${uid}/${resourceId}/resource.docx`;
+      transaction.update(possibleReceiptRef!, {
+        cleanupPending: true,
+        cleanupUpdatedAt: FieldValue.serverTimestamp(),
+      });
+      return;
+    }
     const data = resource.data()!;
     if (data.authorId !== uid) throw new ResourceActionError("not-owner");
     if (data.status !== "uploading") throw new ResourceActionError("not-ready");
     filePath = String(data.filePath);
+    generated = typeof data.generatedPublicationId === "string";
     const usageRef = db.doc(`usage/${uid}_${data.usagePeriod}`);
-    const usage = await transaction.get(usageRef);
+    const [usage, receipt] = await transaction.getAll(
+      usageRef,
+      ...(generated && possibleReceiptRef ? [possibleReceiptRef] : []),
+    );
+    if (generated) {
+      if (!possibleReceiptRef || receipt?.data()?.resourceId !== resourceId)
+        throw new ResourceActionError("not-ready");
+      transaction.update(possibleReceiptRef, {
+        cleanupPending: true,
+        cleanupUpdatedAt: FieldValue.serverTimestamp(),
+      });
+    }
     transaction.set(
       usageRef,
       {
@@ -334,11 +690,87 @@ export async function cancelResourceUpload(
       });
     else transaction.delete(resourceRef);
   });
+  if (generated) {
+    // Firestore removal and the receipt above commit together. Storage failures
+    // leave the private marker for the next authenticated cleanup drain.
+    await cleanupGeneratedResourceFile(uid, resourceId);
+    return;
+  }
   if (filePath)
     await adminStorage()
       .bucket()
       .file(filePath)
       .delete({ ignoreNotFound: true });
+}
+
+async function cleanupGeneratedResourceFile(
+  uid: string,
+  resourceId: string,
+): Promise<boolean> {
+  const db = adminDb();
+  const receiptRef = generatedReceiptRef(uid, resourceId);
+  if (!receiptRef) return false;
+  const resourceRef = db.doc(`resources/${resourceId}`);
+  const [resource, receipt] = await db.getAll(resourceRef, receiptRef);
+  if (
+    resource.exists ||
+    receipt.data()?.resourceId !== resourceId ||
+    receipt.data()?.cleanupPending !== true
+  )
+    return false;
+  try {
+    await adminStorage()
+      .bucket()
+      .file(`resources/${uid}/${resourceId}/resource.docx`)
+      .delete({ ignoreNotFound: true });
+  } catch {
+    return false;
+  }
+  return db.runTransaction(async (transaction) => {
+    const [currentResource, currentReceipt] = await transaction.getAll(
+      resourceRef,
+      receiptRef,
+    );
+    if (
+      currentResource.exists ||
+      !currentReceipt.exists ||
+      currentReceipt.data()?.resourceId !== resourceId
+    )
+      return false;
+    const writeUntil = currentReceipt.data()?.writeUntil;
+    if (writeUntil instanceof Timestamp && writeUntil.toMillis() > Date.now())
+      return false;
+    transaction.update(receiptRef, {
+      cleanupPending: false,
+      cleanupUpdatedAt: FieldValue.serverTimestamp(),
+    });
+    return true;
+  });
+}
+
+/**
+ * Retry one bounded batch after an authenticated action; no background worker is
+ * required. A completed upload can leave its marker during the write grace.
+ */
+export async function drainGeneratedResourceCleanup(
+  uid: string,
+): Promise<number> {
+  const receipts = await adminDb()
+    .collection(`users/${uid}/generatedResourcePublications`)
+    .where("cleanupPending", "==", true)
+    .limit(GENERATED_CLEANUP_BATCH)
+    .get();
+  const attempts = await Promise.allSettled(
+    receipts.docs.map((receipt) =>
+      cleanupGeneratedResourceFile(
+        uid,
+        String(receipt.data().resourceId ?? ""),
+      ),
+    ),
+  );
+  return attempts.filter(
+    (result) => result.status === "fulfilled" && result.value,
+  ).length;
 }
 
 export async function listResources(
@@ -697,6 +1129,9 @@ export async function downloadResource(
     });
     if (!currentDecision.allowed)
       throw new ResourceActionError(currentDecision.reason);
+    const recipients = await prepareCommunityNotifications(transaction, uid, [
+      String(currentResource.data()?.authorId ?? ""),
+    ]);
     if (!ownsResource) {
       transaction.set(
         usageRef,
@@ -714,22 +1149,16 @@ export async function downloadResource(
       transaction.update(resourceRef, {
         downloadCount: FieldValue.increment(1),
       });
-      transaction.set(
-        db.doc(
-          `users/${ownerId}/notifications/resource-download_${resourceId}_${uid}`,
-        ),
-        {
-          type: "resource-download",
-          actorId: uid,
-          actorName: String(currentUser.data()?.displayName ?? "An educator"),
-          entityId: resourceId,
-          message: `${String(currentUser.data()?.displayName ?? "An educator")} downloaded your resource.`,
-          href: `/resources/${resourceId}`,
-          read: false,
-          archived: false,
-          createdAt: FieldValue.serverTimestamp(),
-        },
-      );
+      writeCommunityNotification(transaction, recipients, {
+        recipientId: ownerId,
+        id: `resource-download_${resourceId}_${uid}`,
+        type: "resource-download",
+        actorId: uid,
+        actorName: String(currentUser.data()?.displayName ?? "An educator"),
+        entityId: resourceId,
+        message: `${String(currentUser.data()?.displayName ?? "An educator")} downloaded your resource.`,
+        href: `/resources/${resourceId}`,
+      });
     }
   });
   return {

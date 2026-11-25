@@ -28,7 +28,7 @@ export function FormDialogContent({
           className,
         )}
       >
-        <div className="shrink-0 px-5 pt-5 pr-16 sm:px-6 sm:pt-6 sm:pr-16">
+        <div className="shrink-0 border-b px-5 pt-5 pr-16 pb-4 sm:px-6 sm:pt-6 sm:pr-16">
           <Dialog.Title className="font-serif text-2xl">{title}</Dialog.Title>
           <Dialog.Description className="text-muted-foreground mt-1 text-sm">
             {description}

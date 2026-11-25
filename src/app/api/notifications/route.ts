@@ -4,7 +4,11 @@ import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "@/lib/auth/request";
 import { getRouteAccount } from "@/lib/auth/route-account";
 import { messageErrorResponse } from "@/lib/messages/route-response";
-import { getNotifications, updateNotification } from "@/lib/messages/server";
+import {
+  getNotifications,
+  getUnreadNotificationCount,
+  updateNotification,
+} from "@/lib/messages/server";
 import {
   notificationActionSchema,
   notificationQuerySchema,
@@ -19,6 +23,8 @@ export async function GET(request: NextRequest) {
     );
   const parsed = notificationQuerySchema.safeParse({
     cursor: request.nextUrl.searchParams.get("cursor") ?? undefined,
+    filter: request.nextUrl.searchParams.get("filter") ?? undefined,
+    summary: request.nextUrl.searchParams.get("summary") ?? undefined,
   });
   if (!parsed.success)
     return NextResponse.json(
@@ -27,7 +33,13 @@ export async function GET(request: NextRequest) {
     );
   try {
     return NextResponse.json(
-      await getNotifications(account.uid, parsed.data.cursor),
+      parsed.data.summary === "true"
+        ? { unreadCount: await getUnreadNotificationCount(account.uid) }
+        : await getNotifications(
+            account.uid,
+            parsed.data.cursor,
+            parsed.data.filter,
+          ),
     );
   } catch (error) {
     const response = messageErrorResponse(error);

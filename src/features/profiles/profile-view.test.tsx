@@ -51,6 +51,7 @@ function data(
     isOwner: false,
     connectionStatus,
     connectionDirection: connectionStatus === "pending" ? "outgoing" : null,
+    canMessage: connectionStatus === "accepted",
     canViewOnlineStatus: false,
     isOnline: false,
   };
@@ -103,7 +104,7 @@ describe("ProfileView", () => {
     expect(message).toBeDisabled();
     expect(message).toHaveAttribute(
       "title",
-      "Connect with Marlena Kulasinska to send a message.",
+      "Messaging is unavailable. This teacher may accept messages from connections only.",
     );
   });
 

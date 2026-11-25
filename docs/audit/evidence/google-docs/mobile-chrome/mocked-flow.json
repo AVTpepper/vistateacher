@@ -1,0 +1,18 @@
+{
+  "googleNetwork": "mocked GIS + Drive only; no real Google account or file was used",
+  "appApi": "real local Firebase emulators",
+  "savedVersion": 2,
+  "sourceLaterEditedToVersion": 3,
+  "studentAnswerKeyExcluded": true,
+  "privateBriefExcluded": true,
+  "publicationLostResponseRecovered": true,
+  "publishedCopies": 1,
+  "publishedResourceNavigationVerified": true,
+  "independentTeacherDownloadVerified": true,
+  "ownerBinaryNoStoreAndHashVerified": true,
+  "anonymousPrivateAccessDenied": true,
+  "untrustedOriginRejected": true,
+  "googlePermissionMutations": 0,
+  "googleUploadInitiations": 1,
+  "googleTokenSentToApp": false
+}

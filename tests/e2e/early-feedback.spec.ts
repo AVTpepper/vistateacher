@@ -7,7 +7,7 @@ async function signIn(page: Page, email = "community@vista.local") {
   await expect(emailInput).toHaveValue(email);
   await page.getByLabel("Password", { exact: true }).fill("VistaTeacher1!");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/app$/, { timeout: 30_000 });
 }
 
 test("forum category URLs, validation, API errors, and creation remain stable", async ({
@@ -223,13 +223,14 @@ test("post permalinks preserve authentication destinations and expose profile li
     page.getByRole("button", { name: "Comment on post" }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Share post" })).toBeVisible();
+  const postUrl = page.url();
   await context.grantPermissions(["clipboard-read", "clipboard-write"], {
-    origin: "http://127.0.0.1:3100",
+    origin: new URL(postUrl).origin,
   });
   await page.getByRole("button", { name: "Share post" }).click();
   await expect(page.getByText("Post link copied.")).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-    "http://127.0.0.1:3100/post/demo-post",
+    postUrl,
   );
 
   await page.goto("/post/missing-post");
@@ -313,7 +314,7 @@ test("unsafe return destinations are ignored", async ({ page }, testInfo) => {
   await page.getByLabel("Email address").fill("community@vista.local");
   await page.getByLabel("Password", { exact: true }).fill("VistaTeacher1!");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(/\/app$/);
 });
 
 test("mobile resource form controls remain at least 16px without page overflow", async ({

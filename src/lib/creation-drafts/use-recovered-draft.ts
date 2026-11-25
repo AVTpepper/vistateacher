@@ -15,10 +15,32 @@ function hasShape(value: unknown, template: unknown): boolean {
       value === null || typeof value === "object" || typeof value === "string"
     );
   if (Array.isArray(template)) {
+    const discriminated =
+      new Set(
+        template
+          .map((item) =>
+            typeof item === "object" && item !== null && "type" in item
+              ? item.type
+              : undefined,
+          )
+          .filter((type) => typeof type === "string"),
+      ).size > 1;
     return (
       Array.isArray(value) &&
       (template.length === 0 ||
-        value.every((item) => hasShape(item, template[0])))
+        value.every((item) =>
+          template.some((shape) => {
+            if (
+              discriminated &&
+              (typeof item !== "object" ||
+                item === null ||
+                !("type" in item) ||
+                item.type !== shape.type)
+            )
+              return false;
+            return hasShape(item, shape);
+          }),
+        ))
     );
   }
   if (typeof template === "object") {

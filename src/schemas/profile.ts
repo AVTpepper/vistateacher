@@ -50,6 +50,7 @@ export const privateSettingsSchema = z.object({
   }),
   privacySettings: z.object({
     shareContactInfo: z.boolean(),
+    allowMessagesFromNonConnections: z.boolean().default(false),
   }),
   notificationSettings: z.object({
     email: z.boolean(),

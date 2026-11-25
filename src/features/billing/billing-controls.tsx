@@ -93,7 +93,7 @@ export function BillingControls({
               aria-pressed={interval === value}
               onClick={() => setInterval(value)}
               className={cn(
-                "h-9 rounded-md text-xs font-bold transition-colors",
+                "h-11 rounded-xl text-sm font-bold transition-colors",
                 interval === value
                   ? compact
                     ? "text-primary bg-white shadow-sm"

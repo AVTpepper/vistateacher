@@ -50,6 +50,7 @@ service firebase.storage {
         && firestore.exists(/databases/(default)/documents/resources/$(resourceId))
         && firestore.get(/databases/(default)/documents/resources/$(resourceId)).data.authorId == uid
         && firestore.get(/databases/(default)/documents/resources/$(resourceId)).data.status == "uploading"
+        && !("generatedPublicationId" in firestore.get(/databases/(default)/documents/resources/$(resourceId)).data)
         && firestore.get(/databases/(default)/documents/resources/$(resourceId)).data.filePath == "resources/" + uid + "/" + resourceId + "/" + fileName
         && firestore.get(/databases/(default)/documents/resources/$(resourceId)).data.fileType == request.resource.contentType
         && firestore.get(/databases/(default)/documents/resources/$(resourceId)).data.fileSize == request.resource.size

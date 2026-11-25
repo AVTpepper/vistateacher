@@ -1,27 +1,26 @@
 import type { Metadata } from "next";
-import {
-  DM_Serif_Display,
-  JetBrains_Mono,
-  Plus_Jakarta_Sans,
-} from "next/font/google";
+import type { CSSProperties } from "react";
+import localFont from "next/font/local";
 import { Toaster } from "sonner";
 
 import "./globals.css";
 
-const displayFont = DM_Serif_Display({
+const displayFont = localFont({
+  src: "../../public/fonts/DM-Serif-Display-Regular.ttf",
   variable: "--font-display",
-  subsets: ["latin"],
   weight: "400",
 });
 
-const bodyFont = Plus_Jakarta_Sans({
+const bodyFont = localFont({
+  src: "../../public/fonts/Plus-Jakarta-Sans-Variable.ttf",
+  weight: "200 800",
   variable: "--font-body",
-  subsets: ["latin"],
 });
 
-const monoFont = JetBrains_Mono({
+const monoFont = localFont({
+  src: "../../public/fonts/JetBrains-Mono-Variable.ttf",
+  weight: "100 800",
   variable: "--font-mono",
-  subsets: ["latin"],
 });
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -74,12 +73,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
+    <html lang="en-US" suppressHydrationWarning data-scroll-behavior="smooth">
       <body
         className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`}
       >
         {children}
-        <Toaster position="top-right" richColors closeButton />
+        <Toaster
+          position="top-right"
+          richColors
+          closeButton
+          style={
+            {
+              "--success-text": "#166534",
+              "--error-text": "#991b1b",
+              "--warning-text": "#854d0e",
+              "--info-text": "#1e40af",
+            } as CSSProperties
+          }
+        />
       </body>
     </html>
   );

@@ -176,23 +176,25 @@ export function ResourceDetailActions({
         )}
       </div>
       {!resource.ownedByViewer && (
-        <section className="surface-card mt-5 p-5">
+        <section className="surface-card mt-5 p-3">
           <h2 className="font-serif text-xl">Rate this resource</h2>
-          <div className="mt-3 flex gap-1" aria-label="Rating">
+          <div className="mt-3 flex" role="group" aria-label="Rating">
             {[1, 2, 3, 4, 5].map((value) => (
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 type="button"
                 key={value}
+                disabled={submitting}
                 onClick={() => setRating(value)}
-                aria-label={`${value} stars`}
+                aria-label={`${value} ${value === 1 ? "star" : "stars"}`}
                 aria-pressed={rating === value}
-                className="grid size-11 place-items-center"
               >
                 <Star
                   aria-hidden="true"
                   className={`size-5 ${value <= rating ? "text-amber fill-current" : "text-muted-foreground/30"}`}
                 />
-              </button>
+              </Button>
             ))}
           </div>
           <textarea

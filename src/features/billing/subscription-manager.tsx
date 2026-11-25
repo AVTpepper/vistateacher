@@ -132,8 +132,8 @@ export function SubscriptionManager({
                   <li>
                     When Plus ends, your AI allowance returns to{" "}
                     {PLAN_ENTITLEMENTS.free.aiLessonsPerMonth} actions per
-                    month. Basic analytics remain available; Plus resources
-                    require Plus access.
+                    month. Basic analytics and community resources remain
+                    available.
                   </li>
                   <li>You can restore renewal before Plus ends.</li>
                 </ul>

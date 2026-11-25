@@ -71,7 +71,7 @@ async function signIn(
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password", { exact: true }).fill("VistaTeacher1!");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page).toHaveURL(onboarding ? /\/onboarding/ : /\/dashboard$/, {
+  await expect(page).toHaveURL(onboarding ? /\/onboarding/ : /\/app$/, {
     timeout: 30_000,
   });
 }

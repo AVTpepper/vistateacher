@@ -1,6 +1,11 @@
 import "server-only";
 
 import {
+  prepareCommunityNotifications,
+  writeCommunityNotification,
+} from "@/lib/notifications/delivery";
+
+import {
   FieldPath,
   FieldValue,
   Timestamp,
@@ -525,6 +530,11 @@ export async function createForumThread(
     if (!category.exists || category.data()?.active !== true)
       throw new ForumActionError("invalid-category");
     const mentions = await resolveMentions(transaction, input.mentionUids);
+    const recipients = await prepareCommunityNotifications(
+      transaction,
+      authorId,
+      [...mentions.map((mention) => mention.uid)],
+    );
     const actorName = String(user.data()?.displayName ?? "An educator");
     transaction.create(threadRef, {
       authorId,
@@ -564,6 +574,7 @@ export async function createForumThread(
       tags: input.tags,
     });
     writeMentionNotifications(transaction, {
+      recipients,
       mentions,
       actorId: authorId,
       actorName,
@@ -611,6 +622,14 @@ export async function addForumReply(
     )
       throw new ForumActionError("invalid-parent");
     const mentions = await resolveMentions(transaction, input.mentionUids);
+    const recipients = await prepareCommunityNotifications(
+      transaction,
+      authorId,
+      [
+        String(parentReply?.data()?.authorId ?? thread.data()?.authorId ?? ""),
+        ...mentions.map((mention) => mention.uid),
+      ],
+    );
     const actorName = String(user.data()?.displayName ?? "An educator");
     transaction.create(replyRef, {
       authorId,
@@ -625,6 +644,7 @@ export async function addForumReply(
       updatedAt: FieldValue.serverTimestamp(),
     });
     writeMentionNotifications(transaction, {
+      recipients,
       mentions,
       actorId: authorId,
       actorName,
@@ -645,25 +665,23 @@ export async function addForumReply(
     const ownerId = String(
       parentReply?.data()?.authorId ?? thread.data()?.authorId ?? "",
     );
-    if (ownerId && ownerId !== authorId) {
-      transaction.create(
-        db.doc(
-          `users/${ownerId}/notifications/forum-reply_${input.threadId}_${replyRef.id}`,
-        ),
-        {
-          type: "forum-reply",
-          actorId: authorId,
-          actorName,
-          entityId: input.threadId,
-          message: input.parentReplyId
-            ? `${actorName} replied to your forum comment.`
-            : `${actorName} commented on your forum discussion.`,
-          href: `/forum/${input.threadId}#reply-${replyRef.id}`,
-          read: false,
-          archived: false,
-          createdAt: FieldValue.serverTimestamp(),
-        },
-      );
+    if (
+      ownerId &&
+      ownerId !== authorId &&
+      !mentions.some((mention) => mention.uid === ownerId)
+    ) {
+      writeCommunityNotification(transaction, recipients, {
+        recipientId: ownerId,
+        id: `forum-reply_${input.threadId}_${replyRef.id}`,
+        type: "forum-reply",
+        actorId: authorId,
+        actorName,
+        entityId: input.threadId,
+        message: input.parentReplyId
+          ? `${actorName} replied to your forum comment.`
+          : `${actorName} commented on your forum discussion.`,
+        href: `/forum/${input.threadId}#reply-${replyRef.id}`,
+      });
     }
   });
   return replyRef.id;
@@ -761,6 +779,9 @@ export async function setForumLiked(
     if (!target.exists || target.data()?.moderationStatus !== "approved")
       throw new ForumActionError("not-found");
     if (liked === like.exists) return;
+    const recipients = await prepareCommunityNotifications(transaction, uid, [
+      String(target.data()?.authorId ?? ""),
+    ]);
     if (liked)
       transaction.create(likeRef, {
         uid,
@@ -783,7 +804,9 @@ export async function setForumLiked(
       );
       if (liked) {
         const actorName = String(user.data()?.displayName ?? "An educator");
-        transaction.set(notificationRef, {
+        writeCommunityNotification(transaction, recipients, {
+          recipientId: ownerId,
+          id: `forum-like_${targetKey}_${uid}`,
           type: "forum-like",
           actorId: uid,
           actorName,
@@ -792,9 +815,6 @@ export async function setForumLiked(
           href: replyId
             ? `/forum/${threadId}#reply-${replyId}`
             : `/forum/${threadId}`,
-          read: false,
-          archived: false,
-          createdAt: FieldValue.serverTimestamp(),
         });
       } else transaction.delete(notificationRef);
     }

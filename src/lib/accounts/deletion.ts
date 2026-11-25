@@ -46,9 +46,11 @@ export async function enqueueAccountDeletion(uid: string) {
   return receipt;
 }
 
-export async function getDeletionReceipt(
-  receipt: string,
-): Promise<{ status: DeletionStatus; phase: string } | null> {
+export async function getDeletionReceipt(receipt: string): Promise<{
+  status: DeletionStatus;
+  phase: string;
+  retryAfter?: string;
+} | null> {
   if (!/^[a-f0-9-]{36}$/i.test(receipt)) return null;
   const snapshot = await adminDb()
     .collection("accountDeletions")
@@ -57,7 +59,13 @@ export async function getDeletionReceipt(
     .get();
   const job = snapshot.docs[0]?.data();
   return job
-    ? { status: job.status as DeletionStatus, phase: String(job.phase) }
+    ? {
+        status: job.status as DeletionStatus,
+        phase: String(job.phase),
+        ...(job.retryAfter instanceof Timestamp
+          ? { retryAfter: job.retryAfter.toDate().toISOString() }
+          : {}),
+      }
     : null;
 }
 
@@ -76,9 +84,15 @@ export async function processAccountDeletion(
       job.data()!.leaseUntil.toMillis() > Date.now()
     )
       return null;
+    if (
+      job.data()?.retryAfter instanceof Timestamp &&
+      job.data()!.retryAfter.toMillis() > Date.now()
+    )
+      return null;
     transaction.update(jobRef, {
       status: "processing",
       worker,
+      retryAfter: null,
       leaseUntil: Timestamp.fromMillis(Date.now() + 10 * 60_000),
       updatedAt: FieldValue.serverTimestamp(),
     });
@@ -110,6 +124,35 @@ export async function processAccountDeletion(
       }
       await progress("data");
     }
+  };
+  const deferForGeneratedWrites = async () => {
+    // A disabled/deleted account cannot start another upload. Existing upload
+    // transactions read that account, so a racing status change either sees
+    // their committed receipt or forces their transaction to retry and reject.
+    const receipts = await db
+      .collection(`users/${uid}/generatedResourcePublications`)
+      .orderBy("writeUntil", "desc")
+      .limit(1)
+      .get();
+    const writeUntil = receipts.docs[0]?.data().writeUntil;
+    if (
+      !(writeUntil instanceof Timestamp) ||
+      writeUntil.toMillis() <= Date.now()
+    )
+      return false;
+    await db.runTransaction(async (transaction) => {
+      const job = await transaction.get(jobRef);
+      if (job.data()?.worker !== worker)
+        throw new Error("Deletion lease changed.");
+      transaction.update(jobRef, {
+        status: "pending",
+        phase: "data",
+        retryAfter: writeUntil,
+        leaseUntil: null,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    });
+    return true;
   };
   try {
     if (phase === "billing") {
@@ -165,6 +208,9 @@ export async function processAccountDeletion(
           if (error.code !== "auth/user-not-found") throw error;
         });
       await progress("data");
+      // Keep content and private cleanup receipts until every possible Storage
+      // write has finished. Prefix deletion before that point can leave orphans.
+      if (await deferForGeneratedWrites()) return "pending";
       // Remove relationships transactionally so surviving educators retain correct counts.
       for (const field of ["followerUid", "followingUid"]) {
         await deleteQuery(
@@ -302,12 +348,15 @@ export async function processAccountDeletion(
         "resources",
         "forumThreads",
         "lessons",
+        "worksheets",
       ]) {
         await deleteQuery(
           db
             .collection(collection)
             .where(
-              collection === "lessons" ? "ownerId" : "authorId",
+              collection === "lessons" || collection === "worksheets"
+                ? "ownerId"
+                : "authorId",
               "==",
               uid,
             ),
@@ -396,6 +445,8 @@ export async function processAccountDeletion(
         await db.recursiveDelete(db.doc(path));
       await progress("identity");
     }
+    if (phase === "identity" && (await deferForGeneratedWrites()))
+      return "pending";
     await adminAuth()
       .deleteUser(uid)
       .catch((error) => {

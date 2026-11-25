@@ -34,7 +34,7 @@ export const billingPlans = [
     features: [
       "Everything in Community",
       PLAN_COPY.plusGenerations,
-      "Full analytics and Plus resources",
+      "Full analytics",
     ],
   },
 ] as const satisfies readonly BillingPlanDetails[];

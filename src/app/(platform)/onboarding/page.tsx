@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { OnboardingForm } from "@/features/onboarding/onboarding-form";
 import { safeReturnTo } from "@/lib/auth/return-to";
+import { SIGNED_IN_HOME } from "@/lib/auth/policy";
 import { requireCurrentAccount } from "@/lib/auth/session";
 import { parsePlanIntent, planIntentHref } from "@/lib/billing/plan-intent";
 
@@ -28,7 +29,7 @@ export default async function OnboardingPage({
       returnTo ??
         (planIntent
           ? planIntentHref("/settings/billing", planIntent)
-          : "/dashboard"),
+          : SIGNED_IN_HOME),
     );
 
   return (

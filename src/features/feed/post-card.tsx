@@ -665,7 +665,7 @@ function InteractivePostCard({
           type="button"
           disabled={busy.includes("like")}
           onClick={() => void toggleLike()}
-          className="hover:bg-muted focus-visible:text-foreground min-h-11 rounded-lg px-2 transition-colors"
+          className="hover:bg-muted focus-visible:text-foreground min-h-11 min-w-11 rounded-lg px-2 transition-colors"
         >
           {post.likeCount} {post.likeCount === 1 ? "like" : "likes"}
         </button>
@@ -673,7 +673,7 @@ function InteractivePostCard({
           <button
             type="button"
             onClick={() => void openComments()}
-            className="hover:bg-muted focus-visible:text-foreground min-h-11 rounded-lg px-2 transition-colors"
+            className="hover:bg-muted focus-visible:text-foreground min-h-11 min-w-11 rounded-lg px-2 transition-colors"
           >
             {post.commentCount}{" "}
             {post.commentCount === 1 ? "comment" : "comments"}
