@@ -1,4 +1,5 @@
 import "server-only";
+import { publicResourceIds } from "@/lib/community/visibility";
 import { createHash, randomUUID } from "node:crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
@@ -252,8 +253,9 @@ export async function getTeachingExport(
       const resource = await tx.get(
         adminDb().doc(`resources/${result.publication.resourceId}`),
       );
-      result.publication.available =
-        resource.exists && resource.data()?.status === "active";
+      result.publication.available = (
+        await publicResourceIds([resource], tx)
+      ).has(resource.id);
     }
     return result;
   });
@@ -372,7 +374,7 @@ export async function publishTeachingExport(
     const previous = data.publication;
     if (previous?.state === "complete") {
       const resource = await tx.get(db.doc(`resources/${previous.resourceId}`));
-      if (!resource.exists || resource.data()?.status !== "active")
+      if (!(await publicResourceIds([resource], tx)).has(resource.id))
         throw new TeachingExportError("withdrawn");
       return { data, publication: previous, done: true };
     }
@@ -448,6 +450,9 @@ export async function publishTeachingExport(
         });
       },
     });
+    const currentResource = await db.doc(`resources/${resourceId}`).get();
+    if (!(await publicResourceIds([currentResource])).has(currentResource.id))
+      throw new TeachingExportError("withdrawn");
     return { resourceId };
   } catch (error) {
     if (

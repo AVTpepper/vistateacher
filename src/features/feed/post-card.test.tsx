@@ -1,5 +1,6 @@
 import type { TextareaHTMLAttributes } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PostCard } from "@/features/feed/post-card";
 import type { FeedPost } from "@/lib/feed/server";
@@ -135,4 +136,48 @@ describe("feed recovery", () => {
     );
     expect(screen.getByText("0 comments")).toBeInTheDocument();
   });
+});
+
+describe("post report keyboard focus", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+  });
+
+  it.each(["Cancel", "Escape"])(
+    "returns focus to Post options after closing the controlled report with %s",
+    async (closingAction) => {
+      const fetch = vi.fn();
+      vi.stubGlobal("fetch", fetch);
+      const user = userEvent.setup();
+      render(
+        <PostCard
+          initialPost={{ ...post, ownedByViewer: false }}
+          viewer={{ uid: "viewer", displayName: "Jordan", photoURL: null }}
+        />,
+      );
+      const options = screen.getByRole("button", { name: "Post options" });
+      options.focus();
+      await user.keyboard("{ArrowDown}");
+      const report = await screen.findByRole("menuitem", {
+        name: "Report",
+      });
+      await user.keyboard("{End}");
+      await waitFor(() => expect(report).toHaveFocus());
+      await user.keyboard("{Enter}");
+      await screen.findByRole("dialog", { name: "Report post" });
+      if (closingAction === "Cancel")
+        await user.click(
+          screen.getByRole("button", { name: "Cancel" }),
+        );
+      else await user.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+      await waitFor(() => expect(options).toHaveFocus());
+      expect(options).toHaveAttribute("aria-expanded", "false");
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
 });

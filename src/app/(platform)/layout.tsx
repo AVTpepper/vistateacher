@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { PlatformShell } from "@/components/platform/platform-shell";
-import { NotificationProvider } from "@/features/notifications/notification-provider";
 import { requireCurrentAccount } from "@/lib/auth/session";
 import { getBillingState } from "@/lib/billing/server";
 import { adminDb } from "@/lib/firebase/admin";
@@ -23,22 +22,20 @@ export default async function PlatformLayout({
   const profileData = profile.data();
 
   return (
-    <NotificationProvider key={account.uid} uid={account.uid}>
-      <PlatformShell
-        account={{
-          uid: account.uid,
-          displayName: account.displayName ?? "Educator",
-          photoURL: account.photoURL,
-          role: account.role,
-          onboarded: account.onboarded,
-          subject: Array.isArray(profileData?.subjects)
-            ? String(profileData.subjects[0] ?? "Educator")
-            : "Educator",
-        }}
-        plan={billing?.effectivePlan ?? "free"}
-      >
-        {children}
-      </PlatformShell>
-    </NotificationProvider>
+    <PlatformShell
+      account={{
+        uid: account.uid,
+        displayName: account.displayName ?? "Educator",
+        photoURL: account.photoURL,
+        role: account.role,
+        onboarded: account.onboarded,
+        subject: Array.isArray(profileData?.subjects)
+          ? String(profileData.subjects[0] ?? "Educator")
+          : "Educator",
+      }}
+      plan={billing?.effectivePlan ?? "free"}
+    >
+      {children}
+    </PlatformShell>
   );
 }

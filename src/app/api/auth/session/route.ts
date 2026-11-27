@@ -8,7 +8,11 @@ import {
   SESSION_MAX_AGE_MS,
 } from "@/lib/auth/policy";
 import { hasTrustedOrigin } from "@/lib/auth/request";
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { adminAuth } from "@/lib/firebase/admin";
+import {
+  PrivateRecoveryError,
+  recoverPrivateUser,
+} from "@/lib/profiles/private-user";
 import { sessionRequestSchema } from "@/schemas/auth";
 
 export async function POST(request: NextRequest) {
@@ -40,7 +44,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!decoded.email_verified) {
+  if (!decoded.email_verified || !decoded.email) {
     return NextResponse.json(
       { error: "Verify your email first." },
       { status: 403 },
@@ -60,19 +64,31 @@ export async function POST(request: NextRequest) {
     );
     let profileExists = false;
     try {
-      const profile = await adminDb().doc(`users/${decoded.uid}`).get();
-      if (["deleted", "suspended"].includes(profile.data()?.status))
-        return NextResponse.json(
-          { error: "This account is unavailable." },
-          { status: 403 },
-        );
-      profileExists = profile.exists;
-      if (profileExists && decoded.email)
-        await adminDb()
-          .doc(`userPrivate/${decoded.uid}`)
-          .set({ email: decoded.email }, { merge: true });
+      const recovery = await recoverPrivateUser(decoded.uid, decoded.email, {
+        allowMissingProfile: true,
+      });
+      profileExists = recovery.state !== "onboarding-required";
     } catch (error) {
-      console.error("Firestore profile lookup failed during sign-in", error);
+      if (error instanceof PrivateRecoveryError)
+        return NextResponse.json(
+          { error: error.message, code: error.code },
+          {
+            status:
+              error.code === "invalid-identity"
+                ? 401
+                : ["inactive", "deletion-blocked"].includes(error.code)
+                  ? 403
+                  : 409,
+          },
+        );
+      console.error("Private profile recovery failed during sign-in", {
+        uid: decoded.uid,
+        category: "unexpected",
+      });
+      return NextResponse.json(
+        { error: "Unable to finish signing in. Please try again." },
+        { status: 503 },
+      );
     }
 
     const response = NextResponse.json({

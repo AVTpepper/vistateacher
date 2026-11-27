@@ -1,6 +1,7 @@
 import "server-only";
 
 import { adminDb } from "@/lib/firebase/admin";
+import { publicResourceIds } from "@/lib/community/visibility";
 import {
   forumDiscussionResults,
   type ForumSearchCandidate,
@@ -109,7 +110,7 @@ export async function searchCommunity(
   educators.docs.forEach(upsertEducator);
   educatorFallback.docs.forEach(upsertEducator);
 
-  const resourceResults = Array.from(
+  const resourceCandidates = Array.from(
     new Map(
       [
         ...resources.docs,
@@ -117,11 +118,12 @@ export async function searchCommunity(
         ...(viewerResources?.docs ?? []),
       ].map((document) => [document.id, document] as const),
     ).values(),
-  )
+  );
+  const visibleResourceIds = await publicResourceIds(resourceCandidates);
+  const resourceResults = resourceCandidates
     .filter((document) => {
       const data = document.data();
-      if (data.status !== "active" || data.moderationStatus !== "approved")
-        return false;
+      if (!visibleResourceIds.has(document.id)) return false;
       const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
       const haystack = normalizeSearchText(
         [data.title, data.description, data.subject, ...tags]

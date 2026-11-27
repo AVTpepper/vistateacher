@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 import { resourceTypeSchema } from "@/schemas/resource";
-import { postFileAttachmentSchema, postTypeSchema } from "@/schemas/feed";
+import {
+  postFileAttachmentSchema,
+  postMediaURLSchema,
+  postTypeSchema,
+} from "@/schemas/feed";
 
 export const creationDraftTypeSchema = z.enum(["forum", "resource", "message"]);
 
@@ -16,7 +20,7 @@ export const postRecoverySchema = z.object({
   content: z.string(),
   mentions: z.array(mentionSchema),
   tags: z.string(),
-  imageURL: z.url().nullable(),
+  imageURL: postMediaURLSchema.nullable(),
   fileAttachment: postFileAttachmentSchema.nullable(),
   linkURL: z.url().nullable(),
   linkDraft: z.string(),

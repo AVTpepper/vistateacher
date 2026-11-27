@@ -68,6 +68,7 @@ const finalize = vi.fn(
       await hooks.beforeCommit(tx);
       tx.set(db.doc(`resources/${resourceId}`), {
         status: "active",
+        moderationStatus: "approved",
         authorId: "owner",
       });
       hooks.onCommit(tx, resourceId);

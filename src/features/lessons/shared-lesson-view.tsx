@@ -2,6 +2,8 @@ import { BookOpen, Clock, Pencil, Users } from "lucide-react";
 import Link from "next/link";
 
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
+import { Button } from "@/components/ui/button";
+import { ReportContentDialog } from "@/features/moderation/report-content-dialog";
 import type { SharedLesson } from "@/lib/lessons/server";
 
 export function SharedLessonView({ lesson }: { lesson: SharedLesson }) {
@@ -17,12 +19,13 @@ export function SharedLessonView({ lesson }: { lesson: SharedLesson }) {
             <h1 className="mt-3 font-serif text-3xl">{content.title}</h1>
           </div>
           {lesson.ownedByViewer && (
-            <Link
-              href={`/ai-lessons?lesson=${encodeURIComponent(lesson.id)}`}
-              className="flex h-10 items-center gap-2 rounded-lg border border-white/30 px-3 text-xs font-bold"
-            >
-              <Pencil className="size-3.5" /> Continue refining
-            </Link>
+            <Button asChild variant="inverse" size="sm">
+              <Link
+                href={`/ai-lessons?lesson=${encodeURIComponent(lesson.id)}`}
+              >
+                <Pencil className="size-3.5" /> Continue refining
+              </Link>
+            </Button>
           )}
         </div>
         <div className="mt-4 flex flex-wrap gap-4 text-xs text-white/80">
@@ -41,6 +44,13 @@ export function SharedLessonView({ lesson }: { lesson: SharedLesson }) {
         </div>
       </header>
       <div className="space-y-6 p-5 sm:p-7">
+        {lesson.ownedByViewer && !lesson.publiclyAvailable && (
+          <p role="status" className="bg-muted rounded-lg p-3 text-sm">
+            This lesson is hidden from the community.
+            {lesson.moderationStatus === "rejected" &&
+              " Editing it will keep the moderation decision in place."}
+          </p>
+        )}
         <ProfileIdentityLink
           uid={lesson.author.uid}
           displayName={lesson.author.displayName}
@@ -77,6 +87,12 @@ export function SharedLessonView({ lesson }: { lesson: SharedLesson }) {
           />
         </div>
         <LessonSection title="Standards" items={content.standards} />
+        {!lesson.ownedByViewer && lesson.publiclyAvailable && (
+          <ReportContentDialog
+            title="Report lesson"
+            endpoint={`/api/resources/lesson_${lesson.id}/report`}
+          />
+        )}
       </div>
     </article>
   );

@@ -1555,6 +1555,8 @@ describe("Firestore rules", () => {
       "free-teacher",
       communityLesson.id,
       communityLesson.content,
+      undefined,
+      communityLesson.currentVersion + 1,
     );
     await duplicateLesson("free-teacher", communityLesson.id);
     expect((await getLessonWorkspace("free-teacher")).usage.used).toBe(3);
@@ -1625,6 +1627,7 @@ describe("Firestore rules", () => {
         title: "Revised local food webs",
       },
       "published",
+      created.currentVersion,
     );
     expect(edited.currentVersion).toBe(2);
     expect(edited.versions[0]?.kind).toBe("edited");

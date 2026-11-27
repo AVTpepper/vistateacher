@@ -179,7 +179,7 @@ Run this only after Firebase App Hosting and the custom domain are connected.
 - [ ] Create two disposable educator accounts and test profile, follow, feed, message, resource, and forum flows.
 - [ ] Confirm `STRIPE_MODE=TEST`, `sk_test_...`, test Price IDs, and the test webhook signing secret are deployed together.
 - [ ] Complete one Stripe test-mode Checkout and confirm the webhook updates billing state without moving real funds.
-- [ ] Generate one lesson with the configured OpenAI provider.
+- [ ] Complete the [OpenAI activation and reconciliation gate](release.md#openai-pilot-activation-and-reconciliation) before any paid smoke test. With an explicitly approved bounded case, generate one lesson through the metered path, record its measured/uncertain cost, and confirm saved-work recovery. A `MOCK` result verifies the UI only; it does not verify live quality or billing. No live evaluation harness is currently implemented.
 - [ ] Complete one admin action and inspect its audit entry.
 - [ ] Check App Hosting logs for errors and Firebase/Google Cloud billing dashboards for unexpected usage.
 

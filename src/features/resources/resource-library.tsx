@@ -392,7 +392,12 @@ function ResourceCard({
 
 function ResourceMeta({ resource }: { resource: ResourceSummary }) {
   return (
-    <div className="text-muted-foreground mt-2 flex items-center gap-3 text-xs">
+    <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+      {!resource.publiclyAvailable && (
+        <span className="text-foreground font-semibold">
+          Hidden from community
+        </span>
+      )}
       <span className="flex items-center gap-1">
         <Star aria-hidden="true" className="text-amber size-3 fill-current" />
         {resource.ratingAverage.toFixed(1)} ({resource.ratingCount})
@@ -411,30 +416,42 @@ function DownloadLink({
   resource: ResourceSummary;
   compact: boolean;
 }) {
+  if (!resource.publiclyAvailable)
+    return (
+      <Button asChild variant="outline" size="sm">
+        <Link
+          href={`/resources/${resource.id}`}
+          aria-label={`Manage ${resource.title}`}
+        >
+          Manage resource
+        </Link>
+      </Button>
+    );
   if (resource.sourceLessonId)
     return (
-      <Link
-        href={`/lessons/${resource.sourceLessonId}`}
-        className={cn(
-          "bg-accent text-accent-foreground shrink-0 rounded-lg px-3 py-2 text-xs font-bold",
-          !compact && "px-4",
-        )}
-        aria-label={`View ${resource.title}`}
-      >
-        View lesson
-      </Link>
+      <Button asChild variant="accent" size="sm" className="text-xs">
+        <Link
+          href={`/lessons/${resource.sourceLessonId}`}
+          aria-label={`View ${resource.title}`}
+        >
+          View lesson
+        </Link>
+      </Button>
     );
   return (
-    <a
-      href={`/api/resources/${resource.id}/download`}
-      className={cn(
-        "bg-primary/10 text-primary shrink-0 rounded-lg px-3 py-2 text-xs font-bold",
-        !compact && "bg-primary text-primary-foreground",
-      )}
-      aria-label={`Download ${resource.title}`}
+    <Button
+      asChild
+      variant={compact ? "outline" : "default"}
+      size="sm"
+      className="text-xs"
     >
-      Download
-    </a>
+      <a
+        href={`/api/resources/${resource.id}/download`}
+        aria-label={`Download ${resource.title}`}
+      >
+        Download
+      </a>
+    </Button>
   );
 }
 function ViewButton({

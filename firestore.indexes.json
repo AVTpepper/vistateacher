@@ -1,5 +1,37 @@
-{
+﻿{
   "indexes": [
+    {
+      "collectionGroup": "lessonGenerationRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expiresAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "lessons",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
     {
       "collectionGroup": "worksheetGenerationRequests",
       "queryScope": "COLLECTION",
@@ -286,6 +318,26 @@
     }
   ],
   "fieldOverrides": [
+    {
+      "collectionGroup": "lessonGenerationRequests",
+      "fieldPath": "source",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "lessonGenerationRequests",
+      "fieldPath": "generation",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "lessonGenerationBatches",
+      "fieldPath": "source",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "lessonGenerationBatches",
+      "fieldPath": "items",
+      "indexes": []
+    },
     {
       "collectionGroup": "teachingExports",
       "fieldPath": "bytes",

@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useRecoveredDraft } from "@/lib/creation-drafts/use-recovered-draft";
 import { lessonPlanSchema, type LessonPlanInput } from "@/schemas/lesson";
+import { LessonContentPreview } from "./lesson-content-preview";
 
 interface LessonEditorProps {
   recoveryKey: string;
@@ -19,14 +20,17 @@ interface LessonEditorProps {
   visibility: "draft" | "published";
   saving: boolean;
   canRefine: boolean;
+  canPublish?: boolean;
   onCancel: () => void;
   onSave: (
     content: LessonPlanInput,
     visibility: "draft" | "published",
+    expectedVersion: number,
   ) => Promise<boolean>;
   onRefine: (
     feedback: string,
     referenceContent: LessonPlanInput,
+    expectedVersion: number,
   ) => Promise<boolean>;
 }
 
@@ -40,6 +44,7 @@ export function LessonEditor({
   visibility,
   saving,
   canRefine,
+  canPublish = true,
   onCancel,
   onSave,
   onRefine,
@@ -100,6 +105,17 @@ export function LessonEditor({
     }
     setErrors({});
     setSaveError(null);
+    const scheduled =
+      parsed.data.warmUp.durationMinutes +
+      parsed.data.mainActivity.durationMinutes +
+      parsed.data.closingActivity.durationMinutes;
+    if (scheduled !== parsed.data.durationMinutes) {
+      setErrors({
+        durationMinutes: `Activities total ${scheduled} minutes. Match the lesson duration before saving.`,
+      });
+      setSaveError("Match the activity timings to the total lesson duration.");
+      return null;
+    }
     return parsed.data;
   }
 
@@ -108,7 +124,8 @@ export function LessonEditor({
     const next = validatedContent();
     if (!next) return;
     try {
-      if (await onSave(next, draftVisibility)) recovery.clear();
+      if (await onSave(next, draftVisibility, recovery.value.baseVersion))
+        recovery.clear();
       else
         setSaveError(
           "Your changes could not be saved. Your unfinished edit is still available here.",
@@ -199,11 +216,41 @@ export function LessonEditor({
         <div className="mb-4">
           <DraftStatus status={recovery.status} restored={recovery.restored} />
         </div>
-        {recovery.restored && recovery.value.baseVersion !== currentVersion && (
-          <p role="alert" className="text-amber mb-4 text-sm">
-            This unfinished edit is based on an older version. Review it before
-            saving.
-          </p>
+        {recovery.value.baseVersion !== currentVersion && (
+          <div
+            role="alert"
+            className="bg-muted mb-4 space-y-3 rounded-xl border p-4 text-sm"
+          >
+            <p>
+              This edit is based on version {recovery.value.baseVersion}.
+              Version {currentVersion} is now saved. Your unfinished changes are
+              retained.
+            </p>
+            <details>
+              <summary className="cursor-pointer py-3 font-semibold">
+                Review the latest saved version
+              </summary>
+              <div className="mt-2 max-h-80 overflow-auto">
+                <LessonContentPreview content={content} />
+              </div>
+            </details>
+            <p>
+              After reviewing it, you can apply your changes to version{" "}
+              {currentVersion}. Saving will create a new version.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                recovery.setValue((current) => ({
+                  ...current,
+                  baseVersion: currentVersion,
+                }))
+              }
+            >
+              Apply my changes to version {currentVersion}
+            </Button>
+          </div>
         )}
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="sm:col-span-2">
@@ -219,7 +266,7 @@ export function LessonEditor({
                 }
               >
                 <option value="draft">Draft</option>
-                <option value="published">Published</option>
+                <option value="published" disabled={!canPublish}>Published</option>
               </Select>
             </FormField>
           </div>
@@ -263,6 +310,37 @@ export function LessonEditor({
               }
             />
           </FormField>
+          {(
+            [
+              ["warmUp", "Warm-up duration (minutes)", 60],
+              ["mainActivity", "Main activity duration (minutes)", 180],
+              ["closingActivity", "Closing duration (minutes)", 60],
+            ] as const
+          ).map(([section, label, max]) => (
+            <FormField
+              key={section}
+              id={`${id}-${section}-duration`}
+              label={label}
+              error={errorFor(`${section}.durationMinutes`)}
+            >
+              <Input
+                id={`${id}-${section}-duration`}
+                type="number"
+                min={1}
+                max={max}
+                value={draft[section].durationMinutes}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    [section]: {
+                      ...draft[section],
+                      durationMinutes: Number(event.target.value),
+                    },
+                  })
+                }
+              />
+            </FormField>
+          ))}
           {listField(
             "objectives",
             "Objectives (one per line)",
@@ -378,7 +456,8 @@ export function LessonEditor({
               const next = validatedContent();
               if (!next) return;
               try {
-                if (await onRefine(feedback, next)) recovery.clear();
+                if (await onRefine(feedback, next, recovery.value.baseVersion))
+                  recovery.clear();
               } catch {
                 setSaveError(
                   "Regeneration failed. Your unfinished edit is still available.",
@@ -394,7 +473,7 @@ export function LessonEditor({
             {saveError}
           </p>
         )}
-        <div className="form-actions mt-5">
+        <div className="form-actions bg-card/95 sticky bottom-0 z-10 mt-5 border-t py-3 backdrop-blur-sm">
           <Button type="button" variant="ghost" onClick={onCancel}>
             Close
           </Button>

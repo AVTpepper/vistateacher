@@ -4,6 +4,8 @@ import {
   lessonPlanSchema,
   lessonSourceSchema,
   lessonUpdateSchema,
+  lessonCreateRequestSchema,
+  lessonRegenerateSchema,
 } from "./lesson";
 
 const validLesson = {
@@ -65,13 +67,44 @@ describe("lessonPlanSchema", () => {
   });
 
   it("requires complete structured content for edits", () => {
-    expect(lessonUpdateSchema.parse({ content: validLesson }).content).toEqual(
-      validLesson,
-    );
+    expect(
+      lessonUpdateSchema.parse({ content: validLesson, expectedVersion: 1 })
+        .content,
+    ).toEqual(validLesson);
     expect(() =>
       lessonUpdateSchema.parse({
         content: { ...validLesson, standards: null },
+        expectedVersion: 1,
       }),
     ).toThrow();
+  });
+
+  it("requires stable generation IDs and the editor's base version", () => {
+    const source = {
+      subject: "Science",
+      gradeLevel: "Grade 6",
+      topic: "Food webs",
+      durationMinutes: 50,
+      teachingStyle: "inquiry",
+    };
+    expect(lessonCreateRequestSchema.safeParse({ source }).success).toBe(false);
+    expect(
+      lessonCreateRequestSchema.safeParse({ source, requestId: "../../other" })
+        .success,
+    ).toBe(false);
+    expect(
+      lessonCreateRequestSchema.parse({
+        source,
+        requestId: "7b850452-c06f-42b0-89aa-d773b6f8d630",
+      }).count,
+    ).toBe(1);
+    expect(lessonUpdateSchema.safeParse({ content: validLesson }).success).toBe(
+      false,
+    );
+    expect(
+      lessonRegenerateSchema.safeParse({
+        requestId: "7b850452-c06f-42b0-89aa-d773b6f8d630",
+      }).success,
+    ).toBe(false);
   });
 });

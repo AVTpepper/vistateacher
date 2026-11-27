@@ -11,11 +11,11 @@ const source = worksheetSourceSchema.parse({
   difficulty: "core",
   questionCounts: {
     multipleChoice: 1,
-    shortAnswer: 1,
-    extendedResponse: 1,
-    matching: 1,
-    fillInBlank: 1,
-    trueFalse: 1,
+    shortAnswer: 0,
+    extendedResponse: 0,
+    matching: 0,
+    fillInBlank: 0,
+    trueFalse: 0,
   },
 });
 afterEach(() => localStorage.clear());
@@ -59,7 +59,14 @@ describe("worksheet teacher edits", () => {
       <WorksheetEditor
         uid="teacher"
         worksheetId="private-worksheet"
-        content={createMockWorksheet(source)}
+        content={createMockWorksheet({
+          ...source,
+          questionCounts: {
+            ...source.questionCounts,
+            multipleChoice: 0,
+            shortAnswer: 1,
+          },
+        })}
         version={1}
         pending={false}
         onSave={vi.fn()}

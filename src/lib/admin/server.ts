@@ -3,6 +3,7 @@ import "server-only";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { adminDb } from "@/lib/firebase/admin";
+import { activityTarget } from "@/lib/community/visibility";
 import type { AdminAction } from "@/schemas/admin";
 import type { UserRole } from "@/types/models";
 
@@ -66,6 +67,20 @@ export interface AdminReportRow {
   details: string;
   status: "open" | "resolved" | "dismissed";
   createdAt: string | null;
+  target: AdminReportTarget | null;
+}
+
+export interface AdminReportTarget {
+  type: "post" | "resource" | "forumThread" | "forumReply";
+  id: string;
+  parentId: string | null;
+  title: string;
+  preview: string;
+  moderationStatus: "pending" | "approved" | "rejected";
+  announcement: {
+    id: string;
+    moderationStatus: "pending" | "approved" | "rejected";
+  } | null;
 }
 
 export interface AdminVerificationRow {
@@ -106,7 +121,7 @@ function count(value: unknown): number {
 }
 
 function moderationStatus(value: unknown): "pending" | "approved" | "rejected" {
-  return value === "pending" || value === "rejected" ? value : "approved";
+  return value === "approved" || value === "rejected" ? value : "pending";
 }
 
 export async function getAdminOverview(
@@ -114,9 +129,14 @@ export async function getAdminOverview(
 ): Promise<AdminOverview> {
   assertAdmin(actor);
   const db = adminDb();
-  const [stats, audits] = await Promise.all([
+  const [stats, audits, reports] = await Promise.all([
     db.doc("platformStats/current").get(),
     db.collection("auditLogs").orderBy("createdAt", "desc").limit(12).get(),
+    db
+      .collection("reports")
+      .where("status", "in", ["open", "pending"])
+      .count()
+      .get(),
   ]);
   const data = stats.data() ?? {};
   return {
@@ -126,7 +146,7 @@ export async function getAdminOverview(
       posts: count(data.posts),
       resources: count(data.resources),
       forumThreads: count(data.forumThreads),
-      pendingReports: count(data.pendingReports),
+      pendingReports: count(reports.data().count),
       pendingVerifications: count(data.pendingVerifications),
     },
     updatedAt: date(data.updatedAt),
@@ -200,18 +220,20 @@ export async function getAdminContent(
     db.collection("forumThreads").orderBy("createdAt", "desc").limit(20).get(),
   ]);
   return [
-    ...posts.docs.map((document): AdminContentRow => {
-      const data = document.data();
-      return {
-        id: document.id,
-        type: "post",
-        title: String(data.content ?? "Post").slice(0, 120),
-        ownerId: String(data.authorId ?? ""),
-        moderationStatus: moderationStatus(data.moderationStatus),
-        reportCount: count(data.reportCount),
-        createdAt: date(data.createdAt),
-      };
-    }),
+    ...posts.docs
+      .filter((document) => document.data().type !== "activity")
+      .map((document): AdminContentRow => {
+        const data = document.data();
+        return {
+          id: document.id,
+          type: "post",
+          title: String(data.content ?? "Post").slice(0, 120),
+          ownerId: String(data.authorId ?? ""),
+          moderationStatus: moderationStatus(data.moderationStatus),
+          reportCount: count(data.reportCount),
+          createdAt: date(data.createdAt),
+        };
+      }),
     ...resources.docs.map((document): AdminContentRow => {
       const data = document.data();
       return {
@@ -250,6 +272,38 @@ export async function getAdminReports(
     .orderBy("createdAt", "desc")
     .limit(50)
     .get();
+  const db = adminDb();
+  const paths = reports.docs.map((document) =>
+    reportTargetPath(document.data()),
+  );
+  const uniquePaths = [
+    ...new Set(paths.filter((path): path is string => Boolean(path))),
+  ];
+  const targets = uniquePaths.length
+    ? await db.getAll(...uniquePaths.map((path) => db.doc(path)))
+    : [];
+  const targetMap = new Map(targets.map((target) => [target.ref.path, target]));
+  const extraPaths = new Set<string>();
+  for (const target of targets) {
+    if (
+      target.ref.path.startsWith("posts/") &&
+      target.data()?.type === "activity"
+    ) {
+      const canonical = activityTarget(target.data());
+      if (canonical) extraPaths.add(canonical.path);
+    }
+  }
+  for (const document of reports.docs) {
+    const data = document.data();
+    if (data.targetType === "forumReply" && safeId(data.parentId))
+      extraPaths.add(`forumThreads/${data.parentId}`);
+  }
+  if (extraPaths.size) {
+    const extra = await db.getAll(
+      ...[...extraPaths].map((path) => db.doc(path)),
+    );
+    for (const target of extra) targetMap.set(target.ref.path, target);
+  }
   return reports.docs.map((document) => {
     const data = document.data();
     const status =
@@ -266,8 +320,91 @@ export async function getAdminReports(
       details: String(data.details ?? data.description ?? ""),
       status,
       createdAt: date(data.createdAt),
+      target: reportTargetPreview(data, targetMap),
     };
   });
+}
+
+const safeId = (value: unknown): value is string =>
+  typeof value === "string" && /^[\w-]{1,128}$/.test(value);
+
+function reportTargetPath(data: FirebaseFirestore.DocumentData): string | null {
+  if (!safeId(data.targetId)) return null;
+  switch (data.targetType) {
+    case "post":
+      return `posts/${data.targetId}`;
+    case "resource":
+      return `resources/${data.targetId}`;
+    case "forumThread":
+      return `forumThreads/${data.targetId}`;
+    case "forumReply":
+      return safeId(data.parentId)
+        ? `forumThreads/${data.parentId}/replies/${data.targetId}`
+        : null;
+    default:
+      return null;
+  }
+}
+
+/** Admin previews contain only the reported community item, never private originals. */
+function reportTargetPreview(
+  data: FirebaseFirestore.DocumentData,
+  targets: Map<string, FirebaseFirestore.DocumentSnapshot>,
+): AdminReportTarget | null {
+  const path = reportTargetPath(data);
+  if (!path) return null;
+  let target = targets.get(path);
+  if (!target?.exists) return null;
+  let type = data.targetType as AdminReportTarget["type"];
+  let announcement: AdminReportTarget["announcement"] = null;
+  if (type === "post" && target.data()?.type === "activity") {
+    const source = activityTarget(target.data());
+    const canonical = source && targets.get(source.path);
+    const activityAuthor = target.data()?.authorId;
+    if (
+      !source ||
+      !canonical?.exists ||
+      typeof activityAuthor !== "string" ||
+      !activityAuthor ||
+      canonical.data()?.authorId !== activityAuthor
+    )
+      return null;
+    if (
+      target.data()?.activityKind === "lesson-published" &&
+      canonical.data()?.sourceLessonId !== target.data()?.activityEntityId
+    )
+      return null;
+    announcement = {
+      id: target.id,
+      moderationStatus: moderationStatus(target.data()?.moderationStatus),
+    };
+    target = canonical;
+    type = source.type;
+  }
+  if (
+    type === "forumReply" &&
+    !targets.get(`forumThreads/${data.parentId}`)?.exists
+  )
+    return null;
+  const content = target.data()!;
+  return {
+    type,
+    id: target.id,
+    parentId: type === "forumReply" ? data.parentId : null,
+    title: String(
+      content.title ??
+        (type === "forumReply"
+          ? "Reported reply"
+          : (content.content ?? "Reported post")),
+    ).slice(0, 160),
+    preview: String(
+      type === "resource"
+        ? (content.description ?? "")
+        : (content.content ?? ""),
+    ).slice(0, 2_000),
+    moderationStatus: moderationStatus(content.moderationStatus),
+    announcement,
+  };
 }
 
 export async function getAdminVerifications(
@@ -322,7 +459,8 @@ export async function performAdminAction(
   await db.runTransaction(async (transaction) => {
     const auditRef = db.collection("auditLogs").doc();
     let targetType = "";
-    const targetId = action.targetId;
+    let targetId = action.targetId;
+    let requestedTarget: Record<string, unknown> = {};
     let previousState: Record<string, unknown> = {};
     let newState: Record<string, unknown> = {};
 
@@ -344,20 +482,73 @@ export async function performAdminAction(
       });
       targetType = "user";
     } else if (action.action === "content.moderate") {
-      const reference = db.doc(contentPath(action));
-      const snapshot = await transaction.get(reference);
+      let reference = db.doc(contentPath(action));
+      let snapshot = await transaction.get(reference);
       if (!snapshot.exists) throw new AdminActionError("not-found");
+      let requestedActivity: FirebaseFirestore.DocumentSnapshot | null = null;
+      targetType = action.targetType;
+      if (
+        action.targetType === "post" &&
+        snapshot.data()?.type === "activity"
+      ) {
+        const source = activityTarget(snapshot.data());
+        if (!source) throw new AdminActionError("invalid-target");
+        requestedActivity = snapshot;
+        reference = db.doc(source.path);
+        snapshot = await transaction.get(reference);
+        if (!snapshot.exists) throw new AdminActionError("not-found");
+        const activityAuthor = requestedActivity.data()?.authorId;
+        if (
+          typeof activityAuthor !== "string" ||
+          !activityAuthor ||
+          snapshot.data()?.authorId !== activityAuthor ||
+          (requestedActivity.data()?.activityKind === "lesson-published" &&
+            snapshot.data()?.sourceLessonId !==
+              requestedActivity.data()?.activityEntityId)
+        )
+          throw new AdminActionError("invalid-target");
+        targetType = source.type;
+        targetId = source.id;
+        requestedTarget = {
+          requestedTargetType: "post",
+          requestedTargetId: action.targetId,
+          sourceActivityId: action.targetId,
+        };
+      }
+      if (action.targetType === "forumReply") {
+        const parent = await transaction.get(
+          db.doc(`forumThreads/${action.parentId}`),
+        );
+        if (!parent.exists) throw new AdminActionError("not-found");
+        requestedTarget = { parentId: action.parentId };
+      }
       previousState = {
         moderationStatus: String(
           snapshot.data()?.moderationStatus ?? "pending",
         ),
+        ...(requestedActivity
+          ? {
+              activityModerationStatus: moderationStatus(
+                requestedActivity.data()?.moderationStatus,
+              ),
+            }
+          : {}),
       };
-      newState = { moderationStatus: action.status };
+      newState = {
+        moderationStatus: action.status,
+        ...(requestedActivity
+          ? { activityModerationStatus: action.status }
+          : {}),
+      };
       transaction.update(reference, {
         moderationStatus: action.status,
         updatedAt: FieldValue.serverTimestamp(),
       });
-      targetType = action.targetType;
+      if (requestedActivity)
+        transaction.update(requestedActivity.ref, {
+          moderationStatus: action.status,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
     } else if (action.action === "report.resolve") {
       const reference = db.doc(`reports/${action.targetId}`);
       const statsRef = db.doc("platformStats/current");
@@ -437,6 +628,7 @@ export async function performAdminAction(
       action: action.action,
       targetType,
       targetId,
+      ...requestedTarget,
       previousState,
       newState,
       reason: action.reason,

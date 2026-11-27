@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { requestJson } from "@/lib/http/client";
 import { Button } from "@/components/ui/button";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { ReportContentDialog } from "@/features/moderation/report-content-dialog";
 import type { ResourceDetail } from "@/lib/resources/server";
 
 export function ResourceDetailActions({
@@ -129,6 +130,13 @@ export function ResourceDetailActions({
 
   return (
     <>
+      {!resource.publiclyAvailable && resource.ownedByViewer && (
+        <p role="status" className="bg-muted mb-4 rounded-lg p-3 text-sm">
+          Hidden from the community. You can still manage your resource.
+          {resource.moderationStatus === "rejected" &&
+            " Editing it will keep the moderation decision in place."}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2">
         {resource.sourceLessonId ? (
           <Link
@@ -173,6 +181,12 @@ export function ResourceDetailActions({
               <Trash2 aria-hidden="true" className="size-4" />
             </button>
           </DeleteConfirmDialog>
+        )}
+        {!resource.ownedByViewer && resource.publiclyAvailable && (
+          <ReportContentDialog
+            title="Report resource"
+            endpoint={`/api/resources/${resource.id}/report`}
+          />
         )}
       </div>
       {!resource.ownedByViewer && (

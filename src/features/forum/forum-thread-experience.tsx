@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { ReportContentDialog } from "@/features/moderation/report-content-dialog";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { EditTextDialog } from "@/components/ui/edit-dialog";
 import { MentionText } from "@/features/mentions/mention-text";
@@ -847,88 +848,18 @@ function ForumReportDialog({
   threadId: string;
   replyId: string | null;
 }) {
-  const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState("spam");
-  const [details, setDetails] = useState("");
-  const [pending, setPending] = useState(false);
-
-  async function submit() {
-    setPending(true);
-    const response = await fetch(`/api/forum/${threadId}/report`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ replyId, reason, details }),
-    });
-    const result = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    setPending(false);
-    if (!response.ok)
-      return toast.error(result?.error ?? "We couldn't submit this report.");
-    setOpen(false);
-    setDetails("");
-    toast.success("Report submitted.");
-  }
-
+  const title = replyId ? "Report comment" : "Report discussion";
   return (
-    <Dialog.Root open={open} onOpenChange={(next) => !pending && setOpen(next)}>
-      <Dialog.Trigger
-        aria-label={replyId ? "Report comment" : "Report discussion"}
-        title={replyId ? "Report comment" : "Report discussion"}
-        className="text-muted-foreground hover:bg-muted hover:text-foreground grid size-11 place-items-center rounded-lg"
-      >
-        <Flag aria-hidden="true" className="size-4" />
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-        <Dialog.Content className="bg-card fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border p-5 shadow-2xl">
-          <Dialog.Title className="font-serif text-xl">
-            Report content
-          </Dialog.Title>
-          <Dialog.Description className="sr-only">
-            Send this content to platform moderators.
-          </Dialog.Description>
-          <Dialog.Close
-            aria-label="Close report"
-            className="text-muted-foreground hover:bg-muted absolute top-2.5 right-2.5 grid size-11 place-items-center rounded-lg"
-          >
-            <X aria-hidden="true" className="size-4" />
-          </Dialog.Close>
-          <label className="mt-4 block text-xs font-semibold">
-            <span className="text-muted-foreground mb-1.5 block">Reason</span>
-            <select
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              className="resource-input"
-            >
-              <option value="spam">Spam</option>
-              <option value="harassment">Harassment</option>
-              <option value="misinformation">Misinformation</option>
-              <option value="unsafe">Unsafe content</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          <label className="mt-4 block text-xs font-semibold">
-            <span className="text-muted-foreground mb-1.5 block">Details</span>
-            <textarea
-              value={details}
-              onChange={(event) => setDetails(event.target.value)}
-              maxLength={500}
-              rows={3}
-              className="resource-input resize-none"
-            />
-          </label>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => void submit()}
-            className="bg-primary text-primary-foreground mt-5 h-10 w-full rounded-lg text-sm font-bold disabled:opacity-50"
-          >
-            {pending ? "Submitting..." : "Submit report"}
-          </button>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <ReportContentDialog
+      title={title}
+      endpoint={`/api/forum/${threadId}/report`}
+      payload={replyId ? { replyId } : {}}
+      trigger={
+        <Button variant="ghost" size="icon" aria-label={title} title={title}>
+          <Flag aria-hidden="true" />
+        </Button>
+      }
+    />
   );
 }
 

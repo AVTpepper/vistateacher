@@ -375,7 +375,7 @@ async function connect(page: Page) {
 }
 
 async function evidence(page: Page, project: string, name: string) {
-  const directory = `docs/audit/evidence/google-docs/${project}`;
+  const directory = `${process.env.AUDIT_GOOGLE_DOCS_EVIDENCE_DIR ?? "docs/audit/evidence/google-docs"}/${project}`;
   await mkdir(directory, { recursive: true });
   await page.screenshot({ path: `${directory}/${name}.png` });
   const result = await new AxeBuilder({ page })
@@ -764,16 +764,19 @@ test("exports the saved lesson from its real toolbar and reconnects to the exist
     title: string;
     currentVersion: number;
   }>(page, "/api/ai-lessons", "POST", {
-    subject: "Music and local history",
-    gradeLevel: "Ages 8–10, mixed ability",
-    topic: "Stories through local folk songs",
-    durationMinutes: 40,
-    teachingStyle: "balanced",
-    language: "English",
-    curriculum: "Sweden, Lgr22",
-    availableMaterials: "Paper and pencils",
-    studentNeeds: BRIEF,
-    additionalInstructions: "DEMO_PRIVATE_LESSON_INSTRUCTIONS_927",
+    requestId: randomUUID(),
+    source: {
+      subject: "Music and local history",
+      gradeLevel: "Ages 8–10, mixed ability",
+      topic: "Stories through local folk songs",
+      durationMinutes: 40,
+      teachingStyle: "balanced",
+      language: "English",
+      curriculum: "Sweden, Lgr22",
+      availableMaterials: "Paper and pencils",
+      studentNeeds: BRIEF,
+      additionalInstructions: "DEMO_PRIVATE_LESSON_INSTRUCTIONS_927",
+    },
   });
   expect(created.status).toBe(201);
   expect(created.body.currentVersion).toBe(1);

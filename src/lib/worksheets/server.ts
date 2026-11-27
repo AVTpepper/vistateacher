@@ -1,9 +1,10 @@
 import "server-only";
 import { deleteTeachingExports } from "@/lib/teaching-exports/cleanup";
 
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
+import { AiSpendError, reserve, abandonBestEffort } from "@/lib/ai/spend";
 import {
   aiUsage,
   firestoreIso,
@@ -12,7 +13,10 @@ import {
   usageNumber,
 } from "@/lib/ai/usage";
 import { getLesson, LessonActionError } from "@/lib/lessons/server";
-import { generateWorksheet } from "@/lib/worksheets/provider";
+import {
+  generateWorksheet,
+  prepareWorksheetResponse,
+} from "@/lib/worksheets/provider";
 import { validateWorksheetContent } from "@/lib/worksheets/validation";
 import {
   worksheetSourceSchema,
@@ -213,10 +217,11 @@ export async function recoverStaleWorksheetGenerations(
     const usageRef = db.doc(`usage/${uid}_${data.period}`);
     const worksheetRef = db.doc(`worksheets/${data.worksheetId}`);
     const didRecover = await db.runTransaction(async (transaction) => {
-      const [job, usage, worksheet] = await transaction.getAll(
+      const [job, usage, worksheet, user] = await transaction.getAll(
         candidate.ref,
         usageRef,
         worksheetRef,
+        db.doc(`users/${uid}`),
       );
       const current = job.data();
       if (
@@ -226,9 +231,8 @@ export async function recoverStaleWorksheetGenerations(
         current.expiresAt.toMillis() > now.getTime()
       )
         return false;
-      transaction.set(
-        usageRef,
-        {
+      if (usage.exists && user.exists)
+        transaction.update(usageRef, {
           aiLessons: Math.max(0, usageNumber(usage.data()?.aiLessons) - 1),
           aiWorksheetCreations: Math.max(
             0,
@@ -240,9 +244,7 @@ export async function recoverStaleWorksheetGenerations(
             usageNumber(usage.data()?.aiRefinements) - (current.isNew ? 0 : 1),
           ),
           updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
+        });
       transaction.update(candidate.ref, {
         status: "failed",
         failure: "expired",
@@ -250,19 +252,24 @@ export async function recoverStaleWorksheetGenerations(
       });
       if (
         worksheet.data()?.ownerId === uid &&
-        worksheet.data()?.generationRequestId === candidate.id
+        worksheet.data()?.generationRequestId === candidate.id &&
+        worksheet.data()?.generationAttemptId === current.attemptId
       ) {
         if (!worksheet.data()?.content) transaction.delete(worksheetRef);
         else
           transaction.update(worksheetRef, {
             generationStatus: "idle",
             generationRequestId: FieldValue.delete(),
+            generationAttemptId: FieldValue.delete(),
             updatedAt: FieldValue.serverTimestamp(),
           });
       }
       return true;
     });
-    if (didRecover) recovered++;
+    if (didRecover) {
+      recovered++;
+      await abandonBestEffort(data.spendAttemptId);
+    }
   }
   return recovered;
 }
@@ -355,7 +362,18 @@ async function runGeneration(
     const savedReference = (
       existing ? (current.data()?.reference ?? null) : reference
     ) as Reference | null;
+    const attemptId = randomUUID();
+    const prepared = prepareWorksheetResponse(source, savedReference?.content);
+    const spend = prepared
+      ? await reserve(
+          transaction,
+          prepared.plan,
+          `${jobRef.id}:${attemptId}`,
+          Timestamp.fromMillis(now.getTime() + 10 * 60_000),
+        )
+      : null;
     const lock = {
+      generationAttemptId: attemptId,
       generationStatus: "generating",
       generationRequestId: jobRef.id,
       updatedAt: FieldValue.serverTimestamp(),
@@ -376,6 +394,8 @@ async function runGeneration(
       ownerId: uid,
       fingerprint,
       worksheetId: ref.id,
+      attemptId,
+      spendAttemptId: spend?.id ?? null,
       status: "pending",
       period,
       isNew: !existing,
@@ -397,13 +417,50 @@ async function runGeneration(
       },
       { merge: true },
     );
-    return { replay: false, id: ref.id, version, reference: savedReference };
+    return {
+      replay: false,
+      id: ref.id,
+      version,
+      reference: savedReference,
+      attemptId,
+      prepared,
+      spend,
+    };
   });
   if (reservation.replay) return getWorksheet(uid, reservation.id);
   try {
     const content = await generateWorksheet(
       source,
       reservation.reference?.content,
+      reservation.prepared && reservation.spend
+        ? {
+            prepared: reservation.prepared,
+            spend: reservation.spend,
+            fence: async (transaction) => {
+              const [user, job, worksheet] = await transaction.getAll(
+                db.doc(`users/${uid}`),
+                jobRef,
+                ref,
+              );
+              if (user.data()?.status !== "active")
+                throw new WorksheetActionError("inactive");
+              if (
+                job.data()?.ownerId !== uid ||
+                job.data()?.status !== "pending" ||
+                job.data()?.attemptId !== reservation.attemptId ||
+                job.data()?.spendAttemptId !== reservation.spend!.id ||
+                worksheet.data()?.ownerId !== uid ||
+                worksheet.data()?.generationRequestId !== jobRef.id ||
+                worksheet.data()?.generationAttemptId !==
+                  reservation.attemptId ||
+                worksheet.data()?.currentVersion !== reservation.version ||
+                !(job.data()?.expiresAt instanceof Timestamp) ||
+                job.data()!.expiresAt.toMillis() <= Date.now()
+              )
+                throw new WorksheetActionError("conflict");
+            },
+          }
+        : undefined,
     );
     await db.runTransaction(async (transaction) => {
       const [user, worksheet, job] = await transaction.getAll(
@@ -418,6 +475,10 @@ async function runGeneration(
       if (
         worksheet.data()?.generationRequestId !== jobRef.id ||
         job.data()?.status !== "pending" ||
+        job.data()?.attemptId !== reservation.attemptId ||
+        worksheet.data()?.generationAttemptId !== reservation.attemptId ||
+        !(job.data()?.expiresAt instanceof Timestamp) ||
+        job.data()!.expiresAt.toMillis() <= Date.now() ||
         worksheet.data()?.currentVersion !== reservation.version
       )
         throw new WorksheetActionError("conflict");
@@ -430,6 +491,7 @@ async function runGeneration(
         sampleMode,
         generationStatus: "idle",
         generationRequestId: FieldValue.delete(),
+        generationAttemptId: FieldValue.delete(),
         updatedAt: FieldValue.serverTimestamp(),
       });
       transaction.create(ref.collection("versions").doc(`v${version}`), {
@@ -447,16 +509,21 @@ async function runGeneration(
       });
     });
   } catch (error) {
-    await db.runTransaction(async (transaction) => {
-      const [usage, worksheet, job] = await transaction.getAll(
+    const outcome = await db.runTransaction(async (transaction) => {
+      const [usage, worksheet, job, user] = await transaction.getAll(
         usageRef,
         ref,
         jobRef,
+        db.doc(`users/${uid}`),
       );
-      if (job.data()?.status !== "pending") return;
-      transaction.set(
-        usageRef,
-        {
+      if (job.data()?.status === "complete") return "complete";
+      if (
+        job.data()?.status !== "pending" ||
+        job.data()?.attemptId !== reservation.attemptId
+      )
+        return "stale";
+      if (usage.exists && user.exists)
+        transaction.update(usageRef, {
           aiLessons: Math.max(0, usageNumber(usage.data()?.aiLessons) - 1),
           aiWorksheetCreations: Math.max(
             0,
@@ -468,27 +535,33 @@ async function runGeneration(
             usageNumber(usage.data()?.aiRefinements) - (existing ? 1 : 0),
           ),
           updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
+        });
       transaction.update(jobRef, {
         status: "failed",
+        failure:
+          error instanceof AiSpendError ? error.code : "generation-failed",
         completedAt: FieldValue.serverTimestamp(),
       });
       if (
         worksheet.data()?.ownerId === uid &&
-        worksheet.data()?.generationRequestId === jobRef.id
+        worksheet.data()?.generationRequestId === jobRef.id &&
+        worksheet.data()?.generationAttemptId === reservation.attemptId
       ) {
         if (!existing) transaction.delete(ref);
         else
           transaction.update(ref, {
             generationStatus: "idle",
             generationRequestId: FieldValue.delete(),
+            generationAttemptId: FieldValue.delete(),
             updatedAt: FieldValue.serverTimestamp(),
           });
       }
+      return "failed";
     });
-    if (error instanceof WorksheetActionError) throw error;
+    if (outcome === "complete") return getWorksheet(uid, ref.id);
+    await abandonBestEffort(reservation.spend?.id);
+    if (error instanceof WorksheetActionError || error instanceof AiSpendError)
+      throw error;
     throw new WorksheetActionError("generation-failed");
   }
   // A response read failure after commit must never refund a successful generation.

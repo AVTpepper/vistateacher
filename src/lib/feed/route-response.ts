@@ -3,8 +3,18 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import { FeedActionError } from "@/lib/feed/server";
+import { PostAttachmentError } from "@/lib/feed/attachment-server";
 
 export function feedErrorResponse(error: unknown): NextResponse | null {
+  if (error instanceof PostAttachmentError)
+    return NextResponse.json(
+      {
+        error:
+          "This attachment is unavailable. Upload it again or remove it from the draft.",
+        code: error.code,
+      },
+      { status: error.code === "inactive" ? 403 : 400 },
+    );
   if (!(error instanceof FeedActionError)) return null;
   const responses = {
     inactive: ["Your account cannot create content.", 403],

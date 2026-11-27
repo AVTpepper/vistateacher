@@ -8,6 +8,7 @@ import {
 import { ProfileView } from "@/features/profiles/profile-view";
 import { ProfileTabProvider } from "@/features/profiles/profile-tab-context";
 import { getCurrentAccount } from "@/lib/auth/session";
+import { getPublicProfileResources } from "@/lib/community/profile-resources";
 import { getProfilePosts } from "@/lib/feed/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { getProfileView } from "@/lib/profiles/server";
@@ -42,23 +43,12 @@ export default async function PublicEducatorPage({
     : queryParams.tab;
   const activeTab =
     rawTab === "resources" || rawTab === "posts" ? rawTab : "about";
-  const resourceQuery = adminDb()
-    .collection("resources")
-    .where("authorId", "==", uid)
-    .where("moderationStatus", "==", "approved");
-  const [data, profilePosts, resourceSnapshot] = await Promise.all([
+  const [data, profilePosts, resources] = await Promise.all([
     getProfileView(uid, account?.uid ?? null),
     getProfilePosts(account?.uid ?? "__anonymous__", uid),
-    resourceQuery.get(),
+    getPublicProfileResources(uid),
   ]);
   if (!data) notFound();
-  const resources = resourceSnapshot.docs
-    .filter((document) => document.data().status === "active")
-    .sort(
-      (left, right) =>
-        Number(right.data().createdAt?.toMillis?.() ?? 0) -
-        Number(left.data().createdAt?.toMillis?.() ?? 0),
-    );
 
   return (
     <div className="bg-background min-h-screen">
@@ -70,11 +60,7 @@ export default async function PublicEducatorPage({
             postCount={profilePosts.total}
             posts={profilePosts.posts}
             resourceCount={resources.length}
-            resources={resources.slice(0, 20).map((document) => ({
-              id: document.id,
-              title: String(document.data().title),
-              type: String(document.data().type ?? "Resource"),
-            }))}
+            resources={resources.slice(0, 20)}
             viewer={{
               uid: account?.uid ?? "__anonymous__",
               displayName: account?.displayName ?? "Guest",

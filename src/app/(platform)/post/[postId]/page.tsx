@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { PostCard } from "@/features/feed/post-card";
 import { requireCurrentAccount } from "@/lib/auth/session";
+import { publicActivityIds } from "@/lib/community/visibility";
 import { adminDb } from "@/lib/firebase/admin";
 import { getPost, getPostComments } from "@/lib/feed/server";
 
@@ -14,6 +15,12 @@ export async function generateMetadata({
   const { postId } = await params;
   const snapshot = await adminDb().doc(`posts/${postId}`).get();
   const data = snapshot.data();
+  if (
+    data?.moderationStatus !== "approved" ||
+    (data.type === "activity" &&
+      !(await publicActivityIds([snapshot])).has(postId))
+  )
+    return { title: "Shared post", robots: { index: false, follow: false } };
   const content = typeof data?.content === "string" ? data.content.trim() : "";
   return {
     title:

@@ -1,0 +1,78 @@
+{
+  "capturedAt": "2026-11-26T15:57:20.122Z",
+  "buildId": "IL27bZYGH465ZZQIkSqCt",
+  "environment": "Local production build; demo Firebase emulators; signed-in community teacher",
+  "primaryJourneys": {
+    "passed": 27,
+    "failed": 0
+  },
+  "failedTargets": [
+    {
+      "href": "/about",
+      "status": 500,
+      "finalURL": "http://127.0.0.1:3300/about",
+      "pass": false
+    },
+    {
+      "href": "/pricing",
+      "status": 500,
+      "finalURL": "http://127.0.0.1:3300/pricing",
+      "pass": false
+    },
+    {
+      "href": "/help",
+      "status": 500,
+      "finalURL": "http://127.0.0.1:3300/help",
+      "pass": false
+    },
+    {
+      "href": "/privacy",
+      "status": 500,
+      "finalURL": "http://127.0.0.1:3300/privacy",
+      "pass": false
+    },
+    {
+      "href": "/cookies",
+      "status": 500,
+      "finalURL": "http://127.0.0.1:3300/cookies",
+      "pass": false
+    },
+    {
+      "href": "/terms",
+      "status": 500,
+      "finalURL": "http://127.0.0.1:3300/terms",
+      "pass": false
+    },
+    {
+      "href": "/pricing?interval=month",
+      "status": 500,
+      "finalURL": "http://127.0.0.1:3300/pricing?interval=month",
+      "pass": false
+    },
+    {
+      "href": "/pricing?interval=year",
+      "status": 500,
+      "finalURL": "http://127.0.0.1:3300/pricing?interval=year",
+      "pass": false
+    }
+  ],
+  "diagnosis": "Signed-in public pages rendered PlatformShell and its NotificationMenu outside NotificationProvider. The server log recorded NotificationProvider is required. This is separate from earlier incomplete test-profile fixtures.",
+  "sourceFiles": [
+    {
+      "path": "src/app/(platform)/layout.tsx",
+      "sha256": "1900da4d4d56718d79df597932cbe74fa7cbb36c939e72132fd39802e150eeea"
+    },
+    {
+      "path": "src/components/platform/platform-shell.tsx",
+      "sha256": "bc1ddfa1f12f807d1b42de5c9e3f6d219947d22e5f4ddf4c90ee05e72748f09b"
+    },
+    {
+      "path": "src/components/shared/session-aware-site-shell.tsx",
+      "sha256": "e68a0473b585fdc6b0212d4a5acff60ba0df9ee8c9f9434264264aa519b229e9"
+    },
+    {
+      "path": "src/features/notifications/notification-provider.tsx",
+      "sha256": "aa296cf8da50f09365b0dc35964ee1c91f880f94cd903c37b915de6ae86640e7"
+    }
+  ]
+}

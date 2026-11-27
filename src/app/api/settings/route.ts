@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { hasTrustedOrigin } from "@/lib/auth/request";
 import { getRouteAccount } from "@/lib/auth/route-account";
+import { PrivateRecoveryError } from "@/lib/profiles/private-user";
 import { updatePrivateSettings } from "@/lib/profiles/server";
 import { privateSettingsSchema } from "@/schemas/profile";
 
@@ -28,6 +29,29 @@ export async function PATCH(request: NextRequest) {
       { status: 400 },
     );
 
-  await updatePrivateSettings(account.uid, parsed.data);
-  return NextResponse.json({ ok: true });
+  try {
+    await updatePrivateSettings(account.uid, account.email, parsed.data);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof PrivateRecoveryError)
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        {
+          status:
+            error.code === "invalid-identity"
+              ? 401
+              : ["inactive", "deletion-blocked"].includes(error.code)
+                ? 403
+                : 409,
+        },
+      );
+    console.error("Private settings update failed", {
+      uid: account.uid,
+      category: "unexpected",
+    });
+    return NextResponse.json(
+      { error: "Unable to save your settings. Please try again." },
+      { status: 503 },
+    );
+  }
 }

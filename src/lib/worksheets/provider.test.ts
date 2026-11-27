@@ -1,23 +1,18 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import OpenAI from "openai";
-import { generateWorksheet } from "./provider";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Response } from "openai/resources/responses/responses";
+import { generateWorksheet, prepareWorksheetResponse } from "./provider";
 import { createMockWorksheet } from "./mock-provider";
 import { worksheetSourceSchema } from "@/schemas/worksheet";
+import { AiSpendError } from "@/lib/ai/spend";
 
-const { parse } = vi.hoisted(() => ({ parse: vi.fn() }));
-vi.mock("openai", () => ({
-  default: class {
-    static APIError = class extends Error {};
-    responses = { parse };
-  },
+const { metered } = vi.hoisted(() => ({ metered: vi.fn() }));
+vi.mock("@/lib/ai/metered-responses", async (original) => ({
+  ...(await original<typeof import("@/lib/ai/metered-responses")>()),
+  meteredResponse: metered,
 }));
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.clearAllMocks();
-});
 const source = worksheetSourceSchema.parse({
   subject: "Music",
-  gradeLevel: "Ages 8–10",
+  gradeLevel: "Ages 8â€“10",
   topic: "Local folk songs",
   difficulty: "mixed",
   language: "Swedish",
@@ -34,16 +29,51 @@ const source = worksheetSourceSchema.parse({
     trueFalse: 1,
   },
 });
-function live() {
-  vi.stubEnv("AI_PROVIDER", "OPENAI");
-  vi.stubEnv("OPENAI_API_KEY", "sk-test-unused");
+function context() {
+  const prepared = prepareWorksheetResponse(source)!;
+  return {
+    prepared,
+    spend: { id: "0".repeat(64), plan: prepared.plan },
+    fence: async () => undefined,
+  };
 }
-describe("structured worksheet generation", () => {
-  it("sends all teacher context, the exact mix, and requested difficulty", async () => {
-    live();
-    parse.mockResolvedValueOnce({ output_parsed: createMockWorksheet(source) });
-    await generateWorksheet(source);
-    const request = parse.mock.calls[0][0];
+function raw(content: unknown): Response {
+  return {
+    status: "completed",
+    error: null,
+    incomplete_details: null,
+    output: [
+      {
+        type: "message",
+        content: [{ type: "output_text", text: JSON.stringify(content) }],
+      },
+    ],
+  } as unknown as Response;
+}
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-11-26T12:00:00Z"));
+  vi.stubEnv("AI_PROVIDER", "OPENAI");
+  vi.stubEnv("OPENAI_API_KEY", "synthetic-unused-key");
+  vi.stubEnv("OPENAI_PROJECT_ID", "proj_synthetic");
+  vi.stubEnv("OPENAI_BUDGET_EPOCH", "synthetic_epoch");
+  vi.stubEnv("OPENAI_WORKSHEET_MODEL", "gpt-4.1-mini");
+  metered.mockReset();
+});
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
+});
+
+describe("structured worksheet generation through the money boundary", () => {
+  it("freezes the exact question mix and all teacher context", async () => {
+    const reserved = context();
+    const content = createMockWorksheet(source);
+    metered.mockResolvedValue(raw(content));
+    expect(await generateWorksheet(source, undefined, reserved)).toEqual(
+      content,
+    );
+    const request = JSON.parse(reserved.prepared.json);
     for (const text of [
       "Lgr22",
       "Swedish",
@@ -56,40 +86,30 @@ describe("structured worksheet generation", () => {
       expect(request.input).toContain(text);
     expect(request.instructions).toContain("only in answerKey");
     expect(request.text.format.type).toBe("json_schema");
+    expect(request.max_output_tokens).toBe(16000);
+    expect(metered).toHaveBeenCalledExactlyOnceWith(reserved);
   });
-  it("repairs a mismatched key once and returns the validated result", async () => {
-    live();
+  it("stops after a mismatched answer key without an automatic paid repair", async () => {
     const content = createMockWorksheet(source);
-    parse
-      .mockResolvedValueOnce({
-        output_parsed: { ...content, answerKey: content.answerKey.slice(1) },
-      })
-      .mockResolvedValueOnce({ output_parsed: content });
-    expect(await generateWorksheet(source)).toEqual(content);
-    expect(parse).toHaveBeenCalledTimes(2);
-    expect(parse.mock.calls[1][0].instructions).toContain(
-      "one answer-key entry per question",
+    metered.mockResolvedValue(
+      raw({ ...content, answerKey: content.answerKey.slice(1) }),
     );
+    await expect(
+      generateWorksheet(source, undefined, context()),
+    ).rejects.toThrow("one answer-key entry per question");
+    expect(metered).toHaveBeenCalledTimes(1);
   });
-  it("does not add a paid repair for API failures", async () => {
-    live();
-    parse.mockRejectedValueOnce(
-      new OpenAI.APIError(
-        undefined,
-        undefined,
-        "Provider unavailable",
-        undefined,
-      ),
-    );
-    await expect(generateWorksheet(source)).rejects.toBeInstanceOf(
-      OpenAI.APIError,
-    );
-    expect(parse).toHaveBeenCalledTimes(1);
+  it("propagates accounting uncertainty without a repair or fallback", async () => {
+    metered.mockRejectedValue(new AiSpendError("ai-accounting-pending"));
+    await expect(
+      generateWorksheet(source, undefined, context()),
+    ).rejects.toMatchObject({ code: "ai-accounting-pending" });
+    expect(metered).toHaveBeenCalledTimes(1);
   });
-  it("bounds invalid-output repairs to two attempts", async () => {
-    live();
-    parse.mockResolvedValue({ output_parsed: null });
-    await expect(generateWorksheet(source)).rejects.toThrow("Empty structured");
-    expect(parse).toHaveBeenCalledTimes(2);
+  it("requires a reserved spend context before requesting paid output", async () => {
+    await expect(generateWorksheet(source)).rejects.toMatchObject({
+      code: "ai-unavailable",
+    });
+    expect(metered).not.toHaveBeenCalled();
   });
 });

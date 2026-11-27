@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ReportContentDialog } from "@/features/moderation/report-content-dialog";
 import { requestJson } from "@/lib/http/client";
 import { toast } from "sonner";
 
@@ -133,6 +134,12 @@ function ActivityFeedItem({ post }: { post: FeedPost }) {
         >
           {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
         </time>
+        {!post.ownedByViewer && (
+          <ReportContentDialog
+            title="Report activity"
+            endpoint={`/api/feed/${post.id}/report`}
+          />
+        )}
       </div>
     </article>
   );
@@ -150,6 +157,8 @@ function InteractivePostCard({
   const [busy, setBusy] = useState<string[]>([]);
   const [post, setPost] = useState(initialPost);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
   const [commentsError, setCommentsError] = useState<string | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(
     initialComments !== undefined,
@@ -385,13 +394,7 @@ function InteractivePostCard({
 
   async function report() {
     setMenuOpen(false);
-    await runAction("report", async () => {
-      await mutation(`/api/feed/${post.id}/report`, "POST", {
-        reason: "other",
-        details: "Reported from the feed.",
-      });
-      toast.success("Report submitted for review.");
-    });
+    setReportOpen(true);
   }
 
   async function share() {
@@ -416,502 +419,521 @@ function InteractivePostCard({
   }
 
   return (
-    <article className="surface-card surface-card-interactive overflow-hidden">
-      <header className="flex items-start gap-3 p-4 pb-3">
-        <ProfileIdentityLink
-          uid={post.author.uid}
-          displayName={post.author.displayName}
-          photoURL={post.author.photoURL}
-          avatarClassName="size-10 rounded-full text-xs"
-          showName={false}
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <ProfileIdentityLink
-              uid={post.author.uid}
-              displayName={post.author.displayName}
-              photoURL={post.author.photoURL}
-              showAvatar={false}
-              className="text-sm"
-            />
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[10px] font-bold",
-                typeStyle[post.type],
-              )}
-            >
-              {typeLabel[post.type]}
-            </span>
+    <>
+      <ReportContentDialog
+        title="Report post"
+        endpoint={`/api/feed/${post.id}/report`}
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          menuTrigger.current?.focus();
+        }}
+        trigger={false}
+      />
+      <article className="surface-card surface-card-interactive overflow-hidden">
+        <header className="flex items-start gap-3 p-4 pb-3">
+          <ProfileIdentityLink
+            uid={post.author.uid}
+            displayName={post.author.displayName}
+            photoURL={post.author.photoURL}
+            avatarClassName="size-10 rounded-full text-xs"
+            showName={false}
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <ProfileIdentityLink
+                uid={post.author.uid}
+                displayName={post.author.displayName}
+                photoURL={post.author.photoURL}
+                showAvatar={false}
+                className="text-sm"
+              />
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                  typeStyle[post.type],
+                )}
+              >
+                {typeLabel[post.type]}
+              </span>
+            </div>
+            <p className="text-muted-foreground truncate text-xs">
+              {[post.author.gradeLevel, post.author.school]
+                .filter(Boolean)
+                .join(" · ")}
+              {" · "}
+              {formatDistanceToNow(new Date(post.createdAt), {
+                addSuffix: true,
+              })}
+              {post.editedAt
+                ? ` · edited ${formatDistanceToNow(new Date(post.editedAt), { addSuffix: true })}`
+                : ""}
+            </p>
           </div>
-          <p className="text-muted-foreground truncate text-xs">
-            {[post.author.gradeLevel, post.author.school]
-              .filter(Boolean)
-              .join(" · ")}
-            {" · "}
-            {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
-            {post.editedAt
-              ? ` · edited ${formatDistanceToNow(new Date(post.editedAt), { addSuffix: true })}`
-              : ""}
-          </p>
-        </div>
-        <DropdownMenu.Root
-          modal={false}
-          open={menuOpen}
-          onOpenChange={setMenuOpen}
-        >
-          <DropdownMenu.Trigger asChild>
-            <button
-              type="button"
-              aria-label="Post options"
-              aria-expanded={menuOpen}
-              className="text-muted-foreground hover:bg-muted grid size-11 place-items-center rounded-lg"
-            >
-              <MoreHorizontal aria-hidden="true" className="size-4" />
-            </button>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              align="end"
-              sideOffset={8}
-              className="bg-popover z-40 w-48 rounded-xl border p-1 shadow-lg"
-            >
-              <DropdownMenu.Item asChild>
-                <button
-                  type="button"
-                  disabled={busy.includes("bookmark")}
-                  onClick={() => void toggleBookmark()}
-                  className="hover:bg-muted min-h-11 w-full px-3 py-2 text-left text-sm"
-                >
-                  {post.bookmarked ? "Remove saved post" : "Save post"}
-                </button>
-              </DropdownMenu.Item>
-              {!post.ownedByViewer && (
+          <DropdownMenu.Root
+            modal={false}
+            open={menuOpen}
+            onOpenChange={setMenuOpen}
+          >
+            <DropdownMenu.Trigger asChild>
+              <button
+                type="button"
+                aria-label="Post options"
+                ref={menuTrigger}
+                aria-expanded={menuOpen}
+                className="text-muted-foreground hover:bg-muted grid size-11 place-items-center rounded-lg"
+              >
+                <MoreHorizontal aria-hidden="true" className="size-4" />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="end"
+                sideOffset={8}
+                className="bg-popover z-40 w-48 rounded-xl border p-1 shadow-lg"
+              >
                 <DropdownMenu.Item asChild>
                   <button
                     type="button"
-                    onClick={() => void report()}
-                    className="hover:bg-muted w-full px-3 py-2 text-left text-sm"
+                    disabled={busy.includes("bookmark")}
+                    onClick={() => void toggleBookmark()}
+                    className="hover:bg-muted min-h-11 w-full px-3 py-2 text-left text-sm"
                   >
-                    Report
+                    {post.bookmarked ? "Remove saved post" : "Save post"}
                   </button>
                 </DropdownMenu.Item>
-              )}
-              {post.ownedByViewer && post.type !== "activity" && (
-                <DropdownMenu.Item asChild>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setPostDraft(post.content);
-                      setPostEditMentions(post.mentions);
-                      setEditingPost(true);
-                    }}
-                    className="hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
-                  >
-                    <Pencil aria-hidden="true" className="size-3.5" /> Edit
-                  </button>
-                </DropdownMenu.Item>
-              )}
-              {post.ownedByViewer && post.type !== "activity" && (
-                <DeleteConfirmDialog itemName="post" onConfirm={removePost}>
-                  <DropdownMenu.Item
-                    asChild
-                    onSelect={(event) => event.preventDefault()}
-                  >
+                {!post.ownedByViewer && (
+                  <DropdownMenu.Item asChild>
                     <button
                       type="button"
-                      className="text-destructive hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+                      onClick={() => void report()}
+                      className="hover:bg-muted w-full px-3 py-2 text-left text-sm"
                     >
-                      <Trash2 aria-hidden="true" className="size-3.5" /> Delete
+                      Report
                     </button>
                   </DropdownMenu.Item>
-                </DeleteConfirmDialog>
-              )}
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
-      </header>
-      <div className="px-4 pb-3">
-        {post.type === "activity" && post.activity ? (
-          <Link
-            href={post.activity.href}
-            className="bg-muted/35 hover:border-primary/25 block min-w-0 rounded-xl border p-4 transition-colors"
-          >
-            <span className="text-muted-foreground block min-w-0 text-xs font-semibold [overflow-wrap:anywhere]">
-              {post.activity.label}
-            </span>
-            <span className="mt-1 block min-w-0 font-serif text-xl leading-7 [overflow-wrap:anywhere]">
-              {post.activity.title}
-            </span>
-            <span className="text-primary mt-2 block text-xs font-bold">
-              View activity
-            </span>
-          </Link>
-        ) : editingPost ? (
-          <div className="space-y-2">
-            <MentionTextarea
-              aria-label="Edit post"
-              mentions={postEditMentions}
-              onMentionsChange={setPostEditMentions}
-              excludeUid={viewer.uid}
-              disabled={busy.includes("edit-post")}
-              name="post-edit"
-              autoComplete="off"
-              autoCapitalize="sentences"
-              spellCheck
-              inputMode="text"
-              value={postDraft}
-              onValueChange={setPostDraft}
-              maxLength={5000}
-              rows={4}
-              className="bg-muted w-full resize-y rounded-lg px-3 py-2 text-sm outline-none"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEditingPost(false)}
-                disabled={busy.includes("edit-post")}
-                className="h-11 rounded-xl border px-4 text-sm font-bold"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void savePostEdit()}
-                disabled={!postDraft.trim() || busy.includes("edit-post")}
-                className="bg-primary text-primary-foreground h-11 rounded-xl px-4 text-sm font-bold disabled:opacity-50"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm leading-6 whitespace-pre-line">
-            <MentionText content={post.content} mentions={post.mentions} />
-          </p>
-        )}
-        {post.tags.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {post.tags.map((tag) => (
-              <span
-                key={tag}
-                className="bg-accent text-accent-foreground rounded-full px-2.5 py-1 text-xs font-semibold"
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-      {post.imageURLs[0] && <PostImageViewer src={post.imageURLs[0]} />}
-      {(post.fileAttachments.length > 0 || post.linkURLs.length > 0) && (
-        <div className="mx-4 mb-3 space-y-2">
-          {post.fileAttachments.map((attachment) => (
-            <a
-              key={attachment.url}
-              href={attachment.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Open attached file ${attachment.name}`}
-              className="bg-muted/50 hover:border-primary/30 flex min-h-14 items-center gap-3 rounded-lg border px-3 py-2 transition-colors"
-            >
-              <span className="bg-background text-primary grid size-9 shrink-0 place-items-center rounded-lg border">
-                <FileText aria-hidden="true" className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold">
-                  {attachment.name}
-                </span>
-                <span className="text-muted-foreground block text-xs">
-                  {formatPostFileSize(attachment.size)}
-                </span>
-              </span>
-              <ExternalLink
-                aria-hidden="true"
-                className="text-muted-foreground size-4 shrink-0"
-              />
-            </a>
-          ))}
-          {post.linkURLs.map((url) => (
-            <a
-              key={url}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Open shared web link to ${linkHost(url)}`}
-              className="bg-muted/50 hover:border-primary/30 flex min-h-14 items-center gap-3 rounded-lg border px-3 py-2 transition-colors"
-            >
-              <span className="bg-background text-primary grid size-9 shrink-0 place-items-center rounded-lg border">
-                <Paperclip aria-hidden="true" className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold">
-                  {linkHost(url)}
-                </span>
-                <span className="text-muted-foreground block truncate text-xs">
-                  {url}
-                </span>
-              </span>
-              <ExternalLink
-                aria-hidden="true"
-                className="text-muted-foreground size-4 shrink-0"
-              />
-            </a>
-          ))}
-        </div>
-      )}
-      <div className="text-muted-foreground mx-4 flex flex-wrap items-center justify-between gap-2 border-b pb-2 text-xs">
-        <button
-          type="button"
-          disabled={busy.includes("like")}
-          onClick={() => void toggleLike()}
-          className="hover:bg-muted focus-visible:text-foreground min-h-11 min-w-11 rounded-lg px-2 transition-colors"
-        >
-          {post.likeCount} {post.likeCount === 1 ? "like" : "likes"}
-        </button>
-        <span className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => void openComments()}
-            className="hover:bg-muted focus-visible:text-foreground min-h-11 min-w-11 rounded-lg px-2 transition-colors"
-          >
-            {post.commentCount}{" "}
-            {post.commentCount === 1 ? "comment" : "comments"}
-          </button>
-          <span className="px-2">
-            {post.shareCount} {post.shareCount === 1 ? "share" : "shares"}
-          </span>
-          <span className="px-2">{post.bookmarkCount} saved</span>
-        </span>
-      </div>
-      <div className="flex px-2 py-1">
-        <button
-          type="button"
-          aria-label={post.liked ? "Unlike post" : "Like post"}
-          onClick={() => void toggleLike()}
-          className={cn(
-            "hover:bg-muted flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold",
-            post.liked ? "text-primary" : "text-muted-foreground",
-          )}
-        >
-          <Heart
-            aria-hidden="true"
-            className={cn("size-4", post.liked && "fill-current")}
-          />
-          <span className="hidden sm:inline">
-            {post.liked ? "Liked" : "Like"}
-          </span>
-        </button>
-        <button
-          type="button"
-          aria-label="Comment on post"
-          onClick={() => void openComments()}
-          className="text-muted-foreground hover:bg-muted flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold"
-        >
-          <MessageCircle aria-hidden="true" className="size-4" />
-          <span className="hidden sm:inline">Comment</span>
-        </button>
-        <button
-          type="button"
-          aria-label="Share post"
-          onClick={() => void share()}
-          className="text-muted-foreground hover:bg-muted flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold"
-        >
-          <Share2 aria-hidden="true" className="size-4" />
-          <span className="hidden sm:inline">Share</span>
-        </button>
-        <button
-          type="button"
-          aria-label={post.bookmarked ? "Remove saved post" : "Save post"}
-          onClick={() => void toggleBookmark()}
-          className={cn(
-            "hover:bg-muted flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold",
-            post.bookmarked ? "text-primary" : "text-muted-foreground",
-          )}
-        >
-          <Bookmark
-            aria-hidden="true"
-            className={cn("size-4", post.bookmarked && "fill-current")}
-          />
-          <span className="hidden sm:inline">Save</span>
-        </button>
-      </div>
-      {commentsOpen && (
-        <div className="space-y-3 border-t px-4 py-3">
-          {commentsError ? (
-            <div role="alert" className="space-y-2 text-sm">
-              <p>{commentsError}</p>
-              <Button
-                variant="outline"
-                disabled={busy.includes("comments")}
-                onClick={() => void loadComments()}
-              >
-                Retry comments
-              </Button>
-            </div>
-          ) : comments === null ? (
-            <p className="text-muted-foreground text-xs">Loading comments...</p>
-          ) : (
-            comments.map((item) => (
-              <div
-                id={`comment-${item.id}`}
-                key={item.id}
-                className="flex scroll-mt-24 items-start gap-2.5"
-              >
-                <ProfileIdentityLink
-                  uid={item.author.uid}
-                  displayName={item.author.displayName}
-                  photoURL={item.author.photoURL}
-                  avatarClassName="size-8 rounded-full text-[10px]"
-                  showName={false}
-                />
-                <div className="bg-muted min-w-0 flex-1 rounded-lg px-3 py-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <ProfileIdentityLink
-                      uid={item.author.uid}
-                      displayName={item.author.displayName}
-                      photoURL={item.author.photoURL}
-                      showAvatar={false}
-                      className="text-xs"
-                    />
-                    <p className="text-muted-foreground text-[10px]">
-                      {formatDistanceToNow(new Date(item.createdAt), {
-                        addSuffix: true,
-                      })}
-                      {item.editedAt
-                        ? ` · edited ${formatDistanceToNow(new Date(item.editedAt), { addSuffix: true })}`
-                        : ""}
-                    </p>
-                  </div>
-                  {editingCommentId === item.id ? (
-                    <div className="mt-1 space-y-1">
-                      <MentionTextarea
-                        aria-label="Edit comment"
-                        mentions={commentEditMentions}
-                        onMentionsChange={setCommentEditMentions}
-                        excludeUid={viewer.uid}
-                        disabled={busy.includes("edit-comment")}
-                        name="comment-edit"
-                        autoComplete="off"
-                        autoCapitalize="sentences"
-                        spellCheck
-                        inputMode="text"
-                        value={commentDraft}
-                        onValueChange={setCommentDraft}
-                        rows={2}
-                        maxLength={1000}
-                        className="bg-background w-full resize-none rounded-lg px-2 py-1.5 text-xs outline-none"
-                      />
-                      <div className="flex justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setEditingCommentId(null)}
-                          disabled={busy.includes("edit-comment")}
-                          className="text-muted-foreground min-h-11 rounded-lg px-3 text-xs"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void saveCommentEdit(item.id)}
-                          disabled={
-                            !commentDraft.trim() ||
-                            busy.includes("edit-comment")
-                          }
-                          className="text-primary min-h-11 rounded-lg px-3 text-xs font-bold disabled:opacity-50"
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="mt-0.5 text-xs leading-5 wrap-break-word">
-                      <MentionText
-                        content={item.content}
-                        mentions={item.mentions}
-                      />
-                    </p>
-                  )}
-                  {item.ownedByViewer && editingCommentId !== item.id && (
-                    <div className="mt-1 flex gap-2">
+                )}
+                {post.ownedByViewer && post.type !== "activity" && (
+                  <DropdownMenu.Item asChild>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setPostDraft(post.content);
+                        setPostEditMentions(post.mentions);
+                        setEditingPost(true);
+                      }}
+                      className="hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+                    >
+                      <Pencil aria-hidden="true" className="size-3.5" /> Edit
+                    </button>
+                  </DropdownMenu.Item>
+                )}
+                {post.ownedByViewer && post.type !== "activity" && (
+                  <DeleteConfirmDialog itemName="post" onConfirm={removePost}>
+                    <DropdownMenu.Item
+                      asChild
+                      onSelect={(event) => event.preventDefault()}
+                    >
                       <button
                         type="button"
-                        onClick={() => {
-                          setEditingCommentId(item.id);
-                          setCommentDraft(item.content);
-                          setCommentEditMentions(item.mentions);
-                        }}
-                        className="text-muted-foreground hover:bg-background min-h-11 rounded-lg px-3 text-xs"
+                        className="text-destructive hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
                       >
-                        Edit
+                        <Trash2 aria-hidden="true" className="size-3.5" />{" "}
+                        Delete
                       </button>
-                      <DeleteConfirmDialog
-                        itemName="comment"
-                        onConfirm={() => removeComment(item.id)}
-                      >
-                        <button
-                          type="button"
-                          className="text-destructive hover:bg-background min-h-11 rounded-lg px-3 text-xs"
-                        >
-                          Delete
-                        </button>
-                      </DeleteConfirmDialog>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-          <div className="flex items-center gap-2.5 pt-1">
-            <ProfileIdentityLink
-              uid={viewer.uid}
-              displayName={viewer.displayName}
-              photoURL={viewer.photoURL}
-              avatarClassName="size-8 rounded-full text-[10px]"
-              showName={false}
-            />
-            <div className="input-shell bg-muted flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-transparent px-3 py-2">
+                    </DropdownMenu.Item>
+                  </DeleteConfirmDialog>
+                )}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        </header>
+        <div className="px-4 pb-3">
+          {post.type === "activity" && post.activity ? (
+            <Link
+              href={post.activity.href}
+              className="bg-muted/35 hover:border-primary/25 block min-w-0 rounded-xl border p-4 transition-colors"
+            >
+              <span className="text-muted-foreground block min-w-0 text-xs font-semibold [overflow-wrap:anywhere]">
+                {post.activity.label}
+              </span>
+              <span className="mt-1 block min-w-0 font-serif text-xl leading-7 [overflow-wrap:anywhere]">
+                {post.activity.title}
+              </span>
+              <span className="text-primary mt-2 block text-xs font-bold">
+                View activity
+              </span>
+            </Link>
+          ) : editingPost ? (
+            <div className="space-y-2">
               <MentionTextarea
-                name="comment"
+                aria-label="Edit post"
+                mentions={postEditMentions}
+                onMentionsChange={setPostEditMentions}
+                excludeUid={viewer.uid}
+                disabled={busy.includes("edit-post")}
+                name="post-edit"
                 autoComplete="off"
                 autoCapitalize="sentences"
                 spellCheck
                 inputMode="text"
-                enterKeyHint="send"
-                disabled={commenting}
-                value={comment}
-                mentions={commentMentions}
-                onMentionsChange={setCommentMentions}
-                excludeUid={viewer.uid}
-                maxLength={1_000}
-                onValueChange={setComment}
-                onKeyDown={(event) => {
-                  if (
-                    event.key === "Enter" &&
-                    !event.shiftKey &&
-                    !event.nativeEvent.isComposing
-                  ) {
-                    event.preventDefault();
-                    void addComment();
-                  }
-                }}
-                placeholder="Write a comment..."
-                rows={1}
-                className="placeholder:text-muted-foreground min-h-6 resize-none border-0 bg-transparent text-base shadow-none outline-none md:text-sm"
+                value={postDraft}
+                onValueChange={setPostDraft}
+                maxLength={5000}
+                rows={4}
+                className="bg-muted w-full resize-y rounded-lg px-3 py-2 text-sm outline-none"
               />
-              <button
-                type="button"
-                onClick={() => void addComment()}
-                disabled={!comment.trim() || commenting}
-                aria-label="Send comment"
-                className="text-primary grid size-11 shrink-0 place-items-center rounded-lg disabled:opacity-40"
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingPost(false)}
+                  disabled={busy.includes("edit-post")}
+                  className="h-11 rounded-xl border px-4 text-sm font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void savePostEdit()}
+                  disabled={!postDraft.trim() || busy.includes("edit-post")}
+                  className="bg-primary text-primary-foreground h-11 rounded-xl px-4 text-sm font-bold disabled:opacity-50"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm leading-6 whitespace-pre-line">
+              <MentionText content={post.content} mentions={post.mentions} />
+            </p>
+          )}
+          {post.tags.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {post.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="bg-accent text-accent-foreground rounded-full px-2.5 py-1 text-xs font-semibold"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        {post.imageURLs[0] && <PostImageViewer src={post.imageURLs[0]} />}
+        {(post.fileAttachments.length > 0 || post.linkURLs.length > 0) && (
+          <div className="mx-4 mb-3 space-y-2">
+            {post.fileAttachments.map((attachment) => (
+              <a
+                key={attachment.url}
+                href={attachment.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open attached file ${attachment.name}`}
+                className="bg-muted/50 hover:border-primary/30 flex min-h-14 items-center gap-3 rounded-lg border px-3 py-2 transition-colors"
               >
-                <Send aria-hidden="true" className="size-4" />
-              </button>
+                <span className="bg-background text-primary grid size-9 shrink-0 place-items-center rounded-lg border">
+                  <FileText aria-hidden="true" className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">
+                    {attachment.name}
+                  </span>
+                  <span className="text-muted-foreground block text-xs">
+                    {formatPostFileSize(attachment.size)}
+                  </span>
+                </span>
+                <ExternalLink
+                  aria-hidden="true"
+                  className="text-muted-foreground size-4 shrink-0"
+                />
+              </a>
+            ))}
+            {post.linkURLs.map((url) => (
+              <a
+                key={url}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open shared web link to ${linkHost(url)}`}
+                className="bg-muted/50 hover:border-primary/30 flex min-h-14 items-center gap-3 rounded-lg border px-3 py-2 transition-colors"
+              >
+                <span className="bg-background text-primary grid size-9 shrink-0 place-items-center rounded-lg border">
+                  <Paperclip aria-hidden="true" className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">
+                    {linkHost(url)}
+                  </span>
+                  <span className="text-muted-foreground block truncate text-xs">
+                    {url}
+                  </span>
+                </span>
+                <ExternalLink
+                  aria-hidden="true"
+                  className="text-muted-foreground size-4 shrink-0"
+                />
+              </a>
+            ))}
+          </div>
+        )}
+        <div className="text-muted-foreground mx-4 flex flex-wrap items-center justify-between gap-2 border-b pb-2 text-xs">
+          <button
+            type="button"
+            disabled={busy.includes("like")}
+            onClick={() => void toggleLike()}
+            className="hover:bg-muted focus-visible:text-foreground min-h-11 min-w-11 rounded-lg px-2 transition-colors"
+          >
+            {post.likeCount} {post.likeCount === 1 ? "like" : "likes"}
+          </button>
+          <span className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => void openComments()}
+              className="hover:bg-muted focus-visible:text-foreground min-h-11 min-w-11 rounded-lg px-2 transition-colors"
+            >
+              {post.commentCount}{" "}
+              {post.commentCount === 1 ? "comment" : "comments"}
+            </button>
+            <span className="px-2">
+              {post.shareCount} {post.shareCount === 1 ? "share" : "shares"}
+            </span>
+            <span className="px-2">{post.bookmarkCount} saved</span>
+          </span>
+        </div>
+        <div className="flex px-2 py-1">
+          <button
+            type="button"
+            aria-label={post.liked ? "Unlike post" : "Like post"}
+            onClick={() => void toggleLike()}
+            className={cn(
+              "hover:bg-muted flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold",
+              post.liked ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            <Heart
+              aria-hidden="true"
+              className={cn("size-4", post.liked && "fill-current")}
+            />
+            <span className="hidden sm:inline">
+              {post.liked ? "Liked" : "Like"}
+            </span>
+          </button>
+          <button
+            type="button"
+            aria-label="Comment on post"
+            onClick={() => void openComments()}
+            className="text-muted-foreground hover:bg-muted flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold"
+          >
+            <MessageCircle aria-hidden="true" className="size-4" />
+            <span className="hidden sm:inline">Comment</span>
+          </button>
+          <button
+            type="button"
+            aria-label="Share post"
+            onClick={() => void share()}
+            className="text-muted-foreground hover:bg-muted flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold"
+          >
+            <Share2 aria-hidden="true" className="size-4" />
+            <span className="hidden sm:inline">Share</span>
+          </button>
+          <button
+            type="button"
+            aria-label={post.bookmarked ? "Remove saved post" : "Save post"}
+            onClick={() => void toggleBookmark()}
+            className={cn(
+              "hover:bg-muted flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold",
+              post.bookmarked ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            <Bookmark
+              aria-hidden="true"
+              className={cn("size-4", post.bookmarked && "fill-current")}
+            />
+            <span className="hidden sm:inline">Save</span>
+          </button>
+        </div>
+        {commentsOpen && (
+          <div className="space-y-3 border-t px-4 py-3">
+            {commentsError ? (
+              <div role="alert" className="space-y-2 text-sm">
+                <p>{commentsError}</p>
+                <Button
+                  variant="outline"
+                  disabled={busy.includes("comments")}
+                  onClick={() => void loadComments()}
+                >
+                  Retry comments
+                </Button>
+              </div>
+            ) : comments === null ? (
+              <p className="text-muted-foreground text-xs">
+                Loading comments...
+              </p>
+            ) : (
+              comments.map((item) => (
+                <div
+                  id={`comment-${item.id}`}
+                  key={item.id}
+                  className="flex scroll-mt-24 items-start gap-2.5"
+                >
+                  <ProfileIdentityLink
+                    uid={item.author.uid}
+                    displayName={item.author.displayName}
+                    photoURL={item.author.photoURL}
+                    avatarClassName="size-8 rounded-full text-[10px]"
+                    showName={false}
+                  />
+                  <div className="bg-muted min-w-0 flex-1 rounded-lg px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <ProfileIdentityLink
+                        uid={item.author.uid}
+                        displayName={item.author.displayName}
+                        photoURL={item.author.photoURL}
+                        showAvatar={false}
+                        className="text-xs"
+                      />
+                      <p className="text-muted-foreground text-[10px]">
+                        {formatDistanceToNow(new Date(item.createdAt), {
+                          addSuffix: true,
+                        })}
+                        {item.editedAt
+                          ? ` · edited ${formatDistanceToNow(new Date(item.editedAt), { addSuffix: true })}`
+                          : ""}
+                      </p>
+                    </div>
+                    {editingCommentId === item.id ? (
+                      <div className="mt-1 space-y-1">
+                        <MentionTextarea
+                          aria-label="Edit comment"
+                          mentions={commentEditMentions}
+                          onMentionsChange={setCommentEditMentions}
+                          excludeUid={viewer.uid}
+                          disabled={busy.includes("edit-comment")}
+                          name="comment-edit"
+                          autoComplete="off"
+                          autoCapitalize="sentences"
+                          spellCheck
+                          inputMode="text"
+                          value={commentDraft}
+                          onValueChange={setCommentDraft}
+                          rows={2}
+                          maxLength={1000}
+                          className="bg-background w-full resize-none rounded-lg px-2 py-1.5 text-xs outline-none"
+                        />
+                        <div className="flex justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingCommentId(null)}
+                            disabled={busy.includes("edit-comment")}
+                            className="text-muted-foreground min-h-11 rounded-lg px-3 text-xs"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void saveCommentEdit(item.id)}
+                            disabled={
+                              !commentDraft.trim() ||
+                              busy.includes("edit-comment")
+                            }
+                            className="text-primary min-h-11 rounded-lg px-3 text-xs font-bold disabled:opacity-50"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-0.5 text-xs leading-5 wrap-break-word">
+                        <MentionText
+                          content={item.content}
+                          mentions={item.mentions}
+                        />
+                      </p>
+                    )}
+                    {item.ownedByViewer && editingCommentId !== item.id && (
+                      <div className="mt-1 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCommentId(item.id);
+                            setCommentDraft(item.content);
+                            setCommentEditMentions(item.mentions);
+                          }}
+                          className="text-muted-foreground hover:bg-background min-h-11 rounded-lg px-3 text-xs"
+                        >
+                          Edit
+                        </button>
+                        <DeleteConfirmDialog
+                          itemName="comment"
+                          onConfirm={() => removeComment(item.id)}
+                        >
+                          <button
+                            type="button"
+                            className="text-destructive hover:bg-background min-h-11 rounded-lg px-3 text-xs"
+                          >
+                            Delete
+                          </button>
+                        </DeleteConfirmDialog>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+            <div className="flex items-center gap-2.5 pt-1">
+              <ProfileIdentityLink
+                uid={viewer.uid}
+                displayName={viewer.displayName}
+                photoURL={viewer.photoURL}
+                avatarClassName="size-8 rounded-full text-[10px]"
+                showName={false}
+              />
+              <div className="input-shell bg-muted flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-transparent px-3 py-2">
+                <MentionTextarea
+                  name="comment"
+                  autoComplete="off"
+                  autoCapitalize="sentences"
+                  spellCheck
+                  inputMode="text"
+                  enterKeyHint="send"
+                  disabled={commenting}
+                  value={comment}
+                  mentions={commentMentions}
+                  onMentionsChange={setCommentMentions}
+                  excludeUid={viewer.uid}
+                  maxLength={1_000}
+                  onValueChange={setComment}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key === "Enter" &&
+                      !event.shiftKey &&
+                      !event.nativeEvent.isComposing
+                    ) {
+                      event.preventDefault();
+                      void addComment();
+                    }
+                  }}
+                  placeholder="Write a comment..."
+                  rows={1}
+                  className="placeholder:text-muted-foreground min-h-6 resize-none border-0 bg-transparent text-base shadow-none outline-none md:text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => void addComment()}
+                  disabled={!comment.trim() || commenting}
+                  aria-label="Send comment"
+                  className="text-primary grid size-11 shrink-0 place-items-center rounded-lg disabled:opacity-40"
+                >
+                  <Send aria-hidden="true" className="size-4" />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </article>
+        )}
+      </article>
+    </>
   );
 }

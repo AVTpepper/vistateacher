@@ -1,7 +1,7 @@
 {
-  "capturedAt": "2026-11-25T17:29:04.905Z",
+  "capturedAt": "2026-11-26T23:22:59.017Z",
   "pageCount": 50,
-  "apiHandlerFiles": 67,
+  "apiHandlerFiles": 71,
   "pages": [
     "src/app/(auth)/forgot-password/page.tsx",
     "src/app/(auth)/sign-in/page.tsx",
@@ -61,6 +61,10 @@
     "src/app/api/ai-lessons/[lessonId]/export/[format]/route.ts",
     "src/app/api/ai-lessons/[lessonId]/regenerate/route.ts",
     "src/app/api/ai-lessons/[lessonId]/route.ts",
+    "src/app/api/ai-lessons/[lessonId]/versions/[version]/restore/route.ts",
+    "src/app/api/ai-lessons/[lessonId]/versions/[version]/route.ts",
+    "src/app/api/ai-lessons/batches/[requestId]/route.ts",
+    "src/app/api/ai-lessons/requests/[requestId]/route.ts",
     "src/app/api/ai-lessons/route.ts",
     "src/app/api/auth/client-token/route.ts",
     "src/app/api/auth/logout/route.ts",

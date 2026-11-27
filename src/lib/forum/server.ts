@@ -21,7 +21,11 @@ import {
   createSearchKeywords,
   normalizeSearchText,
 } from "@/lib/search/normalize";
-import { writePublicActivity } from "@/lib/feed/server";
+import { publicActivityRef, writePublicActivity } from "@/lib/feed/server";
+import {
+  ContentReportError,
+  reportPublicContent,
+} from "@/lib/community/reporting";
 import {
   mentionsFromData,
   resolveMentions,
@@ -521,9 +525,12 @@ export async function createForumThread(
   await db.runTransaction(async (transaction) => {
     const userRef = db.doc(`users/${authorId}`);
     const categoryRef = db.doc(`forumCategories/${input.categoryId}`);
-    const [user, category] = await Promise.all([
+    const [user, category, activity] = await Promise.all([
       transaction.get(userRef),
       transaction.get(categoryRef),
+      transaction.get(
+        publicActivityRef({ kind: "forum-thread", entityId: threadRef.id }),
+      ),
     ]);
     if (!user.exists || user.data()?.status !== "active")
       throw new ForumActionError("inactive");
@@ -564,15 +571,19 @@ export async function createForumThread(
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
-    writePublicActivity(transaction, {
-      authorId,
-      kind: "forum-thread",
-      entityId: threadRef.id,
-      label: `Started a forum discussion in ${String(category.data()?.name ?? "the forum")}`,
-      title: input.title,
-      href: `/forum/${threadRef.id}`,
-      tags: input.tags,
-    });
+    writePublicActivity(
+      transaction,
+      {
+        authorId,
+        kind: "forum-thread",
+        entityId: threadRef.id,
+        label: `Started a forum discussion in ${String(category.data()?.name ?? "the forum")}`,
+        title: input.title,
+        href: `/forum/${threadRef.id}`,
+        tags: input.tags,
+      },
+      activity,
+    );
     writeMentionNotifications(transaction, {
       recipients,
       mentions,
@@ -825,6 +836,21 @@ export async function reportForumContent(
   reporterId: string,
   input: ForumReportInput,
 ): Promise<void> {
+  if (!input.replyId) {
+    try {
+      await reportPublicContent(
+        reporterId,
+        "forumThread",
+        input.threadId,
+        input,
+      );
+      return;
+    } catch (error) {
+      if (error instanceof ContentReportError)
+        throw new ForumActionError(error.code);
+      throw error;
+    }
+  }
   const db = adminDb();
   const targetRef = input.replyId
     ? db.doc(`forumThreads/${input.threadId}/replies/${input.replyId}`)
@@ -834,11 +860,20 @@ export async function reportForumContent(
     : `forumThread_${input.threadId}`;
   const reportRef = db.doc(`reports/${targetKey}_${reporterId}`);
   await db.runTransaction(async (transaction) => {
-    const [target, report] = await Promise.all([
+    const [target, report, thread, reporter] = await Promise.all([
       transaction.get(targetRef),
       transaction.get(reportRef),
+      transaction.get(db.doc(`forumThreads/${input.threadId}`)),
+      transaction.get(db.doc(`users/${reporterId}`)),
     ]);
-    if (!target.exists || target.data()?.moderationStatus !== "approved")
+    if (reporter.data()?.status !== "active")
+      throw new ForumActionError("inactive");
+    if (
+      !target.exists ||
+      target.data()?.moderationStatus !== "approved" ||
+      thread.data()?.moderationStatus !== "approved" ||
+      target.data()?.authorId === reporterId
+    )
       throw new ForumActionError("not-found");
     if (report.exists) throw new ForumActionError("already-reported");
     transaction.create(reportRef, {
@@ -854,6 +889,14 @@ export async function reportForumContent(
       updatedAt: FieldValue.serverTimestamp(),
     });
     transaction.update(targetRef, { reportCount: FieldValue.increment(1) });
+    transaction.set(
+      db.doc("platformStats/current"),
+      {
+        pendingReports: FieldValue.increment(1),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
   });
 }
 

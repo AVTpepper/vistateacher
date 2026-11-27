@@ -5,6 +5,11 @@ import { getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 
+// These journeys include emulator fixtures, several reloads and an Axe scan.
+// Keep each interaction bounded while allowing the complete journey to finish.
+test.use({ actionTimeout: 15_000, navigationTimeout: 30_000 });
+test.setTimeout(90_000);
+
 function emulator() {
   if (
     !process.env.FIRESTORE_EMULATOR_HOST ||
@@ -33,8 +38,9 @@ async function account(plan: "free" | "plus" = "free", onboarded = true) {
     displayName: "Ada Teacher",
   });
   if (onboarded) {
-    const [profile, subscription] = await Promise.all([
+    const [profile, privateUser, subscription] = await Promise.all([
       db.doc("users/free-educator").get(),
+      db.doc("userPrivate/free-educator").get(),
       db
         .doc(
           `subscriptions/${plan === "plus" ? "plus-educator" : "free-educator"}`,
@@ -53,6 +59,7 @@ async function account(plan: "free" | "plus" = "free", onboarded = true) {
         postCount: 0,
         resourceCount: 0,
       }),
+      db.doc(`userPrivate/${uid}`).set({ ...privateUser.data(), email }),
       db.doc(`subscriptions/${uid}`).set(subscription.data()!),
     ]);
   }
@@ -396,7 +403,10 @@ test("Community allowances work immediately below and at their boundaries", asyn
   await signIn(page, user.email);
   const source = (await emulator().db.doc(`lessons/${lessonId}`).get()).data()!
     .source;
-  const created = await postJson(page, "/api/ai-lessons", { source });
+  const created = await postJson(page, "/api/ai-lessons", {
+    source,
+    requestId: randomUUID(),
+  });
   expect(created.status).toBe(201);
   await usage(user.uid, {
     aiLessons: 2,
@@ -414,7 +424,7 @@ test("Community allowances work immediately below and at their boundaries", asyn
   const refined = await postJson(
     page,
     `/api/ai-lessons/${lessonId}/regenerate`,
-    {},
+    { requestId: randomUUID(), expectedVersion: 2 },
   );
   expect(refined.status).toBe(429);
   expect(refined.body.code).toBe("limit-reached");
@@ -431,9 +441,15 @@ test("Community allowances work immediately below and at their boundaries", asyn
   );
   expect(exhaustedExport).toBe(200);
   await page.reload();
-  await expect(
-    page.getByRole("button", { name: "DOCX", exact: true }),
-  ).toBeEnabled();
+  await page.getByRole("button", { name: "Export", exact: true }).click();
+  const wordExport = page.getByRole("menuitem", {
+    name: "Download Word",
+    exact: true,
+  });
+  await expect(wordExport).toBeEnabled();
+  const downloaded = page.waitForEvent("download");
+  await wordExport.click();
+  expect((await downloaded).suggestedFilename()).toMatch(/\.docx$/);
   await expect(page.getByText(/Monthly allowances reset/)).toBeVisible();
 });
 
@@ -456,15 +472,23 @@ test("Plus shares its final generation between creation and refinement", async (
   await expect(page.getByLabel("Topic / unit")).toHaveValue(
     "Classroom ecosystems",
   );
-  await page.route(
-    "**/api/ai-lessons",
-    async (route) =>
-      route.fulfill({
-        status: 503,
-        contentType: "application/json",
-        body: JSON.stringify({ error: "Generation temporarily unavailable." }),
-      }),
-    { times: 1 },
+  let failNextGeneration = true;
+  let requestId = "";
+  await page.route("**/api/ai-lessons", async (route) => {
+    if (route.request().method() !== "POST" || !failNextGeneration)
+      return route.continue();
+    failNextGeneration = false;
+    requestId = route.request().postDataJSON().requestId;
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Generation temporarily unavailable." }),
+    });
+  });
+  const recoveryChecked = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      response.url().endsWith(`/api/ai-lessons/requests/${requestId}`),
   );
   await page
     .getByRole("button", { name: "Generate lesson", exact: true })
@@ -475,11 +499,16 @@ test("Plus shares its final generation between creation and refinement", async (
   await expect(page.getByLabel("Topic / unit")).toHaveValue(
     "Classroom ecosystems",
   );
+  const recovery = await recoveryChecked;
+  expect(recovery.status()).toBe(404);
+  expect(await recovery.finished()).toBeNull();
   await page
-    .getByRole("button", { name: "Generate lesson", exact: true })
+    .getByRole("button", { name: "Resume saved request", exact: true })
     .click();
   await expect(
-    page.getByText("Lesson generated and saved as a draft."),
+    page.getByRole("heading", {
+      name: /Classroom ecosystems: A balanced lesson/,
+    }),
   ).toBeVisible();
   await expect(page.getByText("0 of 50 remaining")).toBeVisible();
   await expect(
@@ -492,7 +521,7 @@ test("Plus shares its final generation between creation and refinement", async (
   const exhausted = await postJson(
     page,
     `/api/ai-lessons/${stored.docs[0].id}/regenerate`,
-    {},
+    { requestId: randomUUID(), expectedVersion: 1 },
   );
   expect(exhausted.status).toBe(429);
   expect(exhausted.body.code).toBe("limit-reached");
@@ -502,19 +531,32 @@ test("Community messaging continues past ten daily messages", async ({
   page,
 }) => {
   const user = await account();
+  const recipient = await account("plus");
   const { db } = emulator();
   const day = new Date().toISOString().slice(0, 10);
   await db
     .doc(`usage/${user.uid}_${day}`)
     .set({ uid: user.uid, period: day, messages: 9 });
   await signIn(page, user.email);
+  const declined = await postJson(page, "/api/messages", {
+    recipientId: recipient.uid,
+    content: "A connection-only recipient must not consume my allowance",
+  });
+  expect(declined.status).toBe(403);
+  expect(declined.body.code).toBe("connections-only");
+  expect(
+    (await db.doc(`usage/${user.uid}_${day}`).get()).data()?.messages,
+  ).toBe(9);
+  await db.doc(`userPrivate/${recipient.uid}`).update({
+    "privacySettings.allowMessagesFromNonConnections": true,
+  });
   const tenth = await postJson(page, "/api/messages", {
-    recipientId: "plus-educator",
+    recipientId: recipient.uid,
     content: "My tenth message today",
   });
   expect(tenth.status).toBe(201);
   const eleventh = await postJson(page, "/api/messages", {
-    recipientId: "plus-educator",
+    recipientId: recipient.uid,
     content: "My eleventh message today",
   });
   expect(eleventh.status).toBe(201);
@@ -582,19 +624,25 @@ test("pricing explains the shared allowance and free network consistently", asyn
     }),
   ).toBeVisible();
   await expect(
-    page.getByText("Unlimited standard PDF and Word lesson exports", {
+    page.getByText("Unlimited standard PDF and Word exports", {
       exact: true,
     }),
   ).toBeVisible();
   await expect(
-    page.getByText("3 AI actions per month for new lessons or refinements", {
-      exact: true,
-    }),
+    page.getByText(
+      "3 AI actions per month for lessons, worksheets or regeneration",
+      {
+        exact: true,
+      },
+    ),
   ).toBeVisible();
   await expect(
-    page.getByText("50 AI actions per month for new lessons or refinements", {
-      exact: true,
-    }),
+    page.getByText(
+      "50 AI actions per month for lessons, worksheets or regeneration",
+      {
+        exact: true,
+      },
+    ),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "How the allowances work" }),
@@ -606,9 +654,13 @@ test("message burst rejection keeps the composer usable without an upgrade", asy
   page,
 }) => {
   const user = await account();
+  const recipient = await account("plus");
+  await emulator().db.doc(`userPrivate/${recipient.uid}`).update({
+    "privacySettings.allowMessagesFromNonConnections": true,
+  });
   await signIn(page, user.email);
   const sent = await postJson(page, "/api/messages", {
-    recipientId: "plus-educator",
+    recipientId: recipient.uid,
     content: "Hello",
   });
   expect(sent.status).toBe(201);

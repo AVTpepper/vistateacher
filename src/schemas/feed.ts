@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { reportDetailsSchema } from "@/schemas/report";
+import { isPostMediaURL } from "@/lib/feed/media-paths";
 
 import {
   isHttpURL,
@@ -26,6 +28,11 @@ const httpURLSchema = z
   .max(2_048)
   .refine(isHttpURL, "Use an HTTP or HTTPS link.");
 
+export const postMediaURLSchema = z
+  .string()
+  .max(2_048)
+  .refine(isPostMediaURL, "Use a valid attachment reference.");
+
 export const postFileAttachmentSchema = z.object({
   name: z
     .string()
@@ -36,7 +43,7 @@ export const postFileAttachmentSchema = z.object({
       (name) => !/[\\/\u0000-\u001f]/u.test(name),
       "Use a valid file name.",
     ),
-  url: httpURLSchema,
+  url: postMediaURLSchema,
   contentType: z.enum(POST_FILE_MIME_TYPES),
   size: z.number().int().nonnegative().max(POST_FILE_MAX_SIZE),
 });
@@ -44,7 +51,7 @@ export const postFileAttachmentSchema = z.object({
 export const createPostSchema = z.object({
   type: postTypeSchema,
   content: z.string().trim().min(1, "Write something to share.").max(5_000),
-  imageURLs: z.array(httpURLSchema).max(4).default([]),
+  imageURLs: z.array(postMediaURLSchema).max(4).default([]),
   fileAttachments: z.array(postFileAttachmentSchema).max(4).default([]),
   linkURLs: z.array(httpURLSchema).max(3).default([]),
   tags: z.array(tagSchema).max(5).default([]),
@@ -85,8 +92,7 @@ export const updateCommentSchema = commentActionSchema.extend({
 });
 
 export const reportPostSchema = postActionSchema.extend({
-  reason: z.enum(["spam", "harassment", "misinformation", "unsafe", "other"]),
-  details: z.string().trim().max(500).default(""),
+  ...reportDetailsSchema.shape,
 });
 
 export type CreatePostInput = z.infer<typeof createPostSchema>;

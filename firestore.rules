@@ -66,11 +66,12 @@ service cloud.firestore {
     }
 
     match /posts/{postId} {
-      allow read: if resource.data.moderationStatus == "approved" || ownsExisting("authorId") || isAdmin();
+      // Community reads use the server's canonical parent policy.
+      allow read: if ownsExisting("authorId") || isAdmin();
       allow write: if false;
 
       match /comments/{commentId} {
-        allow read: if signedIn();
+        allow read: if ownsExisting("authorId") || isAdmin();
         allow write: if false;
       }
     }
@@ -86,13 +87,13 @@ service cloud.firestore {
     }
 
     match /resources/{resourceId} {
-      allow read: if resource.data.moderationStatus == "approved" || ownsExisting("authorId") || isAdmin();
+      allow read: if ownsExisting("authorId") || isAdmin();
       allow create: if false;
       allow update, delete: if false;
     }
 
     match /resourceReviews/{reviewId} {
-      allow read: if signedIn();
+      allow read: if ownsExisting("authorId") || isAdmin();
       allow write: if false;
     }
 
@@ -102,13 +103,11 @@ service cloud.firestore {
     }
 
     match /forumThreads/{threadId} {
-      allow read: if signedIn()
-        && (resource.data.moderationStatus == "approved" || ownsExisting("authorId") || isAdmin());
+      allow read: if ownsExisting("authorId") || isAdmin();
       allow write: if false;
 
       match /replies/{replyId} {
-        allow read: if signedIn()
-          && (resource.data.moderationStatus == "approved" || ownsExisting("authorId") || isAdmin());
+        allow read: if ownsExisting("authorId") || isAdmin();
         allow write: if false;
       }
     }
@@ -129,6 +128,10 @@ service cloud.firestore {
     }
 
     match /messageAttachments/{attachmentId} {
+      allow read, write: if false;
+    }
+
+    match /postAttachments/{attachmentId} {
       allow read, write: if false;
     }
 
@@ -188,6 +191,9 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow write: if false;
     }
+
+    match /aiBudgets/{budgetId} { allow read, write: if false; }
+    match /aiSpendAttempts/{attemptId} { allow read, write: if false; }
 
     match /{document=**} {
       allow read, write: if false;

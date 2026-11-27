@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { chromium, expect } from "@playwright/test";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3100";
@@ -30,6 +30,7 @@ const report = {
   targets: [],
   journeys: [],
   currentPages: [],
+  shellJourneys: [],
   historicalFixtures: [],
 };
 try {
@@ -101,6 +102,79 @@ try {
       }
     }
   }
+  // Public pages also render the platform shell for authenticated teachers.
+  // Follow footer links as well as direct URLs to exercise that layout boundary.
+  const publicPages = [
+    ["/about", "About"],
+    ["/privacy", "Privacy"],
+    ["/cookies", "Cookies"],
+    ["/terms", "Terms"],
+    ["/help", null],
+    ["/pricing", null],
+  ];
+  const shellEvidenceDirectory = process.env.AUDIT_NAV_SHELL_EVIDENCE_DIR;
+  if (shellEvidenceDirectory)
+    await mkdir(shellEvidenceDirectory, { recursive: true });
+  for (const signedIn of [true, false]) {
+    const shellContext = signedIn
+      ? context
+      : await browser.newContext({ baseURL });
+    const shellPage = signedIn ? page : await shellContext.newPage();
+    for (const width of [1440, 390]) {
+      await shellPage.setViewportSize({ width, height: 900 });
+      for (const [href, footerLabel] of publicPages) {
+        try {
+          if (signedIn && footerLabel) {
+            await shellPage.goto("/app");
+            await shellPage
+              .getByRole("contentinfo")
+              .getByRole("link", { name: footerLabel, exact: true })
+              .click();
+          } else {
+            const response = await shellPage.goto(href);
+            expect(response?.ok()).toBe(true);
+          }
+          await expect(shellPage).toHaveURL(new RegExp(`${href}$`));
+          await expect(shellPage.locator("h1").first()).toBeVisible();
+          const notifications = shellPage.getByRole("button", {
+            name: /^Notifications(?:,|$)/,
+          });
+          if (signedIn) await expect(notifications).toBeEnabled();
+          else await expect(notifications).toHaveCount(0);
+          expect(
+            await shellPage.evaluate(
+              () => document.documentElement.scrollWidth > innerWidth + 1,
+            ),
+          ).toBe(false);
+          let screenshot;
+          if (
+            shellEvidenceDirectory &&
+            href === (signedIn ? "/about" : "/pricing")
+          ) {
+            screenshot = `${shellEvidenceDirectory}/${signedIn ? "signed-in-about" : "guest-pricing"}-${width}.png`;
+            await shellPage.screenshot({ path: screenshot, fullPage: true });
+          }
+          report.shellJourneys.push({
+            signedIn,
+            width,
+            href,
+            action: signedIn && footerLabel ? "footer-link" : "direct-url",
+            pass: true,
+            ...(screenshot ? { screenshot } : {}),
+          });
+        } catch (error) {
+          report.shellJourneys.push({
+            signedIn,
+            width,
+            href,
+            pass: false,
+            error: error.message,
+          });
+        }
+      }
+    }
+    if (!signedIn) await shellContext.close();
+  }
   for (const href of routes) {
     try {
       const response = await context.request.get(href);
@@ -126,7 +200,8 @@ try {
   }
 } finally {
   await writeFile(
-    "docs/audit/evidence/navigation.json",
+    process.env.AUDIT_NAVIGATION_OUTPUT ??
+      "docs/audit/evidence/navigation.json",
     JSON.stringify(report, null, 2),
   );
   await browser.close();
@@ -138,6 +213,10 @@ console.log(
       failedTargets: report.targets.filter((target) => !target.pass),
       journeys: report.journeys.length,
       failedJourneys: report.journeys.filter((journey) => !journey.pass),
+      shellJourneys: report.shellJourneys.length,
+      failedShellJourneys: report.shellJourneys.filter(
+        (journey) => !journey.pass,
+      ),
       historicalFixtureTargets: report.historicalFixtures.length,
     },
     null,
@@ -146,6 +225,7 @@ console.log(
 );
 if (
   report.targets.some((target) => !target.pass) ||
-  report.journeys.some((journey) => !journey.pass)
+  report.journeys.some((journey) => !journey.pass) ||
+  report.shellJourneys.some((journey) => !journey.pass)
 )
   process.exitCode = 1;

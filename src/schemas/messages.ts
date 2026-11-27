@@ -1,14 +1,9 @@
 import { z } from "zod";
+import { reportDetailsSchema } from "@/schemas/report";
 
 const documentIdSchema = z.string().trim().min(1).max(128);
 
-export const messageReportReasonSchema = z.enum([
-  "spam",
-  "harassment",
-  "misinformation",
-  "unsafe",
-  "other",
-]);
+export const messageReportReasonSchema = reportDetailsSchema.shape.reason;
 
 export const messageAttachmentSchema = z.object({
   fileName: z.string().trim().min(1).max(160),
@@ -64,8 +59,7 @@ export const editMessageSchema = messageActionSchema.extend({
 });
 
 export const messageReportSchema = messageActionSchema.extend({
-  reason: messageReportReasonSchema,
-  details: z.string().trim().max(500).default(""),
+  ...reportDetailsSchema.shape,
 });
 
 export const blockUserSchema = z.object({

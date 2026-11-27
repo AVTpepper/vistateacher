@@ -35,7 +35,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRecoveredDraft } from "@/lib/creation-drafts/use-recovered-draft";
+import { accountFetch } from "@/lib/auth/account-fetch";
 import { LessonEditor } from "@/features/lessons/lesson-editor";
+import { useLessonGeneration } from "@/features/lessons/use-lesson-generation";
+import { LessonHistory } from "@/features/lessons/lesson-history";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { GoogleDocExport } from "@/features/teaching-exports/google-doc-export";
 import {
@@ -113,10 +116,6 @@ function formatMissingFields(fields: string[]): string {
   if (fields.length === 1) return fields[0];
   if (fields.length === 2) return `${fields[0]} and ${fields[1]}`;
   return `${fields.slice(0, -1).join(", ")}, and ${fields[fields.length - 1]}`;
-}
-
-interface CreateLessonsResponse {
-  lessons: LessonDetail[];
 }
 
 class LessonRequestError extends Error {
@@ -349,7 +348,9 @@ function LessonDisplay({
             <p className="mt-2 text-xs font-semibold text-white/80">
               {lesson.visibility === "draft"
                 ? "Private draft"
-                : "Published to the community"}
+                : lesson.publiclyAvailable === false
+                  ? "Hidden from the community"
+                  : "Published to the community"}
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
@@ -439,6 +440,7 @@ function LessonDisplay({
                   </DropdownMenu.Item>
                   {lesson.visibility === "draft" && (
                     <DropdownMenu.Item
+                      disabled={lesson.moderationStatus === "rejected"}
                       onSelect={onPublish}
                       className={lessonMenuItemClass}
                     >
@@ -579,7 +581,23 @@ export function LessonBuilderExperience({
   sampleMode?: boolean;
 }) {
   const [workspace, setWorkspace] = useState(initialWorkspace);
+  function fetchForViewer(path: string, init?: RequestInit) {
+    return accountFetch(viewerUid, path, init);
+  }
   const [lesson, setLesson] = useState(initialLesson);
+  const previousLessonId = useRef(initialLesson?.id ?? null);
+  useEffect(() => {
+    const selectedId = lesson?.id ?? null;
+    if (previousLessonId.current === selectedId) return;
+    previousLessonId.current = selectedId;
+    const location = new URL(window.location.href);
+    location.searchParams.set("lesson", selectedId ?? "new");
+    window.history.replaceState(
+      null,
+      "",
+      `${location.pathname}${location.search}${location.hash}`,
+    );
+  }, [lesson?.id]);
   const sourceRecovery = useRecoveredDraft(
     `lesson-source:${viewerUid}`,
     EMPTY_SOURCE,
@@ -587,8 +605,59 @@ export function LessonBuilderExperience({
   const source = lesson?.source ?? sourceRecovery.value;
   const setSource = sourceRecovery.setValue;
   const [lessonCount, setLessonCount] = useState(1);
-  const [working, setWorking] = useState(false);
+  const [actionWorking, setWorking] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const usageRefresh = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      usageRefresh.current?.abort();
+    },
+    [viewerUid],
+  );
+  async function fetchWorkspace(
+    cursor?: string,
+    signal = AbortSignal.timeout(15_000),
+  ) {
+    return resultJson<LessonWorkspace>(
+      await fetchForViewer(
+        `/api/ai-lessons${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+        {
+          cache: "no-store",
+          signal,
+        },
+      ),
+    );
+  }
+  async function refreshUsage() {
+    usageRefresh.current?.abort();
+    const controller = new AbortController();
+    usageRefresh.current = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 15_000);
+    try {
+      const next = await fetchWorkspace(undefined, controller.signal);
+      if (controller.signal.aborted || usageRefresh.current !== controller)
+        return;
+      setWorkspace((current) => ({
+        ...current,
+        plan: next.plan,
+        usage: next.usage,
+      }));
+    } finally {
+      window.clearTimeout(timeout);
+      if (usageRefresh.current === controller) usageRefresh.current = null;
+    }
+  }
+  const generation = useLessonGeneration(
+    viewerUid,
+    (lessons) => {
+      lessons.forEach((item) => storeLesson(item));
+    },
+    refreshUsage,
+  );
+  const working = actionWorking || generation.busy;
+  const generationBlocked = Boolean(generation.intent);
   const lessonResultRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!lesson?.id || editing) return;
@@ -650,7 +719,7 @@ export function LessonBuilderExperience({
     setWorking(true);
     try {
       const selected = await resultJson<LessonDetail>(
-        await fetch(`/api/ai-lessons/${lessonId}`),
+        await fetchForViewer(`/api/ai-lessons/${lessonId}`),
       );
       setLesson(selected);
       setEditing(false);
@@ -664,16 +733,10 @@ export function LessonBuilderExperience({
     }
   }
 
-  function storeLesson(
-    next: LessonDetail,
-    consumesQuota: "creation" | "refinement" | null = null,
-  ) {
+  function storeLesson(next: LessonDetail) {
     setLesson(next);
     setWorkspace((current) => ({
       ...current,
-      usage: consumesQuota
-        ? consumeUsage(current.usage, consumesQuota)
-        : current.usage,
       lessons: [
         asSummary(next),
         ...current.lessons.filter((item) => item.id !== next.id),
@@ -681,7 +744,51 @@ export function LessonBuilderExperience({
     }));
   }
 
+  async function loadMoreLessons() {
+    if (!workspace.nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    setListError(null);
+    try {
+      const next = await fetchWorkspace(workspace.nextCursor);
+      setWorkspace((current) => ({
+        ...current,
+        usage: next.usage,
+        nextCursor: next.nextCursor,
+        lessons: [
+          ...current.lessons,
+          ...next.lessons.filter(
+            (item) =>
+              !current.lessons.some((existing) => existing.id === item.id),
+          ),
+        ],
+      }));
+    } catch (error) {
+      if (
+        error instanceof LessonRequestError &&
+        error.code === "invalid-cursor"
+      ) {
+        try {
+          setWorkspace(await fetchWorkspace());
+          setListError(
+            "Your saved lesson list changed and has been refreshed. Load more to continue.",
+          );
+          return;
+        } catch {
+          // Keep the current list and retry control if refreshing also failed.
+        }
+      }
+      setListError(
+        error instanceof Error
+          ? error.message
+          : "More lessons could not be loaded. Your current lesson is still available.",
+      );
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
   async function generate() {
+    if (generationBlocked || working) return;
     setAttemptedGenerate(true);
     const missing = missingGenerateFields(source);
     if (missing.length > 0) {
@@ -690,64 +797,80 @@ export function LessonBuilderExperience({
       );
       return;
     }
-    setWorking(true);
-    try {
-      const generated = await resultJson<LessonDetail | CreateLessonsResponse>(
-        await fetch("/api/ai-lessons", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ source, count: lessonCount }),
-        }),
-      );
-      const lessons = "lessons" in generated ? generated.lessons : [generated];
-      lessons.forEach((item) => storeLesson(item, "creation"));
+    if (
+      await generation.start({
+        kind: "create",
+        payload: {
+          source: structuredClone(source),
+          count: lessonCount,
+          requestId: crypto.randomUUID(),
+        },
+      })
+    ) {
       sourceRecovery.setValue(EMPTY_SOURCE);
       sourceRecovery.clear();
       setAttemptedGenerate(false);
-      toast.success(
-        lessons.length > 1
-          ? `${lessons.length} lessons generated and saved as drafts.`
-          : "Lesson generated and saved as a draft.",
-      );
-    } catch (error) {
-      if (!showUpgradeFor(error)) {
-        toast.error(
-          error instanceof Error ? error.message : "Generation failed.",
-        );
-      }
-    } finally {
-      setWorking(false);
+      toast.success("Your lessons are saved as private drafts.");
     }
   }
 
   async function action(
     name: "regenerate" | "duplicate",
-    options?: { feedback?: string; referenceContent?: LessonPlanInput },
+    options?: {
+      feedback?: string;
+      referenceContent?: LessonPlanInput;
+      expectedVersion?: number;
+    },
   ) {
     if (!lesson) return false;
+    if (name === "regenerate") {
+      if (generationBlocked || working) return false;
+      const reference = options?.referenceContent;
+      const nextSource = reference
+        ? {
+            ...source,
+            subject: reference.subject,
+            gradeLevel: reference.gradeLevel,
+            durationMinutes: reference.durationMinutes,
+          }
+        : source;
+      const complete = await generation.start({
+        kind: "regenerate",
+        lessonId: lesson.id,
+        payload: {
+          requestId: crypto.randomUUID(),
+          expectedVersion: options?.expectedVersion ?? lesson.currentVersion,
+          source: structuredClone(nextSource),
+          feedback: options?.feedback,
+          referenceContent: reference,
+        },
+      });
+      if (complete) {
+        setEditing(false);
+        toast.success("New lesson version generated.");
+      } else {
+        const latest = await resultJson<LessonDetail>(
+          await fetchForViewer(`/api/ai-lessons/${lesson.id}`, {
+            cache: "no-store",
+            signal: AbortSignal.timeout(15_000),
+          }),
+        ).catch(() => null);
+        if (latest && latest.currentVersion !== lesson.currentVersion)
+          storeLesson(latest);
+      }
+      return complete;
+    }
     setWorking(true);
     try {
       const next = await resultJson<LessonDetail>(
-        await fetch(`/api/ai-lessons/${lesson.id}/${name}`, {
+        await fetchForViewer(`/api/ai-lessons/${lesson.id}/${name}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body:
-            name === "regenerate"
-              ? JSON.stringify({
-                  source,
-                  feedback: options?.feedback,
-                  referenceContent: options?.referenceContent,
-                })
-              : undefined,
         }),
       );
-      storeLesson(next, name === "regenerate" ? "refinement" : null);
+      storeLesson(next);
       setEditing(false);
-      toast.success(
-        name === "regenerate"
-          ? "New lesson version generated."
-          : "Lesson duplicated.",
-      );
+      toast.success("Lesson duplicated.");
       return true;
     } catch (error) {
       if (!showUpgradeFor(error)) {
@@ -762,15 +885,16 @@ export function LessonBuilderExperience({
   async function saveWithVisibility(
     content: LessonPlanInput,
     visibility: "draft" | "published",
+    expectedVersion: number,
   ) {
     if (!lesson) return false;
     setWorking(true);
     try {
       const updated = await resultJson<LessonDetail>(
-        await fetch(`/api/ai-lessons/${lesson.id}`, {
+        await fetchForViewer(`/api/ai-lessons/${lesson.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, visibility }),
+          body: JSON.stringify({ content, visibility, expectedVersion }),
         }),
       );
       storeLesson(updated);
@@ -779,6 +903,14 @@ export function LessonBuilderExperience({
       return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Save failed.");
+      if (error instanceof LessonRequestError && error.code === "conflict") {
+        const latest = await resultJson<LessonDetail>(
+          await fetchForViewer(`/api/ai-lessons/${lesson.id}`, {
+            cache: "no-store",
+          }),
+        ).catch(() => null);
+        if (latest) storeLesson(latest);
+      }
       return false;
     } finally {
       setWorking(false);
@@ -792,7 +924,7 @@ export function LessonBuilderExperience({
       );
     setWorking(true);
     try {
-      const response = await fetch(`/api/ai-lessons/${lessonId}`, {
+      const response = await fetchForViewer(`/api/ai-lessons/${lessonId}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Delete failed.");
@@ -804,6 +936,16 @@ export function LessonBuilderExperience({
         setLesson(null);
         setEditing(false);
       }
+      if (workspace.nextCursor === lessonId) {
+        try {
+          setWorkspace(await fetchWorkspace());
+          setListError(null);
+        } catch {
+          setListError(
+            "The lesson was deleted. Load more to refresh your saved lesson list.",
+          );
+        }
+      }
       toast.success("Lesson deleted.");
     } finally {
       setWorking(false);
@@ -814,7 +956,7 @@ export function LessonBuilderExperience({
     if (!lesson) return;
     setWorking(true);
     try {
-      const response = await fetch(
+      const response = await fetchForViewer(
         `/api/ai-lessons/${lesson.id}/export/${format}`,
       );
       if (!response.ok) {
@@ -866,7 +1008,7 @@ export function LessonBuilderExperience({
       previewWindow.opener = null;
       previewWindow.document.title = "Preparing your PDF";
       previewWindow.document.body.textContent = "Preparing your PDF…";
-      const response = await fetch(
+      const response = await fetchForViewer(
         `/api/ai-lessons/${lesson.id}/export/pdf?preview=1`,
       );
       if (!response.ok) {
@@ -906,17 +1048,22 @@ export function LessonBuilderExperience({
     setWorking(true);
     try {
       const updated = await resultJson<LessonDetail>(
-        await fetch(`/api/ai-lessons/${lesson.id}`, {
+        await fetchForViewer(`/api/ai-lessons/${lesson.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             content: lesson.content,
             visibility: "published",
+            expectedVersion: lesson.currentVersion,
           }),
         }),
       );
       storeLesson(updated);
-      toast.success("Lesson published to Resources and community search.");
+      toast.success(
+        updated.publiclyAvailable === false
+          ? "Lesson saved. It remains hidden from the community."
+          : "Lesson published to Resources and community search.",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Publish failed.");
     } finally {
@@ -972,18 +1119,122 @@ export function LessonBuilderExperience({
         </div>
       </header>
 
-      {sampleMode && (
+      {(sampleMode || lesson?.sampleMode) && (
         <p
           className="bg-muted mb-5 rounded-xl border p-4 text-sm"
           role="status"
         >
-          Sample mode: generated lessons use demonstration content, without an
-          AI request. Output language and teaching instructions are applied when
-          the OpenAI provider is connected.
+          {sampleMode
+            ? "Sample mode: generated lessons use demonstration content, without an AI request. Output language and teaching instructions are applied when the OpenAI provider is connected."
+            : "This saved lesson was created in sample mode. Review it or regenerate it with AI before using it in your classroom."}
         </p>
       )}
 
       <LimitUpgradeNotice reasons={exhaustedReasons} className="mb-5" />
+
+      {(generation.intent ||
+        generation.progress?.batch ||
+        generation.message) && (
+        <section
+          aria-label="Lesson request progress"
+          className="surface-card mb-5 space-y-3 p-4"
+        >
+          <p role="status" className="font-semibold">
+            {generation.busy
+              ? "Saving your lesson request…"
+              : generation.progress?.status === "pending"
+                ? "Generation is still in progress. You can reload this tab to recover it."
+                : generation.progress?.status === "complete"
+                  ? "All requested lessons are saved."
+                  : "Your saved request is available to resume."}
+          </p>
+          {generation.intent && !generation.requiresReload && (
+            <p className="text-muted-foreground text-sm">
+              Keep this tab open to resume unfinished requests. Reloading is
+              safe; closing the tab ends request recovery. Completed lessons
+              stay saved.
+            </p>
+          )}
+          {generation.message && (
+            <p role="alert" className="text-destructive text-sm">
+              {generation.message}
+            </p>
+          )}
+          {generation.recoveryStatus === "error" && (
+            <p role="alert" className="text-destructive text-sm">
+              This browser could not save request recovery. Keep this page open
+              until generation finishes.
+            </p>
+          )}
+          {generation.progress?.batch && (
+            <ol className="space-y-1 text-sm">
+              {generation.progress.batch.items.map((item) => (
+                <li key={item.index}>
+                  Lesson {item.index + 1}:{" "}
+                  {item.status === "complete" && item.lessonId ? (
+                    <Button
+                      variant="ghost"
+                      className="h-auto min-h-11 p-0"
+                      disabled={working}
+                      onClick={() => void selectLesson(item.lessonId!)}
+                    >
+                      Saved — open lesson
+                    </Button>
+                  ) : (
+                    item.status.replace("-", " ")
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+          {generation.requiresReload && (
+            <Button onClick={() => window.location.reload()}>
+              Reload account
+            </Button>
+          )}
+          {generation.intent && !generation.requiresReload && (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                disabled={working}
+                onClick={() => void generation.check()}
+              >
+                Check saved request
+              </Button>
+              {generation.progress?.status !== "pending" &&
+                generation.progress?.status !== "failed" && (
+                  <Button
+                    disabled={working}
+                    onClick={() => void generation.resume()}
+                  >
+                    Resume saved request
+                  </Button>
+                )}
+              {generation.progress?.status === "failed" && (
+                <>
+                  {!["deleted", "conflict", "inactive"].includes(
+                    generation.progress.error ?? "",
+                  ) && (
+                    <Button
+                      disabled={working || workspace.usage.remaining < 1}
+                      onClick={() => void generation.retry()}
+                    >
+                      Retry failed lessons
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    disabled={working}
+                    onClick={generation.dismiss}
+                  >
+                    Close request
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="mb-5 space-y-3">
         <Button
@@ -1059,9 +1310,9 @@ export function LessonBuilderExperience({
                         aria-label={`Continue refining ${item.title}`}
                         disabled={working}
                         onClick={() => void selectLesson(item.id)}
-                        className="h-11 min-w-0 flex-1 truncate px-3 text-left text-xs font-bold"
+                        className="h-11 min-w-0 flex-1 justify-start px-3 text-left text-xs font-bold"
                       >
-                        {item.title}
+                        <span className="truncate">{item.title}</span>
                       </Button>
                       <DeleteConfirmDialog
                         itemName="lesson"
@@ -1084,6 +1335,20 @@ export function LessonBuilderExperience({
             </div>
           );
         })}
+        {listError && (
+          <p role="alert" className="text-destructive text-sm">
+            {listError}
+          </p>
+        )}
+        {workspace.nextCursor && (
+          <Button
+            variant="outline"
+            disabled={loadingMore}
+            onClick={() => void loadMoreLessons()}
+          >
+            {loadingMore ? "Loading…" : "Load more lessons"}
+          </Button>
+        )}
       </div>
 
       <div
@@ -1391,6 +1656,7 @@ export function LessonBuilderExperience({
                   onClick={() => void generate()}
                   disabled={
                     working ||
+                    generationBlocked ||
                     workspace.usage.remaining < lessonCount ||
                     source.topic.trim().length < 3
                   }
@@ -1415,6 +1681,13 @@ export function LessonBuilderExperience({
           aria-label={lesson ? "Lesson result" : undefined}
           className="min-w-0 scroll-mt-5"
         >
+          {lesson?.moderationStatus === "rejected" && (
+            <p role="status" className="bg-muted mb-4 rounded-xl p-4 text-sm">
+              This lesson's shared copy is hidden by moderators. You can keep
+              editing and exporting your private lesson. Editing will not remove
+              this restriction. <Link href="/support" className="font-semibold underline">Contact support</Link>
+            </p>
+          )}
           {working && !lesson && (
             <div className="surface-card grid min-h-110 place-items-center p-10 text-center">
               <div>
@@ -1444,17 +1717,22 @@ export function LessonBuilderExperience({
           )}
           {lesson && editing && (
             <LessonEditor
-              key={`${lesson.id}:${lesson.currentVersion}`}
+              key={lesson.id}
               recoveryKey={`lesson-edit:${viewerUid}:${lesson.id}`}
               currentVersion={lesson.currentVersion}
               content={lesson.content}
               visibility={lesson.visibility}
               saving={working}
-              canRefine={workspace.usage.remaining > 0}
+              canRefine={workspace.usage.remaining > 0 && !generationBlocked}
+              canPublish={lesson.moderationStatus !== "rejected"}
               onCancel={() => setEditing(false)}
               onSave={saveWithVisibility}
-              onRefine={(feedback, referenceContent) =>
-                action("regenerate", { feedback, referenceContent })
+              onRefine={(feedback, referenceContent, expectedVersion) =>
+                action("regenerate", {
+                  feedback,
+                  referenceContent,
+                  expectedVersion,
+                })
               }
             />
           )}
@@ -1472,8 +1750,18 @@ export function LessonBuilderExperience({
               onPreviewPdf={() => void previewPdf()}
               onExport={(format) => void exportLesson(format)}
               onPublish={() => void publishLesson()}
-              canRegenerate={workspace.usage.remaining > 0}
+              canRegenerate={
+                workspace.usage.remaining > 0 && !generationBlocked
+              }
               canExport={workspace.usage.exports.remaining !== 0}
+            />
+          )}
+          {lesson && !editing && (
+            <LessonHistory
+              viewerUid={viewerUid}
+              lesson={lesson}
+              disabled={working || generationBlocked}
+              onRestore={storeLesson}
             />
           )}
         </section>

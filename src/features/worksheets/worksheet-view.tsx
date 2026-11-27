@@ -25,6 +25,7 @@ import {
 import { WorksheetEditor } from "./worksheet-editor";
 import { worksheetResult } from "./request";
 import { GoogleDocExport } from "@/features/teaching-exports/google-doc-export";
+import { accountFetch } from "@/lib/auth/account-fetch";
 
 const menuItem =
   "data-[highlighted]:bg-muted flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm font-semibold outline-none data-[disabled]:opacity-50";
@@ -58,7 +59,7 @@ export function WorksheetView({
       fetching = true;
       try {
         const updated = await worksheetResult<WorksheetDetail>(
-          await fetch(`/api/worksheets/${worksheet.id}`),
+          await accountFetch(uid, `/api/worksheets/${worksheet.id}`),
         );
         if (!cancelled) {
           setWorksheet(updated);
@@ -80,7 +81,7 @@ export function WorksheetView({
       cancelled = true;
       clearInterval(timer);
     };
-  }, [worksheet.id, worksheet.generationStatus]);
+  }, [uid, worksheet.id, worksheet.generationStatus]);
   const tabsId = `worksheet-${worksheet.id}`;
   const sections =
     mode === "student"
@@ -93,7 +94,7 @@ export function WorksheetView({
     setStatus("Saving…");
     try {
       const updated = await worksheetResult<WorksheetDetail>(
-        await fetch(`/api/worksheets/${worksheet.id}`, {
+        await accountFetch(uid, `/api/worksheets/${worksheet.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content, expectedVersion }),
@@ -131,7 +132,8 @@ export function WorksheetView({
     setStatus("Generating…");
     regenerationRequest.current ??= crypto.randomUUID();
     try {
-      const response = await fetch(
+      const response = await accountFetch(
+        uid,
         `/api/worksheets/${worksheet.id}/regenerate`,
         {
           method: "POST",
@@ -164,7 +166,8 @@ export function WorksheetView({
     setPending(true);
     setError("");
     try {
-      const response = await fetch(
+      const response = await accountFetch(
+        uid,
         `/api/worksheets/${worksheet.id}/export/${format}?mode=${exportMode}`,
       );
       if (!response.ok) {
@@ -209,7 +212,8 @@ export function WorksheetView({
     setError("");
     try {
       const updated = await worksheetResult<WorksheetDetail>(
-        await fetch(
+        await accountFetch(
+          uid,
           `/api/worksheets/${worksheet.id}/versions/${version}/restore`,
           {
             method: "POST",
@@ -354,9 +358,13 @@ export function WorksheetView({
                     consequence="Google Docs and separately published resource copies remain. Manage them in Google Drive or Resources."
                     onConfirm={async () => {
                       await worksheetResult(
-                        await fetch(`/api/worksheets/${worksheet.id}`, {
-                          method: "DELETE",
-                        }),
+                        await accountFetch(
+                          uid,
+                          `/api/worksheets/${worksheet.id}`,
+                          {
+                            method: "DELETE",
+                          },
+                        ),
                       );
                       router.push("/worksheets");
                       router.refresh();

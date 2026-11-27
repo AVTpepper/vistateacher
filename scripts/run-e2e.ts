@@ -6,6 +6,7 @@ const pnpmCli: string = npmExecPath;
 const env = {
   ...process.env,
   AI_PROVIDER: "MOCK",
+  METADATA_SERVER_DETECTION: "none",
   GCLOUD_PROJECT: "demo-vista-teacher",
   NEXT_PUBLIC_APP_URL: "http://127.0.0.1:3100",
   NEXT_PUBLIC_FIREBASE_API_KEY: "demo-api-key",
@@ -14,6 +15,8 @@ const env = {
   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "000000000000",
   NEXT_PUBLIC_FIREBASE_PROJECT_ID: "demo-vista-teacher",
   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "demo-vista-teacher.appspot.com",
+  NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID:
+    "audit-google-drive.apps.googleusercontent.com",
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_e2e",
   NEXT_PUBLIC_USE_FIREBASE_EMULATORS: "true",
   NEXT_DIST_DIR: ".next-e2e",

@@ -18,6 +18,8 @@ export default defineConfig({
       AI_PROVIDER: "MOCK",
     },
     globals: true,
+    // These integration files clear the same isolated demo project between cases.
+    fileParallelism: false,
     include: ["tests/rules/**/*.test.ts"],
     testTimeout: 20_000,
   },

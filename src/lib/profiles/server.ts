@@ -7,6 +7,12 @@ import { adminDb } from "@/lib/firebase/admin";
 import { resolveConnectionRelationship } from "@/lib/network/server";
 import { isRecentlyOnline } from "@/lib/presence/policy";
 import { canViewContactDetails } from "@/lib/profiles/privacy";
+import {
+  PrivateRecoveryError,
+  recoverPrivateUser,
+  savePrivateSettings,
+  type PrivateOwnerState,
+} from "@/lib/profiles/private-user";
 import { canReceiveMessage } from "@/lib/messages/privacy";
 import {
   createSearchKeywords,
@@ -16,7 +22,6 @@ import {
   privateUserDocumentSchema,
   profileDocumentSchema,
   type PrivateSettings,
-  type PrivateUserDocument,
   type ProfileDocument,
   type ProfileUpdate,
 } from "@/schemas/profile";
@@ -150,9 +155,10 @@ export async function getProfileView(
   const profile = profileDocumentSchema.parse(profileSnapshot.data());
   if (profile.status === "deleted") return null;
 
-  const privateUser = privateSnapshot.exists
-    ? privateUserDocumentSchema.parse(privateSnapshot.data())
+  const parsedPrivate = privateSnapshot.exists
+    ? privateUserDocumentSchema.safeParse(privateSnapshot.data())
     : null;
+  const privateUser = parsedPrivate?.success ? parsedPrivate.data : null;
   const isOwner = viewerUid === uid;
   const lastActiveAt =
     profileSnapshot.data()?.lastActiveAt instanceof Timestamp
@@ -193,6 +199,7 @@ export async function getProfileView(
       canViewContact && privateUser ? privateUser.contactDetails : null,
     isOwner,
     canMessage:
+      privateUser !== null &&
       Boolean(viewerUid && !isOwner && profile.status === "active") &&
       canReceiveMessage({
         connected: connectionStatus === "accepted",
@@ -212,32 +219,11 @@ export async function getProfileView(
 export async function getPrivateUser(
   uid: string,
   email: string,
-): Promise<PrivateUserDocument> {
-  const db = adminDb();
-  const reference = db.doc(`userPrivate/${uid}`);
-  let snapshot = await reference.get();
-  if (!snapshot.exists) {
-    const now = FieldValue.serverTimestamp();
-    await reference
-      .create({
-        email,
-        contactDetails: {},
-        privacySettings: { shareContactInfo: false },
-        notificationSettings: { email: true, inApp: true },
-        accountDeletion: { requestedAt: null },
-        createdAt: now,
-        updatedAt: now,
-      })
-      .catch((error: unknown) => {
-        const code =
-          typeof error === "object" && error && "code" in error
-            ? Number(error.code)
-            : 0;
-        if (code !== 6) throw error;
-      });
-    snapshot = await reference.get();
-  }
-  return privateUserDocumentSchema.parse(snapshot.data());
+): Promise<PrivateOwnerState> {
+  const state = await recoverPrivateUser(uid, email);
+  if (state.state === "onboarding-required")
+    throw new PrivateRecoveryError("profile-required");
+  return state;
 }
 
 export async function updateProfile(
@@ -266,14 +252,10 @@ export async function updateProfile(
 
 export async function updatePrivateSettings(
   uid: string,
+  trustedEmail: string,
   input: PrivateSettings,
 ): Promise<void> {
-  await adminDb()
-    .doc(`userPrivate/${uid}`)
-    .update({
-      ...input,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+  await savePrivateSettings(uid, trustedEmail, input);
 }
 
 export { enqueueAccountDeletion as requestAccountDeletion } from "@/lib/accounts/deletion";

@@ -203,7 +203,39 @@ export function AdminReportsView({ reports }: { reports: AdminReportRow[] }) {
             </p>
           </td>
           <td className="px-4 py-3 text-sm">
-            {report.targetType} · {report.targetId}
+            {report.target ? (
+              <div className="max-w-sm space-y-2">
+                <p className="font-bold">{report.target.title}</p>
+                <p className="text-muted-foreground text-xs break-all">
+                  {report.target.type} · {report.target.id}
+                </p>
+                <Status value={report.target.moderationStatus} />
+                <details>
+                  <summary className="text-primary cursor-pointer text-xs font-bold">
+                    Review reported content
+                  </summary>
+                  <p className="mt-2 max-h-64 overflow-y-auto text-xs leading-5 whitespace-pre-wrap">
+                    {report.target.preview ||
+                      "No text preview is available for this item."}
+                  </p>
+                </details>
+                {report.target.announcement && (
+                  <p className="text-muted-foreground text-xs">
+                    Reported through an announcement:{" "}
+                    {report.target.announcement.moderationStatus}.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="max-w-sm">
+                <p className="text-muted-foreground">
+                  Content removed or unavailable for review.
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs break-all">
+                  {report.targetType} · {report.targetId}
+                </p>
+              </div>
+            )}
           </td>
           <td className="max-w-xs px-4 py-3 text-sm">
             <p className="line-clamp-2">
@@ -214,28 +246,81 @@ export function AdminReportsView({ reports }: { reports: AdminReportRow[] }) {
             <Status value={report.status} />
           </td>
           <td className="px-4 py-3">
-            {report.status === "open" && (
-              <div className="flex justify-end gap-2">
-                <AdminActionButton
-                  label="Resolve"
-                  title="Resolve this report?"
-                  action={{
-                    action: "report.resolve",
-                    targetId: report.id,
-                    resolution: "resolved",
-                  }}
-                />
-                <AdminActionButton
-                  label="Dismiss"
-                  title="Dismiss this report?"
-                  action={{
-                    action: "report.resolve",
-                    targetId: report.id,
-                    resolution: "dismissed",
-                  }}
-                />
-              </div>
-            )}
+            <div className="space-y-3">
+              {report.target && (
+                <div className="flex flex-wrap justify-end gap-2">
+                  {report.target.moderationStatus !== "rejected" && (
+                    <AdminActionButton
+                      label="Hide content"
+                      title="Hide this content from the community?"
+                      variant="destructive"
+                      action={{
+                        action: "content.moderate",
+                        targetType: report.target.type,
+                        targetId: report.target.id,
+                        parentId: report.target.parentId,
+                        status: "rejected",
+                      }}
+                    />
+                  )}
+                  {report.target.moderationStatus !== "approved" && (
+                    <AdminActionButton
+                      label="Approve content"
+                      title="Approve this content?"
+                      action={{
+                        action: "content.moderate",
+                        targetType: report.target.type,
+                        targetId: report.target.id,
+                        parentId: report.target.parentId,
+                        status: "approved",
+                      }}
+                    />
+                  )}
+                  {report.target.announcement?.moderationStatus ===
+                    "rejected" &&
+                    report.target.moderationStatus === "approved" && (
+                      <AdminActionButton
+                        label="Approve announcement"
+                        title="Approve this announcement and its approved source?"
+                        action={{
+                          action: "content.moderate",
+                          targetType: "post",
+                          targetId: report.target.announcement.id,
+                          parentId: null,
+                          status: "approved",
+                        }}
+                      />
+                    )}
+                </div>
+              )}
+              {report.status === "open" && (
+                <div className="flex justify-end gap-2">
+                  <AdminActionButton
+                    label="Resolve"
+                    title="Resolve this report?"
+                    action={{
+                      action: "report.resolve",
+                      targetId: report.id,
+                      resolution: "resolved",
+                    }}
+                  />
+                  <AdminActionButton
+                    label="Dismiss"
+                    title="Dismiss this report?"
+                    action={{
+                      action: "report.resolve",
+                      targetId: report.id,
+                      resolution: "dismissed",
+                    }}
+                  />
+                </div>
+              )}
+              {report.target && report.status === "open" && (
+                <p className="text-muted-foreground max-w-56 text-right text-[11px]">
+                  Content decisions and report resolution are separate actions.
+                </p>
+              )}
+            </div>
           </td>
         </tr>
       ))}

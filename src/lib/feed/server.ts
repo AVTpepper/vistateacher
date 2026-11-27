@@ -16,7 +16,17 @@ import {
 } from "firebase-admin/firestore";
 
 import { decodeFeedCursor, encodeFeedCursor } from "@/lib/feed/cursor";
+import { publicActivityIds } from "@/lib/community/visibility";
+import {
+  ContentReportError,
+  reportPublicContent,
+} from "@/lib/community/reporting";
 import { adminDb } from "@/lib/firebase/admin";
+import {
+  preparePostMedia,
+  presentPostMedia,
+  readPostMediaClaims,
+} from "@/lib/feed/attachment-server";
 import {
   mentionsFromData,
   resolveMentions,
@@ -36,7 +46,6 @@ import type {
 import { postFileAttachmentSchema } from "@/schemas/feed";
 
 const PAGE_SIZE = 10;
-const FOLLOWING_SCAN_LIMIT = 100;
 
 export interface FeedAuthor {
   uid: string;
@@ -85,38 +94,50 @@ export interface PublicActivityInput {
   tags: string[];
 }
 
+export function publicActivityRef(
+  input: Pick<PublicActivityInput, "kind" | "entityId">,
+) {
+  return adminDb().doc(`posts/activity_${input.kind}_${input.entityId}`);
+}
+
 export function writePublicActivity(
   transaction: FirebaseFirestore.Transaction,
   input: PublicActivityInput,
+  existing: FirebaseFirestore.DocumentSnapshot,
 ): FirebaseFirestore.DocumentReference {
-  const activityRef = adminDb().doc(
-    `posts/activity_${input.kind}_${input.entityId}`,
-  );
-  transaction.set(activityRef, {
+  const activityRef = publicActivityRef(input);
+  if (existing.ref.path !== activityRef.path)
+    throw new Error("Activity snapshot mismatch.");
+  const metadata = {
     authorId: input.authorId,
     type: "activity",
-    content: "",
-    imageURLs: [],
-    fileAttachments: [],
-    linkURLs: [],
     tags: [...new Set(input.tags.map((tag) => tag.toLocaleLowerCase("en-US")))],
-    mentions: [],
-    resourceId: null,
     activityKind: input.kind,
     activityEntityId: input.entityId,
     activityLabel: input.label,
     activityTitle: input.title,
     activityHref: input.href,
-    visibility: "public",
-    moderationStatus: "approved",
-    likeCount: 0,
-    commentCount: 0,
-    shareCount: 0,
-    bookmarkCount: 0,
-    reportCount: 0,
-    createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
-  });
+  };
+  if (existing.exists) transaction.update(activityRef, metadata);
+  else
+    transaction.create(activityRef, {
+      ...metadata,
+      content: "",
+      imageURLs: [],
+      fileAttachments: [],
+      linkURLs: [],
+      mentions: [],
+      resourceId: null,
+      visibility: "public",
+      moderationStatus: "approved",
+      likeCount: 0,
+      commentCount: 0,
+      shareCount: 0,
+      bookmarkCount: 0,
+      reportCount: 0,
+      createdAt: FieldValue.serverTimestamp(),
+    });
   return activityRef;
 }
 
@@ -200,6 +221,23 @@ function timestamp(value: unknown): Timestamp {
   return value instanceof Timestamp ? value : Timestamp.fromMillis(0);
 }
 
+async function publicPostIds(
+  posts: DocumentSnapshot[],
+  transaction?: FirebaseFirestore.Transaction,
+): Promise<Set<string>> {
+  const activities = await publicActivityIds(posts, transaction);
+  return new Set(
+    posts
+      .filter(
+        (post) =>
+          post.exists &&
+          post.data()?.moderationStatus === "approved" &&
+          (post.data()?.type !== "activity" || activities.has(post.id)),
+      )
+      .map((post) => post.id),
+  );
+}
+
 async function hydratePosts(
   viewerUid: string,
   documents: DocumentSnapshot[],
@@ -235,6 +273,12 @@ async function hydratePosts(
     const data = document.data()!;
     const authorId = String(data.authorId);
     const createdAt = postTimestamp(document);
+    const media = presentPostMedia(
+      document.id,
+      authorId,
+      stringArray(data.imageURLs),
+      fileAttachmentArray(data.fileAttachments),
+    );
     return {
       id: document.id,
       author: authors.get(authorId) ?? authorFromData(authorId, undefined),
@@ -245,8 +289,8 @@ async function hydratePosts(
           ? data.type
           : "post",
       content: String(data.content ?? ""),
-      imageURLs: stringArray(data.imageURLs),
-      fileAttachments: fileAttachmentArray(data.fileAttachments),
+      imageURLs: media.imageURLs,
+      fileAttachments: media.fileAttachments,
       linkURLs: stringArray(data.linkURLs),
       tags: stringArray(data.tags),
       mentions: mentionsFromData(data.mentions),
@@ -283,18 +327,36 @@ async function hydratePosts(
   });
 }
 
-export async function getPost(
+/** Shared parent policy for page hydration and transactional byte delivery. */
+export async function readVisiblePost(
   viewerUid: string,
   postId: string,
-): Promise<FeedPost | null> {
-  const snapshot = await adminDb().doc(`posts/${postId}`).get();
+  transaction?: FirebaseFirestore.Transaction,
+): Promise<DocumentSnapshot | null> {
+  const ref = adminDb().doc(`posts/${postId}`);
+  const snapshot = transaction ? await transaction.get(ref) : await ref.get();
   if (!snapshot.exists) return null;
+  if (
+    snapshot.data()?.type === "activity" &&
+    !(await publicPostIds([snapshot], transaction)).has(snapshot.id)
+  )
+    return null;
   if (
     snapshot.data()?.moderationStatus !== "approved" &&
     snapshot.data()?.authorId !== viewerUid
   )
     return null;
-  return (await hydratePosts(viewerUid, [snapshot]))[0] ?? null;
+  return snapshot;
+}
+
+export async function getPost(
+  viewerUid: string,
+  postId: string,
+): Promise<FeedPost | null> {
+  const snapshot = await readVisiblePost(viewerUid, postId);
+  return snapshot
+    ? ((await hydratePosts(viewerUid, [snapshot]))[0] ?? null)
+    : null;
 }
 
 function applyCursor(query: Query, encodedCursor: string | undefined): Query {
@@ -307,6 +369,67 @@ function applyCursor(query: Query, encodedCursor: string | undefined): Query {
   );
 }
 
+/** Consume raw rows, including hidden sources, without skipping unconsumed rows. */
+async function scanFeedRows(
+  base: Query,
+  viewerUid: string,
+  encodedCursor: string | undefined,
+  resolve: (
+    rows: QueryDocumentSnapshot[],
+  ) => Promise<Map<string, DocumentSnapshot>>,
+): Promise<FeedPage> {
+  const batchSize = 40;
+  const scanBudget = 200;
+  let scanned = 0;
+  let query = applyCursor(base, encodedCursor);
+  let lastConsumed: QueryDocumentSnapshot | undefined;
+  let exhausted = false;
+  const selected: DocumentSnapshot[] = [];
+  const selectedIds = new Set<string>();
+  while (selected.length < PAGE_SIZE && scanned < scanBudget) {
+    const requested = Math.min(batchSize, scanBudget - scanned);
+    const batch = await query.limit(requested).get();
+    scanned += batch.size;
+    if (!batch.size) {
+      exhausted = true;
+      break;
+    }
+    const mapped = await resolve(batch.docs);
+    const visible = await publicPostIds([...mapped.values()]);
+    let consumed = 0;
+    for (const row of batch.docs) {
+      lastConsumed = row;
+      consumed++;
+      const post = mapped.get(row.id);
+      if (post && visible.has(post.id) && !selectedIds.has(post.id)) {
+        selected.push(post);
+        selectedIds.add(post.id);
+      }
+      if (selected.length === PAGE_SIZE) break;
+    }
+    if (selected.length === PAGE_SIZE) {
+      exhausted = consumed === batch.size && batch.size < requested;
+      break;
+    }
+    if (batch.size < requested) {
+      exhausted = true;
+      break;
+    }
+    const last = batch.docs.at(-1)!;
+    query = base.startAfter(postTimestamp(last), last.id);
+  }
+  return {
+    posts: await hydratePosts(viewerUid, selected),
+    nextCursor:
+      !exhausted && lastConsumed
+        ? encodeFeedCursor({
+            createdAtMillis: postTimestamp(lastConsumed).toMillis(),
+            documentId: lastConsumed.id,
+          })
+        : null,
+  };
+}
+
 export async function getFeedPage(
   viewerUid: string,
   view: FeedView,
@@ -314,81 +437,45 @@ export async function getFeedPage(
 ): Promise<FeedPage> {
   const db = adminDb();
   if (view === "saved") {
-    let bookmarks: Query = db
+    const base = db
       .collection("postBookmarks")
       .where("uid", "==", viewerUid)
       .orderBy("createdAt", "desc")
       .orderBy(FieldPath.documentId(), "desc");
-    bookmarks = applyCursor(bookmarks, encodedCursor).limit(PAGE_SIZE + 1);
-    const snapshot = await bookmarks.get();
-    const visible = snapshot.docs.slice(0, PAGE_SIZE);
-    const postSnapshots = visible.length
-      ? await db.getAll(
-          ...visible.map((bookmark) =>
-            db.doc(`posts/${bookmark.data().postId}`),
-          ),
-        )
-      : [];
-    const posts = await hydratePosts(
-      viewerUid,
-      postSnapshots.filter(
-        (post): post is QueryDocumentSnapshot =>
-          post.exists && post.data()?.moderationStatus === "approved",
-      ),
-    );
-    const last = visible.at(-1);
-    return {
-      posts,
-      nextCursor:
-        snapshot.size > PAGE_SIZE && last
-          ? encodeFeedCursor({
-              createdAtMillis: postTimestamp(last).toMillis(),
-              documentId: last.id,
-            })
-          : null,
-    };
+    return scanFeedRows(base, viewerUid, encodedCursor, async (rows) => {
+      const usable = rows.filter(
+        (row) =>
+          typeof row.data().postId === "string" &&
+          /^[\w-]{1,128}$/.test(row.data().postId),
+      );
+      const posts = usable.length
+        ? await db.getAll(
+            ...usable.map((row) => db.doc(`posts/${row.data().postId}`)),
+          )
+        : [];
+      return new Map(usable.map((row, index) => [row.id, posts[index]]));
+    });
   }
-
-  let postsQuery: Query = db
+  const following =
+    view === "following" ? await getAcceptedConnectionUids(viewerUid) : null;
+  const base = db
     .collection("posts")
     .where("moderationStatus", "==", "approved")
     .orderBy("createdAt", "desc")
     .orderBy(FieldPath.documentId(), "desc");
-  postsQuery = applyCursor(postsQuery, encodedCursor);
-
-  let followingIds: Set<string> | null = null;
-  if (view === "following") {
-    followingIds = await getAcceptedConnectionUids(viewerUid);
-  }
-
-  const snapshot = await postsQuery
-    .limit(view === "following" ? FOLLOWING_SCAN_LIMIT : PAGE_SIZE + 1)
-    .get();
-  const matching = followingIds
-    ? snapshot.docs.filter((document) =>
-        followingIds.has(String(document.data().authorId)),
-      )
-    : snapshot.docs;
-  const visible = matching.slice(0, PAGE_SIZE);
-  const hasMore =
-    matching.length > PAGE_SIZE ||
-    (view === "following" && snapshot.size === FOLLOWING_SCAN_LIMIT);
-  const last =
-    matching.length > PAGE_SIZE
-      ? visible.at(-1)
-      : view === "following"
-        ? snapshot.docs.at(-1)
-        : visible.at(-1);
-  return {
-    posts: await hydratePosts(viewerUid, visible),
-    nextCursor:
-      hasMore && last
-        ? encodeFeedCursor({
-            createdAtMillis: postTimestamp(last).toMillis(),
-            documentId: last.id,
-          })
-        : null,
-  };
+  return scanFeedRows(
+    base,
+    viewerUid,
+    encodedCursor,
+    async (rows) =>
+      new Map(
+        rows
+          .filter(
+            (post) => !following || following.has(String(post.data().authorId)),
+          )
+          .map((post) => [post.id, post]),
+      ),
+  );
 }
 
 export async function getProfilePosts(
@@ -423,6 +510,7 @@ export async function createPost(
   const db = adminDb();
   const postRef = db.collection("posts").doc();
   const resourceDraftRef = db.doc(`resources/post_${postRef.id}`);
+  const media = await preparePostMedia(authorId, input);
   await db.runTransaction(async (transaction) => {
     const authorRef = db.doc(`users/${authorId}`);
     const author = await transaction.get(authorRef);
@@ -438,12 +526,19 @@ export async function createPost(
       authorId,
       [...mentions.map((mention) => mention.uid)],
     );
+    const claimMedia = await readPostMediaClaims(
+      transaction,
+      authorId,
+      postRef.id,
+      media,
+    );
+    claimMedia();
     transaction.create(postRef, {
       authorId,
       type: input.type,
       content: input.content,
-      imageURLs: input.imageURLs,
-      fileAttachments: input.fileAttachments,
+      imageURLs: media.imageURLs,
+      fileAttachments: media.fileAttachments,
       linkURLs: input.linkURLs,
       tags,
       mentions,
@@ -512,6 +607,7 @@ export async function updatePost(
 ): Promise<void> {
   const db = adminDb();
   const postRef = db.doc(`posts/${input.postId}`);
+  const media = await preparePostMedia(uid, input, input.postId);
   await db.runTransaction(async (transaction) => {
     const [post, user] = await Promise.all([
       transaction.get(postRef),
@@ -532,12 +628,19 @@ export async function updatePost(
     const recipients = await prepareCommunityNotifications(transaction, uid, [
       ...mentions.map((mention) => mention.uid),
     ]);
+    const claimMedia = await readPostMediaClaims(
+      transaction,
+      uid,
+      input.postId,
+      media,
+    );
+    claimMedia();
     transaction.update(postRef, {
       mentions,
       type: input.type,
       content: input.content,
-      imageURLs: input.imageURLs,
-      fileAttachments: input.fileAttachments,
+      imageURLs: media.imageURLs,
+      fileAttachments: media.fileAttachments,
       linkURLs: input.linkURLs,
       tags: [...new Set(input.tags.map((tag) => tag.toLowerCase()))],
       resourceId: input.type === "resource" ? input.resourceId : null,
@@ -566,7 +669,7 @@ async function assertVisiblePost(
 ) {
   const post = await transaction.get(postRef);
   if (!post.exists) throw new FeedActionError("not-found");
-  if (post.data()?.moderationStatus !== "approved")
+  if (!(await publicPostIds([post], transaction)).has(post.id))
     throw new FeedActionError("not-visible");
   return post;
 }
@@ -758,6 +861,11 @@ export async function getPostComments(
   const db = adminDb();
   const post = await db.doc(`posts/${postId}`).get();
   if (!post.exists) throw new FeedActionError("not-found");
+  if (post.data()?.type === "activity") {
+    if (!(await publicPostIds([post])).has(post.id))
+      throw new FeedActionError("not-visible");
+    return [];
+  }
   if (
     post.data()?.moderationStatus !== "approved" &&
     post.data()?.authorId !== viewerUid
@@ -886,28 +994,13 @@ export async function reportPost(
   reporterId: string,
   input: ReportPostInput,
 ): Promise<void> {
-  const db = adminDb();
-  await db.runTransaction(async (transaction) => {
-    const postRef = db.doc(`posts/${input.postId}`);
-    const reportRef = db.doc(`reports/post_${input.postId}_${reporterId}`);
-    const [post, report] = await Promise.all([
-      assertVisiblePost(transaction, postRef),
-      transaction.get(reportRef),
-    ]);
-    if (report.exists) throw new FeedActionError("already-reported");
-    transaction.create(reportRef, {
-      reporterId,
-      targetType: "post",
-      targetId: input.postId,
-      targetOwnerId: String(post.data()?.authorId ?? ""),
-      reason: input.reason,
-      details: input.details,
-      status: "open",
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    transaction.update(postRef, { reportCount: FieldValue.increment(1) });
-  });
+  try {
+    await reportPublicContent(reporterId, "post", input.postId, input);
+  } catch (error) {
+    if (error instanceof ContentReportError)
+      throw new FeedActionError(error.code);
+    throw error;
+  }
 }
 
 export async function deletePost(uid: string, postId: string): Promise<void> {

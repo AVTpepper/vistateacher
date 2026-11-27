@@ -31,7 +31,7 @@ export async function POST(
     return NextResponse.json({ error: "Invalid report." }, { status: 400 });
   try {
     await reportMessage(account.uid, parsed.data);
-    return NextResponse.json({ ok: true }, { status: 201 });
+    return NextResponse.json({ ok: true, reported: true }, { status: 201 });
   } catch (error) {
     const response = messageErrorResponse(error);
     if (response) return response;

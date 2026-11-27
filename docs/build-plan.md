@@ -64,7 +64,7 @@ This checklist tracks code and tests that exist in the repository. A task is mar
 
 ## Phase 8 - AI Lesson Builder
 
-- [x] Implement server-only OpenAI structured generation and one repair attempt.
+- [x] Implement server-only OpenAI structured generation through the shared monetary ledger, with one physical paid call and no automatic paid repair.
 - [x] Enforce status, rate, entitlement, and monthly quota checks.
 - [x] Persist lessons and version history transactionally.
 - [x] Implement editing, regeneration, duplication, PDF, and DOCX exports.

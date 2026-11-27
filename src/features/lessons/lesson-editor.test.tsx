@@ -46,6 +46,7 @@ describe("shared lesson editing", () => {
           objectives: ["First objective", "Second objective"],
         }),
         "draft",
+        1,
       ),
     );
   });
@@ -82,5 +83,54 @@ describe("shared lesson editing", () => {
     expect(screen.getByRole("button", { name: "Close editor" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Discard edit" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Save version" })).toBeDisabled();
+  });
+
+  it("retains the draft's original version until the teacher reviews the newer save", async () => {
+    localStorage.setItem(
+      "vista:draft:v1:editor:alice:lesson-one",
+      JSON.stringify({
+        content: { ...content, title: "Recovered edit" },
+        visibility: "draft",
+        feedback: "",
+        baseVersion: 1,
+      }),
+    );
+    const save = vi.fn().mockResolvedValue(false);
+    render(<LessonEditor {...props} currentVersion={2} onSave={save} />);
+    await screen.findByText(/Version 2 is now saved/);
+    expect(screen.getByLabelText("Title")).toHaveValue("Recovered edit");
+    fireEvent.click(screen.getByRole("button", { name: "Save version" }));
+    await waitFor(() =>
+      expect(save).toHaveBeenLastCalledWith(
+        expect.objectContaining({ title: "Recovered edit" }),
+        "draft",
+        1,
+      ),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Apply my changes to version 2" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save version" }));
+    await waitFor(() =>
+      expect(save).toHaveBeenLastCalledWith(
+        expect.objectContaining({ title: "Recovered edit" }),
+        "draft",
+        2,
+      ),
+    );
+  });
+
+  it("requires activity timings to match the lesson duration", () => {
+    render(<LessonEditor {...props} />);
+    fireEvent.change(screen.getByLabelText("Duration (minutes)"), {
+      target: { value: "60" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save version" }));
+    expect(
+      screen.getByText(
+        "Match the activity timings to the total lesson duration.",
+      ),
+    ).toBeVisible();
+    expect(props.onSave).not.toHaveBeenCalled();
   });
 });

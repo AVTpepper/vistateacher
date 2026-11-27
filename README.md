@@ -52,7 +52,9 @@ The browser never writes subscription state. Local webhook tests will use Stripe
 
 ## OpenAI Setup
 
-Set `OPENAI_API_KEY` only in the server environment. `OPENAI_LESSON_MODEL` defaults to `gpt-4.1-mini`. Automated tests use a deterministic provider selected by `AI_PROVIDER=MOCK` and never call OpenAI. Production structured output is validated with Zod before persistence.
+Paid lesson and worksheet generation uses a shared cumulative $22 application budget, including a $1 evaluation subset, with a $0.45 reservation and one physical call per generation attempt. SDK retries and automatic paid output repair are disabled. Provider usage settles before content validation; teacher allowance refunds do not refund provider dollars.
+
+Keep `OPENAI_API_KEY` server-only and configure the audited `OPENAI_PROJECT_ID`, matching `OPENAI_BUDGET_EPOCH`, and private budget record before paid activation. The checked-in App Hosting file omits the project/epoch values. An unset model currently defaults to the allowlisted `gpt-4.1-mini`; unknown/retired models and missing financial configuration fail closed. Follow the [activation and manual reconciliation runbook](docs/release.md#openai-pilot-activation-and-reconciliation), including its model retirement and remaining deployment gates. Automated tests use deterministic `MOCK` output or fake transport with emulator transactions; no live evaluation has been performed.
 
 ## Commands
 
@@ -128,7 +130,7 @@ This command overwrites console rules with the reviewed repository rules. Do not
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase Web App sender ID                                                     |
 | `NEXT_PUBLIC_FIREBASE_APP_ID`              | Firebase Web App app ID                                                        |
 
-`apphosting.yaml` already fixes `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false`, `AI_PROVIDER=OPENAI`, and the lesson model for production.
+`apphosting.yaml` sets `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false`, `AI_PROVIDER=OPENAI`, and the lesson model, but does not provide `OPENAI_PROJECT_ID` or `OPENAI_BUDGET_EPOCH`. Without verified runtime overrides and an approved budget record, paid generation remains unavailable. Complete the [OpenAI activation gate](docs/release.md#openai-pilot-activation-and-reconciliation) before enabling paid traffic; use clearly labelled `MOCK` only for an unaudited private preview.
 
 ### 4. Create Secrets
 

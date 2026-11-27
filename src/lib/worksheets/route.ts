@@ -1,4 +1,5 @@
 import "server-only";
+import { aiSpendErrorResponse } from "@/lib/ai/spend-response";
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { hasTrustedOrigin } from "@/lib/auth/request";
@@ -39,11 +40,23 @@ export async function worksheetRoute(
       { error: "Authentication required." },
       { status: 401 },
     );
+  const expectedUid = request.headers.get("X-Vista-Expected-Uid");
+  if (expectedUid !== null && expectedUid !== account.uid)
+    return NextResponse.json(
+      {
+        error:
+          "Your signed-in account changed. Reload this page before continuing. Your saved work remains with its original account.",
+        code: "account-changed",
+      },
+      { status: 409, headers: { "Cache-Control": "private, no-store" } },
+    );
   let response: Response;
   try {
     response = await action(account.uid);
   } catch (error) {
-    if (error instanceof WorksheetActionError) {
+    const financial = aiSpendErrorResponse(error);
+    if (financial) response = financial;
+    else if (error instanceof WorksheetActionError) {
       const [message, status] = ERRORS[error.code];
       response = NextResponse.json(
         {

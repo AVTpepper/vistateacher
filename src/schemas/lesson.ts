@@ -41,24 +41,43 @@ export const lessonVisibilitySchema = z.enum(["draft", "published"]);
 export const lessonUpdateSchema = z.object({
   content: lessonPlanSchema,
   visibility: lessonVisibilitySchema.optional(),
+  expectedVersion: z.number().int().min(1),
 });
 
 export const lessonActionSchema = z.object({
-  lessonId: z.string().trim().min(1).max(128),
+  lessonId: z
+    .string()
+    .trim()
+    .regex(/^[\w-]{1,128}$/),
 });
 
-export const lessonCreateRequestSchema = z.union([
-  lessonSourceSchema.transform((source) => ({ source, count: 1 })),
-  z.object({
-    source: lessonSourceSchema,
-    count: z.number().int().min(1).max(5).default(1),
-  }),
-]);
+export const lessonRequestIdSchema = z.string().uuid();
+
+export const lessonCreateRequestSchema = z.object({
+  source: lessonSourceSchema,
+  count: z.number().int().min(1).max(5).default(1),
+  requestId: lessonRequestIdSchema,
+  retryId: lessonRequestIdSchema.optional(),
+});
 
 export const lessonRegenerateSchema = z.object({
+  requestId: lessonRequestIdSchema,
+  retryId: lessonRequestIdSchema.optional(),
+  expectedVersion: z.number().int().min(1),
   source: lessonSourceSchema.optional(),
   feedback: z.string().trim().min(3).max(2_000).optional(),
   referenceContent: lessonPlanSchema.optional(),
 });
 
 export const lessonExportFormatSchema = z.enum(["pdf", "docx"]);
+
+export const lessonRestoreSchema = z.object({
+  expectedVersion: z.number().int().min(1),
+});
+
+export const lessonVersionNumberSchema = z.coerce.number().int().min(1);
+
+export const lessonCursorSchema = z
+  .string()
+  .regex(/^[\w-]{1,128}$/)
+  .optional();

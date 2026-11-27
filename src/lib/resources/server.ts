@@ -1,4 +1,6 @@
 import "server-only";
+import { removeStorageDownloadTokens } from "@/lib/storage/private-files";
+import { ownedResourceObjectPath } from "@/lib/feed/media-paths";
 
 import { createHash, randomUUID } from "node:crypto";
 
@@ -10,7 +12,13 @@ import {
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { adminDb, adminStorage } from "@/lib/firebase/admin";
-import { writePublicActivity } from "@/lib/feed/server";
+import { publicActivityRef, writePublicActivity } from "@/lib/feed/server";
+import {
+  isPublicResource,
+  moderationStatus,
+  publicResourceIds,
+  type ModerationStatus,
+} from "@/lib/community/visibility";
 import {
   canDownloadResource,
   canReserveResource,
@@ -68,6 +76,9 @@ export interface ResourceSummary {
   ratingCount: number;
   createdAt: string;
   sourceLessonId: string | null;
+  status: string;
+  moderationStatus: ModerationStatus | null;
+  publiclyAvailable: boolean;
 }
 
 export interface ResourceDetail extends ResourceSummary {
@@ -223,6 +234,7 @@ function summary(
   id: string,
   data: FirebaseFirestore.DocumentData,
   author: FirebaseFirestore.DocumentData | undefined,
+  publiclyAvailable = isPublicResource(data),
 ): ResourceSummary {
   return {
     id,
@@ -244,6 +256,9 @@ function summary(
     createdAt: timestamp(data.createdAt),
     sourceLessonId:
       typeof data.sourceLessonId === "string" ? data.sourceLessonId : null,
+    status: String(data.status ?? "draft"),
+    moderationStatus: moderationStatus(data),
+    publiclyAvailable,
   };
 }
 
@@ -297,7 +312,12 @@ export async function reserveResourceUpload(
       { merge: true },
     );
     const resourceData = uploadingResourceData(uid, input, uploadPath, period);
-    if (input.draftResourceId) transaction.update(resourceRef, resourceData);
+    if (input.draftResourceId)
+      transaction.update(resourceRef, {
+        ...resourceData,
+        // Invalid legacy decisions remain unavailable through an upload retry.
+        moderationStatus: moderationStatus(draft.data()) ?? FieldValue.delete(),
+      });
     else
       transaction.create(resourceRef, {
         ...resourceData,
@@ -537,6 +557,11 @@ export async function finalizeResourceUpload(
   if (data.authorId !== uid) throw new ResourceActionError("not-owner");
   const generated = typeof data.generatedPublicationId === "string";
   if (
+    typeof data.filePath !== "string" ||
+    !ownedResourceObjectPath(data.filePath, uid, resourceId)
+  )
+    throw new ResourceActionError("invalid-upload");
+  if (
     (generated && !hooks) ||
     (data.status !== "uploading" && !(generated && data.status === "active"))
   )
@@ -580,10 +605,21 @@ export async function finalizeResourceUpload(
       throw new ResourceActionError("invalid-upload");
   }
 
+  // Upload rules permit creation only. Owners cannot remint bearer tokens while
+  // this server operation removes them before making the resource public.
+  try {
+    await removeStorageDownloadTokens(
+      adminStorage().bucket().file(data.filePath),
+    );
+  } catch {
+    throw new ResourceActionError("invalid-upload");
+  }
+
   await db.runTransaction(async (transaction) => {
-    const [current, user] = await transaction.getAll(
+    const [current, user, activity] = await transaction.getAll(
       resourceRef,
       db.doc(`users/${uid}`),
+      publicActivityRef({ kind: "resource-published", entityId: resourceId }),
     );
     if (!current.exists || current.data()?.authorId !== uid)
       throw new ResourceActionError("not-owner");
@@ -603,21 +639,34 @@ export async function finalizeResourceUpload(
       hooks?.onCommit?.(transaction, resourceId);
       return;
     }
+    // Initial upload pending becomes public immediately; an admin rejection wins.
+    const currentModeration = moderationStatus(current.data());
+    const moderation =
+      currentModeration === "rejected"
+        ? "rejected"
+        : currentModeration
+          ? "approved"
+          : "pending";
     transaction.update(resourceRef, {
       status: "active",
-      moderationStatus: "approved",
+      moderationStatus: moderation,
       completionStatus: "complete",
       updatedAt: FieldValue.serverTimestamp(),
     });
-    writePublicActivity(transaction, {
-      authorId: uid,
-      kind: "resource-published",
-      entityId: resourceId,
-      label: "Published a resource",
-      title: String(current.data()?.title ?? "Classroom resource"),
-      href: `/resources/${resourceId}`,
-      tags: stringArray(current.data()?.tags),
-    });
+    if (moderation === "approved")
+      writePublicActivity(
+        transaction,
+        {
+          authorId: uid,
+          kind: "resource-published",
+          entityId: resourceId,
+          label: "Published a resource",
+          title: String(current.data()?.title ?? "Classroom resource"),
+          href: `/resources/${resourceId}`,
+          tags: stringArray(current.data()?.tags),
+        },
+        activity,
+      );
     transaction.update(db.doc(`users/${uid}`), {
       resourceCount: FieldValue.increment(1),
     });
@@ -679,7 +728,7 @@ export async function cancelResourceUpload(
     if (typeof data.sourcePostId === "string")
       transaction.update(resourceRef, {
         status: "draft",
-        moderationStatus: "pending",
+        moderationStatus: moderationStatus(data) ?? FieldValue.delete(),
         completionStatus: "incomplete",
         filePath: FieldValue.delete(),
         fileName: FieldValue.delete(),
@@ -795,16 +844,16 @@ export async function listResources(
         ]
       : []),
   ]);
-  const documents = Array.from(
+  const candidates = Array.from(
     new Map(
       snapshots.flatMap((snapshot) =>
         snapshot.docs.map((document) => [document.id, document] as const),
       ),
     ).values(),
-  ).filter(
-    (document) =>
-      document.data().status === "active" &&
-      document.data().moderationStatus === "approved",
+  );
+  const visibleIds = await publicResourceIds(candidates);
+  const documents = candidates.filter((document) =>
+    visibleIds.has(document.id),
   );
   const authorIds = [
     ...new Set(documents.map((doc) => String(doc.data().authorId))),
@@ -864,13 +913,17 @@ export async function listOwnedResources(
       .get(),
     db.doc(`users/${uid}`).get(),
   ]);
+  const visibleIds = await publicResourceIds(snapshot.docs);
   return snapshot.docs
-    .filter(
-      (document) =>
-        document.data().status === "active" &&
-        document.data().moderationStatus === "approved",
+    .filter((document) => document.data().status === "active")
+    .map((document) =>
+      summary(
+        document.id,
+        document.data(),
+        owner.data(),
+        visibleIds.has(document.id),
+      ),
     )
-    .map((document) => summary(document.id, document.data(), owner.data()))
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
@@ -920,11 +973,10 @@ export async function getResourceDetail(
   if (!resourceSnapshot.exists) return null;
   const data = resourceSnapshot.data()!;
   const ownsResource = data.authorId === viewerUid;
-  if (
-    (data.status !== "active" || data.moderationStatus !== "approved") &&
-    !ownsResource
-  )
-    return null;
+  const publiclyAvailable = (await publicResourceIds([resourceSnapshot])).has(
+    resourceSnapshot.id,
+  );
+  if (!ownsResource && !publiclyAvailable) return null;
   const authorIds = [
     String(data.authorId),
     ...reviewSnapshots.docs.map((review) => String(review.data().authorId)),
@@ -944,12 +996,13 @@ export async function getResourceDetail(
         resourceSnapshot.id,
         data,
         authorMap.get(String(data.authorId)),
+        publiclyAvailable,
       ),
       fileName: typeof data.fileName === "string" ? data.fileName : "",
       fileType: typeof data.fileType === "string" ? data.fileType : "",
       fileSize: number(data.fileSize),
       ownedByViewer: ownsResource,
-      canDownload: access.allowed,
+      canDownload: access.allowed && data.status === "active",
       downloadBlockReason: access.allowed ? null : access.reason,
     },
     reviews: reviewSnapshots.docs.map((review) => {
@@ -991,7 +1044,10 @@ export async function reviewResource(
       transaction.get(reviewRef),
       transaction.get(db.doc(`users/${uid}`)),
     ]);
-    if (!resource.exists || resource.data()?.status !== "active")
+    if (
+      !resource.exists ||
+      !(await publicResourceIds([resource], transaction)).has(resource.id)
+    )
       throw new ResourceActionError("not-found");
     if (resource.data()?.authorId === uid)
       throw new ResourceActionError("own-review");
@@ -1068,6 +1124,17 @@ export async function updateResource(
       throw new ResourceActionError("not-owner");
     if (user.data()?.status !== "active")
       throw new ResourceActionError("inactive");
+    const activityInput =
+      typeof resource.data()?.sourceLessonId === "string"
+        ? {
+            kind: "lesson-published" as const,
+            entityId: String(resource.data()?.sourceLessonId),
+          }
+        : { kind: "resource-published" as const, entityId: input.resourceId };
+    const activity = await transaction.get(publicActivityRef(activityInput));
+    const publiclyAvailable = (
+      await publicResourceIds([resource], transaction)
+    ).has(resource.id);
     transaction.update(resourceRef, {
       title: input.title,
       titleLower: input.title.toLocaleLowerCase("en-US"),
@@ -1083,6 +1150,25 @@ export async function updateResource(
       editedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
+    if (publiclyAvailable)
+      writePublicActivity(
+        transaction,
+        {
+          ...activityInput,
+          authorId: uid,
+          label:
+            activityInput.kind === "lesson-published"
+              ? "Published a lesson plan"
+              : "Published a resource",
+          title: input.title,
+          href:
+            activityInput.kind === "lesson-published"
+              ? `/lessons/${activityInput.entityId}`
+              : `/resources/${input.resourceId}`,
+          tags: input.tags,
+        },
+        activity,
+      );
   });
 }
 
@@ -1099,7 +1185,12 @@ export async function downloadResource(
     resourceRef.get(),
     db.doc(`users/${uid}`).get(),
   ]);
-  if (!resource.exists || resource.data()?.status !== "active")
+  if (
+    !resource.exists ||
+    resource.data()?.status !== "active" ||
+    (resource.data()?.authorId !== uid &&
+      !(await publicResourceIds([resource])).has(resource.id))
+  )
     throw new ResourceActionError("not-found");
   const data = resource.data()!;
   if (typeof data.sourceLessonId === "string")
@@ -1120,9 +1211,23 @@ export async function downloadResource(
   await db.runTransaction(async (transaction) => {
     const [currentResource, currentUser, currentUsage] =
       await transaction.getAll(resourceRef, db.doc(`users/${uid}`), usageRef);
-    if (!currentResource.exists || currentResource.data()?.status !== "active")
-      throw new ResourceActionError("not-found");
     const ownsResource = currentResource.data()?.authorId === uid;
+    if (
+      !currentResource.exists ||
+      currentResource.data()?.status !== "active" ||
+      (!ownsResource &&
+        !(await publicResourceIds([currentResource], transaction)).has(
+          currentResource.id,
+        ))
+    )
+      throw new ResourceActionError("not-found");
+    if (
+      currentResource.data()?.filePath !== data.filePath ||
+      currentResource.data()?.fileType !== data.fileType ||
+      currentResource.data()?.fileSize !== data.fileSize ||
+      currentResource.data()?.generatedBytesHash !== data.generatedBytesHash
+    )
+      throw new ResourceActionError("not-ready");
     const downloads = number(currentUsage.data()?.resourceDownloads);
     const currentDecision = canDownloadResource({
       status: currentUser.data()?.status ?? "deleted",

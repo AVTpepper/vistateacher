@@ -13,6 +13,7 @@ import { notFound } from "next/navigation";
 import { ProfileIdentityLink } from "@/components/ui/profile-identity-link";
 import { ResourceDetailActions } from "@/features/resources/resource-detail-actions";
 import { requireCurrentAccount } from "@/lib/auth/session";
+import { publicResourceIds } from "@/lib/community/visibility";
 import { adminDb } from "@/lib/firebase/admin";
 import { getResourceDetail } from "@/lib/resources/server";
 
@@ -23,6 +24,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { resourceId } = await params;
   const snapshot = await adminDb().doc(`resources/${resourceId}`).get();
+  const visible = await publicResourceIds([snapshot]);
+  if (!visible.has(resourceId))
+    return { title: "Resource", robots: { index: false, follow: false } };
   const data = snapshot.data();
   const title = typeof data?.title === "string" ? data.title : "Resource";
   return { title };

@@ -56,13 +56,67 @@ const db = {
     }),
 };
 
-const files = new Map<string, { bytes: Buffer; contentType: string }>();
+type StoredFixtureFile = {
+  bytes: Buffer;
+  contentType: string;
+  generation?: string;
+  metageneration?: number;
+  cacheControl?: string;
+  metadata?: { firebaseStorageDownloadTokens?: string };
+};
+const files = new Map<string, StoredFixtureFile>();
 const save = vi.fn(async (path: string, bytes: Buffer, contentType: string) => {
   files.set(path, { bytes: Buffer.from(bytes), contentType });
 });
 const remove = vi.fn(async (path: string) => {
   files.delete(path);
 });
+function storedFile(path: string) {
+  const file = files.get(path);
+  if (!file) throw new Error("missing upload");
+  return file;
+}
+function fileMetadata(path: string) {
+  const file = storedFile(path);
+  return {
+    size: String(file.bytes.length),
+    contentType: file.contentType,
+    generation: file.generation ?? "1",
+    metageneration: String(file.metageneration ?? 1),
+    ...(file.cacheControl ? { cacheControl: file.cacheControl } : {}),
+    metadata: {
+      ...(file.metadata ?? {
+        firebaseStorageDownloadTokens: "fixture-download-token",
+      }),
+    },
+  };
+}
+const setMetadata = vi.fn(
+  async (
+    path: string,
+    data: {
+      cacheControl: string;
+      metadata: { firebaseStorageDownloadTokens: null };
+    },
+    options: { preconditionOpts: { ifMetagenerationMatch?: string | number } },
+  ) => {
+    const file = storedFile(path);
+    if (
+      String(options.preconditionOpts.ifMetagenerationMatch) !==
+      String(file.metageneration ?? 1)
+    )
+      throw new Error("Metadata precondition failed");
+    if (
+      data.metadata.firebaseStorageDownloadTokens !== null ||
+      data.cacheControl !== "private, no-store"
+    )
+      throw new Error("Unexpected private metadata update");
+    file.metadata = {};
+    file.cacheControl = data.cacheControl;
+    file.metageneration = (file.metageneration ?? 1) + 1;
+    return [fileMetadata(path)];
+  },
+);
 const bucket = {
   deleteFiles: vi.fn(async ({ prefix }: { prefix: string }) => {
     for (const path of files.keys())
@@ -71,13 +125,11 @@ const bucket = {
   file: (path: string) => ({
     save: (bytes: Buffer, options: { contentType: string }) =>
       save(path, bytes, options.contentType),
-    getMetadata: async () => {
-      const file = files.get(path);
-      if (!file) throw new Error("missing upload");
-      return [
-        { size: String(file.bytes.length), contentType: file.contentType },
-      ];
-    },
+    getMetadata: async () => [fileMetadata(path)],
+    setMetadata: (
+      data: Parameters<typeof setMetadata>[1],
+      options: Parameters<typeof setMetadata>[2],
+    ) => setMetadata(path, data, options),
     download: async () => {
       const file = files.get(path);
       if (!file) throw new Error("missing upload");
@@ -98,6 +150,8 @@ vi.mock("@/lib/firebase/admin", () => ({
   adminStorage: () => ({ bucket: () => bucket }),
 }));
 vi.mock("@/lib/feed/server", () => ({
+  publicActivityRef: (input: { kind: string; entityId: string }) =>
+    db.doc(`posts/activity_${input.kind}_${input.entityId}`),
   writePublicActivity: (
     tx: FirebaseFirestore.Transaction,
     input: { entityId: string },

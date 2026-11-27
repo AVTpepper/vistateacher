@@ -384,6 +384,15 @@ export async function processAccountDeletion(
           },
         );
       }
+      for (const collection of [
+        "lessonGenerationRequests",
+        "lessonGenerationBatches",
+        "worksheetGenerationRequests",
+      ]) {
+        await deleteQuery(
+          db.collection(collection).where("ownerId", "==", uid),
+        );
+      }
       // Shared message history remains for the other participant; this educator's messages and files are removed.
       await deleteQuery(
         db.collectionGroup("messages").where("senderId", "==", uid),

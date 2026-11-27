@@ -25,6 +25,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { LogoutButton } from "@/features/auth/logout-button";
 import { NotificationMenu } from "@/features/notifications/notification-menu";
+import { NotificationProvider } from "@/features/notifications/notification-provider";
 import { PresenceHeartbeat } from "@/features/presence/presence-heartbeat";
 import { GlobalSearch } from "@/features/search/global-search";
 import { refreshFirebaseClientAuth } from "@/lib/firebase/client-auth";
@@ -78,7 +79,15 @@ interface PlatformShellProps {
   children: React.ReactNode;
 }
 
-export function PlatformShell({ account, plan, children }: PlatformShellProps) {
+export function PlatformShell(props: PlatformShellProps) {
+  return (
+    <NotificationProvider key={props.account.uid} uid={props.account.uid}>
+      <PlatformShellContent {...props} />
+    </NotificationProvider>
+  );
+}
+
+function PlatformShellContent({ account, plan, children }: PlatformShellProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isNavigationActive = (href: string) =>

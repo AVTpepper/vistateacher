@@ -36,16 +36,24 @@ service firebase.storage {
       allow write: if false;
     }
 
-    match /posts/{uid}/{postId}/{fileName} {
-      allow read: if signedIn();
-      allow create, update: if active()
+    match /posts/{uid}/{attachmentId}/{fileName} {
+      allow read: if false;
+      allow create: if active()
         && request.auth.uid == uid
+        && firestore.exists(/databases/(default)/documents/postAttachments/$(attachmentId))
+        && firestore.get(/databases/(default)/documents/postAttachments/$(attachmentId)).data.ownerId == uid
+        && firestore.get(/databases/(default)/documents/postAttachments/$(attachmentId)).data.state == "reserved"
+        && firestore.get(/databases/(default)/documents/postAttachments/$(attachmentId)).data.expiresAt > request.time
+        && firestore.get(/databases/(default)/documents/postAttachments/$(attachmentId)).data.path == "posts/" + uid + "/" + attachmentId + "/" + fileName
+        && firestore.get(/databases/(default)/documents/postAttachments/$(attachmentId)).data.contentType == request.resource.contentType
+        && firestore.get(/databases/(default)/documents/postAttachments/$(attachmentId)).data.size == request.resource.size
         && (imageWithin(10 * 1024 * 1024) || postFileWithin(25 * 1024 * 1024));
+      allow update, delete: if false;
     }
 
     match /resources/{uid}/{resourceId}/{fileName} {
       allow read: if false;
-      allow create, update: if active()
+      allow create: if active()
         && request.auth.uid == uid
         && firestore.exists(/databases/(default)/documents/resources/$(resourceId))
         && firestore.get(/databases/(default)/documents/resources/$(resourceId)).data.authorId == uid
@@ -57,10 +65,11 @@ service firebase.storage {
         && request.resource.size <= 25 * 1024 * 1024
         && request.resource.contentType.matches('(application/pdf|application/vnd.ms-powerpoint|application/vnd.openxmlformats-officedocument.wordprocessingml.document|application/vnd.openxmlformats-officedocument.presentationml.presentation|image/(jpeg|png|webp|heic|heif)|video/mp4)');
       allow delete: if false;
+      allow update: if false;
     }
 
     match /resources/{uid}/{resourceId}/thumbnail/{fileName} {
-      allow read: if signedIn();
+      allow read: if active() && request.auth.uid == uid;
       allow write: if active() && request.auth.uid == uid && imageWithin(5 * 1024 * 1024);
     }
 

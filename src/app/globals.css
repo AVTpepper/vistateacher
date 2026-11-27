@@ -387,6 +387,23 @@ html:has(.marketing-flow) {
   border-color: var(--border);
 }
 
+/* Keep notification dismissal consistent with the application's touch targets. */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  padding-right: 3.5rem;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-close-button] {
+  width: 2.75rem;
+  height: 2.75rem;
+  top: 0.25rem;
+  right: 0.25rem;
+  left: auto;
+  transform: none;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+}
+
 html {
   width: 100%;
   max-width: 100%;

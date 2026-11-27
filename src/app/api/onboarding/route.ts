@@ -7,6 +7,11 @@ import { hasTrustedOrigin } from "@/lib/auth/request";
 import { verifySessionCookie } from "@/lib/auth/session";
 import { adminDb } from "@/lib/firebase/admin";
 import {
+  applyPrivateUserPlan,
+  planPrivateUserRepair,
+  PrivateRecoveryError,
+} from "@/lib/profiles/private-user";
+import {
   createSearchKeywords,
   normalizeSearchText,
 } from "@/lib/search/normalize";
@@ -55,12 +60,29 @@ export async function POST(request: NextRequest) {
       const profileRef = db.doc(`users/${account.uid}`);
       const privateRef = db.doc(`userPrivate/${account.uid}`);
       const subscriptionRef = db.doc(`subscriptions/${account.uid}`);
-      const [profile, privateUser, subscription] = await Promise.all([
-        transaction.get(profileRef),
-        transaction.get(privateRef),
-        transaction.get(subscriptionRef),
-      ]);
+      const [profile, privateUser, subscription, deletionJob] =
+        await transaction.getAll(
+          profileRef,
+          privateRef,
+          subscriptionRef,
+          db.doc(`accountDeletions/${account.uid}`),
+        );
       const now = FieldValue.serverTimestamp();
+      const plan = planPrivateUserRepair(
+        privateUser.data(),
+        account.email,
+        {
+          profile: !profile.exists
+            ? "new"
+            : profile.data()?.status === "active"
+              ? "active"
+              : "inactive",
+          deletionJobExists: deletionJob.exists,
+        },
+        now,
+      );
+      if (plan.state === "recovery-required")
+        throw new PrivateRecoveryError("recovery-required");
 
       if (!profile.exists) {
         transaction.set(profileRef, {
@@ -102,17 +124,7 @@ export async function POST(request: NextRequest) {
           updatedAt: now,
         });
       }
-      if (!privateUser.exists) {
-        transaction.set(privateRef, {
-          email: account.email,
-          contactDetails: {},
-          privacySettings: { shareContactInfo: false },
-          notificationSettings: { email: true, inApp: true },
-          accountDeletion: { requestedAt: null },
-          createdAt: now,
-          updatedAt: now,
-        });
-      }
+      applyPrivateUserPlan(transaction, privateRef, plan);
       if (!subscription.exists) {
         transaction.set(subscriptionRef, {
           plan: "free",
@@ -131,7 +143,22 @@ export async function POST(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error("Onboarding account setup failed", error);
+    if (error instanceof PrivateRecoveryError)
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        {
+          status:
+            error.code === "invalid-identity"
+              ? 401
+              : ["inactive", "deletion-blocked"].includes(error.code)
+                ? 403
+                : 409,
+        },
+      );
+    console.error("Onboarding account setup failed", {
+      uid: account.uid,
+      category: "unexpected",
+    });
     return NextResponse.json(
       {
         error: "We couldn't finish setting up your account. Please try again.",

@@ -1,6 +1,6 @@
 # VistaTeacher launch assessment
 
-Review updated: 25 November 2026. This is an implementation and local runtime audit,
+Review updated: 27 November 2026. This is an implementation and local runtime audit,
 not a certification of the deployed service. **The project is not ready for a
 public launch against the agreed product scope yet.**
 
@@ -24,9 +24,13 @@ public launch against the agreed product scope yet.**
 | Content language    | Teacher selects the language for generated teaching materials                                                          |
 | Currency            | US dollars by default; currency choice through Stripe                                                                  |
 | Sign-in destination | Community feed with quick access to teaching tools                                                                     |
+| OpenAI pilot budget | $25 per month; Firebase costs are separate                                                                             |
 
 No new subscription prices or AI allowances were selected. Existing Community
-and Plus entitlements remain in place.
+and Plus entitlements remain in place. The OpenAI launch pilot budget is
+**$25 per month**. Server-side cost reservation, reconciliation and a spending
+stop still need implementation; per-teacher action quotas alone do not enforce
+that overall budget. Firebase costs are separate from this AI ceiling.
 
 ## Evidence
 
@@ -35,8 +39,15 @@ and Plus entitlements remain in place.
   generators, profiles, and settings pages.
 - [After screenshots and control inventory](evidence/after/audit.json): 26 routes
   at both viewport sizes, plus generated-result screenshots.
-- [Link destinations and actual navigation clicks](evidence/navigation.json):
+- [Earlier link destinations and navigation clicks](evidence/navigation.json):
   77 current/stable internal targets and 27 journeys across 1440px, 1024px and 390px widths. The report separately records 27 removed historical test profiles.
+- [Current lesson and public-page navigation](evidence/lesson-reliability/navigation.json):
+  111 linked targets, 27 primary-navigation journeys and 24 guest/authenticated
+  public-page checks passed. The [earlier signed-in failures](evidence/lesson-reliability-before/signed-in-public-navigation.json)
+  record the missing-provider defect. Current captures include
+  [desktop About](evidence/navigation-shell/signed-in-about-1440.png),
+  [mobile About](evidence/navigation-shell/signed-in-about-390.png) and
+  [guest pricing](evidence/navigation-shell/guest-pricing-390.png).
 - [Desktop lesson builder before](evidence/before/desktop-ai-lessons.png) /
   [after](evidence/after/desktop-ai-lessons.png).
 - [Mobile lesson builder before](evidence/before/mobile-ai-lessons.png) /
@@ -65,9 +76,9 @@ The [source route inventory](evidence/project-inventory.json) records 47 page
 files and 58 API handlers at the start of the review. Capturing 26 routes does
 not establish complete visual or interaction coverage of all admin, account
 recovery and operational flows. The [current source inventory](evidence/project-inventory-current.json)
-contains 50 page files and 67 API handler files after the worksheet and Google
-export additions. The four Google export handler files are private authenticated
-APIs, not additional navigation destinations.
+contains 50 page files and 71 API handler files after the worksheet, Google
+export and lesson recovery additions. The new export and recovery handlers are
+private authenticated APIs, not additional navigation destinations.
 
 ## Current pages and navigation
 
@@ -82,9 +93,15 @@ APIs, not additional navigation destinations.
 
 Desktop and mobile primary navigation already use one shared route definition.
 Settings links now also come from one shared definition, removing duplicated
-markup and styling. The initial audit exercised eight primary destinations. The
-worksheet release adds a ninth: all 27 current journeys and all 77 current/stable
-linked targets pass. Historical screenshot links to 27 temporary profiles are
+markup and styling. The lesson follow-up found that signed-in public pages
+rendered a notification menu outside its provider, returning server errors from
+About, Help, Pricing and policy links. The shared platform shell now owns exactly
+one account-keyed notification provider for both layout entry points. Navigation
+verification includes authenticated footer clicks and signed-out page rendering.
+The initial audit exercised eight primary destinations. The worksheet release
+added a ninth and passed 27 journeys with 77 linked targets. The current lesson
+follow-up passes all 27 primary journeys, 24 public-page checks and 111 linked
+targets. Historical screenshot links to 27 temporary profiles are
 recorded separately because rule tests reset the demo database; these are not
 links found on current pages. Current links are collected afresh during navigation. An initial
 download failure exposed a missing sample file in the emulator seed; the seed
@@ -130,6 +147,12 @@ as documented by [Playwright](https://playwright.dev/docs/api/class-page#page-go
 This distinction is handled in the action test rather than treating a blank
 headless viewer as a failed server export.
 
+Lesson recovery releases its action lock when generation and its ledger check
+finish. A separate, bounded allowance refresh cannot keep Resume or editing
+disabled. Superseded refreshes and responses from a previous account are ignored.
+This does not shorten an actual generation or server-ledger request: those retain
+their own timeouts and duplicate-submission safeguards.
+
 The final control inventory includes 465 enabled button instances. All meet the
 44px target with a 1px measurement tolerance. Follow-up fixes cover password
 visibility, rating stars, forum comment controls, feed counters and the resource
@@ -162,7 +185,8 @@ PDF and Word exports explicitly separate the student worksheet and answer key.
 Student rendering accepts an allowlisted projection without answer-key fields;
 artifact tests inspect the actual Word document XML for teacher-only content.
 Filenames distinguish mode and saved version. The existing PDF script limitation
-below still applies. Native Google Docs delivery remains outstanding.
+below still applies. Native Google Docs delivery is implemented below; real
+Google authorization and conversion still require staging verification.
 
 AI reservations use the same transactional allowance and cooldown as lessons.
 Request IDs prevent retry charges; known failures refund the reservation. A
@@ -297,7 +321,7 @@ may still finish. Deferred deletion needs an administrator retry after its grace
 the status page displays that time. A background deletion worker remains an
 operational improvement.
 
-The final local suite passes 295 unit/component checks in 68 files and 60
+The native Docs milestone passed 295 unit/component checks in 68 files and 60
 Firestore/Storage checks. Six desktop/mobile export journeys pass, with sixteen
 dialog screenshots, zero selected Axe violations, zero horizontal overflow and
 44px enabled button targets. The first browser run exposed a test-only implicit
@@ -314,6 +338,31 @@ configuration, billing change, external file creation or deployment was performe
 Private snapshots are capped at 900 KiB each and 100 per teacher; an export
 history manager that frees snapshots without deleting teaching materials would
 improve this limit's UX.
+
+## Lesson reliability and navigation follow-up
+
+The [lesson contract](lesson-reliability.md) documents durable request recovery,
+version conflicts, account boundaries, partial batches, history restoration and
+saved-library pagination. The [verification record](evidence/lesson-reliability/verification.json)
+ties these checks to build `IruPCXnx50kwdyovBPigo` and 354 runtime input hashes.
+It records 323 passing unit/component tests in 73 files, 72 passing security and
+lifecycle checks, 32 screenshots and 28 selected Axe scans without violations.
+The backend inputs for the security checks were unchanged by the later shell
+and client-refresh fixes.
+
+The initial browser run passed 43 cases and failed one mobile Home-key assertion.
+No application cause was proven. The history test now waits for Page Down to
+finish native scrolling before pressing Home; both desktop/mobile checks pass.
+The record therefore combines 42 retained cases and two focused checks for 44
+distinct scenarios, rather than claiming one clean 44-case run. Rapid opposing
+keyboard actions remain an open diagnostic limitation.
+
+Reviewed captures include [desktop history](evidence/lesson-reliability/chromium/preview-saved-version.png),
+[mobile history](evidence/lesson-reliability/mobile-chrome/preview-saved-version.png),
+[retained stale edits](evidence/lesson-reliability/mobile-chrome/stale-edit-retained.png)
+and [completed batch](evidence/lesson-reliability/mobile-chrome/batch-complete-once.png).
+These captures wait for transient toasts to dismiss normally; toast overlap is
+still an identified UX issue.
 
 ## Remaining launch work, in order
 
@@ -337,6 +386,9 @@ improve this limit's UX.
    now been implemented and verified locally (see the notification supplement).
    Community email delivery remains unimplemented and the settings page now
    says so. Test message privacy changes from the inbox as well as profiles.
+   Fix lesson moderation propagation: editing and resource backfill can reset a
+   rejected resource, and direct shared-lesson delivery needs to enforce its
+   moderation state. Add regression coverage for editing, backfill and feed links.
 4. **UX tightening.** Make useful community resources visible sooner; reduce
    decorative carousel content; explain empty feeds with practical next steps;
    make saved materials easier to find. The default sign-in and onboarding
@@ -352,22 +404,25 @@ improve this limit's UX.
    uploads/downloads, support delivery, Stripe test checkout/portal/webhooks,
    moderation and account deletion. Then verify the intended production
    environment, domain, provider configuration, indexes/rules, monitoring and
-   backups. Bring lesson saves and generation up to the worksheet workflow's
-   version-conflict, idempotency and abandoned-job recovery guarantees. Local
-   test success is not evidence of those external services.
+   backups. Local test success is not evidence of those external services.
+   Strict private-profile parsing also needs a legacy-data migration and
+   graceful failure check: incomplete existing records can currently cause
+   profile or marketing pages to return 500. Complete demo fixtures do not
+   establish that production records satisfy the current schema.
 
-The current lesson lifecycle has concrete gaps identified by source review:
-manual saves have no expected-version fence; abandoned generation has no
-expiration/recovery; retries lack stable request IDs; refund does not check a
-durable completion state; and partial batch failure hides completed items from
-the immediate response. Generation completion also needs an active-account
-check. Editing subject, age or duration updates lesson content while regeneration
-still uses the old brief, so a teacher's correction can revert. These need the
-worksheet workflow's durable guarantees, followed by concurrency and failure
-tests. Lesson sample provenance must be stored per version rather than inferred
-from today's environment. Printable lesson headings are still English even
-when generated prose uses another language. These remain launch work, not
-verified generator quality.
+The lesson lifecycle now uses expected-version saves, durable request identities,
+attempt fences, abandoned-job recovery and guarded refunds. Corrected subject,
+age and duration are saved into the teaching brief as well as the content.
+Sample provenance is stored on new lessons and their versions. Batch manifests
+expose completed lessons after partial failures; explicit retries retain the
+original request and never rerun completed items. History preview and restoration
+use no AI actions. Public lesson viewers receive a safe source projection that
+excludes private learner context and teacher instructions.
+
+Printable lesson headings are still English even when generated prose uses
+another language. Legacy records without sample provenance cannot establish
+which provider created them. Multilingual document labels and a real provider
+quality/cost evaluation remain launch work.
 
 Units should later own an ordered outline, shared outcomes and assessment,
 with explicit lesson links. Presentations should have real slide structure,
@@ -387,13 +442,33 @@ input tokens and $1.60 per million output tokens. An illustrative 4,000-input /
 4,000-output action is $0.008, or $0.40 for 50 such actions before retries,
 hosting, storage, payment and email costs. This is an estimate, not measured
 production spend. Review model lifecycle and compare quality before changing
-the configured model. [OpenAI model documentation](https://developers.openai.com/api/docs/models/gpt-4.1-mini).
+the configured model. It is deprecated and scheduled to shut down on January 14,
+2027, so launch preparation now includes a supported replacement, output-quality
+comparison and refreshed cost controls. The official recommendation is
+`gpt-6-luna`; the current configuration has not yet been changed.
+[OpenAI model documentation](https://developers.openai.com/api/docs/models/gpt-4.1-mini),
+[deprecation schedule](https://developers.openai.com/api/docs/deprecations).
+
+Use a dedicated VistaTeacher OpenAI project with a $25 monthly hard spend limit
+as a second layer alongside application reservations. OpenAI documents delayed
+enforcement and possible small overspend, so neither an alert nor the provider
+limit alone proves an exact $25 ceiling. No provider account settings have been
+changed. [OpenAI spend limits](https://developers.openai.com/api/docs/guides/spend-limits).
+
+The proposed first implementation admits at most $22 of conservatively reserved
+provider usage, including a $1 evaluation subset, leaving headroom under the $25
+provider limit. It uses one paid request per attempt, explicit output caps, no
+automatic SDK retries or paid repair, and keeps uncertain calls reserved. The
+pilot ledger does not reset automatically: reconciling the dedicated project's
+costs is required before opening another budget period. These controls remain
+planned, and paid activation still requires verification.
 
 Firebase App Hosting requires Blaze even at low usage and includes no-cost
 allowances. Cloud Storage also requires Blaze; Spark alone does not cover this
 application's hosting and upload stack. The follow-up budget answer assumed
-Spark would cover all non-AI costs; no numerical operating budget has been
-agreed. The repository configuration uses App Hosting in Europe, so US-only
+Spark would cover all non-AI costs. The user subsequently chose a $25 monthly
+OpenAI pilot ceiling; no numerical Firebase budget has been agreed. The
+repository configuration uses App Hosting in Europe, so US-only
 Storage free allowances must not be assumed. A “free to teachers” product still needs an operating budget and
 usage controls; changing hosting platforms is unnecessary for this first
 launch. [Firebase App Hosting costs](https://firebase.google.com/docs/app-hosting/costs).
@@ -433,5 +508,20 @@ overflow, and selected WCAG A/AA diagnostics. Tests in
 `tests/e2e/launch-audit.spec.ts` cover the new messaging policy, teaching context
 through generation/editing/export, and bulk notification behavior. Production
 AI and payment calls are intentionally outside this automated evidence.
+
+For a fresh emulator-backed lesson/Docs regression run, the tracked launcher
+seeds the demo project, builds the app and starts it on port 3100. It supplies a
+fake Google client ID for intercepted OAuth tests and disables local cloud
+metadata detection; it does not use a real Google connection or OpenAI provider.
+
+```powershell
+$env:PLAYWRIGHT_BASE_URL = $null
+$env:AUDIT_GOOGLE_DOCS_EVIDENCE_DIR = 'docs/audit/evidence/lesson-reliability/google-docs'
+pnpm exec firebase emulators:exec --project demo-vista-teacher --only auth,firestore,storage "pnpm test:e2e:emulated lesson-reliability.spec.ts google-docs.spec.ts consistent-creation.spec.ts --project=chromium --project=mobile-chrome --retries=0"
+```
+
+To repeat public-page checks against an already running demo app, set
+`PLAYWRIGHT_BASE_URL`, `AUDIT_NAVIGATION_OUTPUT` and optionally
+`AUDIT_NAV_SHELL_EVIDENCE_DIR`, then run `node scripts/audit-navigation.mjs`.
 
 Final verification results are recorded in [verification.json](evidence/verification.json).

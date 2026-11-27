@@ -24,6 +24,7 @@ import type {
 } from "@/lib/worksheets/server";
 import { EMPTY_WORKSHEET_SOURCE } from "./defaults";
 import { balanceQuestionCounts } from "@/lib/worksheets/question-mix";
+import { accountFetch } from "@/lib/auth/account-fetch";
 
 export function WorksheetCreate({
   uid,
@@ -100,7 +101,7 @@ export function WorksheetCreate({
     if (request.current?.fingerprint !== fingerprint)
       request.current = { fingerprint, id: crypto.randomUUID() };
     try {
-      const response = await fetch("/api/worksheets", {
+      const response = await accountFetch(uid, "/api/worksheets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { reportDetailsSchema } from "@/schemas/report";
 
 const tagSchema = z
   .string()
@@ -12,13 +13,7 @@ const mentionUidsSchema = z
   .max(10)
   .optional();
 
-export const forumReportReasonSchema = z.enum([
-  "spam",
-  "harassment",
-  "misinformation",
-  "unsafe",
-  "other",
-]);
+export const forumReportReasonSchema = reportDetailsSchema.shape.reason;
 
 export const createForumThreadSchema = z.object({
   categoryId: z.string().trim().min(1).max(80),
@@ -66,8 +61,7 @@ export const forumLikeSchema = forumThreadActionSchema.extend({
 
 export const forumReportSchema = forumThreadActionSchema.extend({
   replyId: z.string().trim().min(1).max(128).nullable().default(null),
-  reason: forumReportReasonSchema,
-  details: z.string().trim().max(500).default(""),
+  ...reportDetailsSchema.shape,
 });
 
 export const forumModerationSchema = forumThreadActionSchema.extend({

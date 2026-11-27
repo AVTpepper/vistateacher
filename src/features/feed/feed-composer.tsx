@@ -1,6 +1,7 @@
 "use client";
 
-import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import { ref, uploadBytesResumable } from "firebase/storage";
+import Image from "next/image";
 import {
   FileText,
   FileUp,
@@ -32,6 +33,7 @@ import type { MentionTarget } from "@/lib/mentions/types";
 import { cn } from "@/lib/utils";
 import type { CreatePostInput, PostFileAttachment } from "@/schemas/feed";
 import { postRecoverySchema } from "@/schemas/creation-draft";
+import { accountFetch } from "@/lib/auth/account-fetch";
 
 interface ComposerAccount {
   uid: string;
@@ -102,6 +104,59 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const firstName = account.displayName.split(" ")[0] || "Educator";
 
+  async function uploadAttachment(
+    file: File,
+    kind: "image" | "file",
+    contentType: string,
+  ) {
+    const reservationResponse = await accountFetch(
+      account.uid,
+      "/api/feed/attachments",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind,
+          name: file.name,
+          contentType,
+          size: file.size,
+        }),
+      },
+    );
+    const reservation = await reservationResponse.json();
+    if (
+      !reservationResponse.ok ||
+      typeof reservation.attachmentId !== "string" ||
+      typeof reservation.uploadPath !== "string"
+    )
+      throw new Error(
+        reservation.error ?? "We couldn't reserve this attachment.",
+      );
+    const client = await refreshFirebaseClientAuth();
+    const object = ref(client.storage, reservation.uploadPath);
+    await new Promise<void>((resolve, reject) => {
+      const task = uploadBytesResumable(object, file, { contentType });
+      task.on(
+        "state_changed",
+        (snapshot) =>
+          setUploadProgress(
+            Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
+          ),
+        reject,
+        resolve,
+      );
+    });
+    const finalized = await accountFetch(
+      account.uid,
+      `/api/feed/attachments/${reservation.attachmentId}/finalize`,
+      { method: "POST" },
+    );
+    const result = await finalized.json();
+    if (!finalized.ok || typeof result.url !== "string")
+      throw new Error(result.error ?? "We couldn't finish this attachment.");
+    return result.url as string;
+  }
+
   async function uploadImage(file: File) {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       toast.error("Choose a JPG, PNG, or WebP image.");
@@ -114,27 +169,7 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
     setUploading(true);
     setUploadProgress(0);
     try {
-      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const path = `posts/${account.uid}/${crypto.randomUUID()}/${crypto.randomUUID()}.${extension}`;
-      const client = await refreshFirebaseClientAuth();
-      const object = ref(client.storage, path);
-      await new Promise<void>((resolve, reject) => {
-        const task = uploadBytesResumable(object, file, {
-          contentType: file.type,
-        });
-        task.on(
-          "state_changed",
-          (snapshot) =>
-            setUploadProgress(
-              Math.round(
-                (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
-              ),
-            ),
-          reject,
-          resolve,
-        );
-      });
-      updateDraft("imageURL", await getDownloadURL(object));
+      updateDraft("imageURL", await uploadAttachment(file, "image", file.type));
     } catch (error) {
       toast.error(
         firebaseUploadErrorMessage(error, "We couldn't upload that image."),
@@ -155,27 +190,10 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
     setUploading(true);
     setUploadProgress(0);
     try {
-      const extension = file.name.split(".").at(-1)!.toLocaleLowerCase("en-US");
-      const path = `posts/${account.uid}/${crypto.randomUUID()}/${crypto.randomUUID()}.${extension}`;
-      const client = await refreshFirebaseClientAuth();
-      const object = ref(client.storage, path);
-      await new Promise<void>((resolve, reject) => {
-        const task = uploadBytesResumable(object, file, { contentType });
-        task.on(
-          "state_changed",
-          (snapshot) =>
-            setUploadProgress(
-              Math.round(
-                (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
-              ),
-            ),
-          reject,
-          resolve,
-        );
-      });
+      const url = await uploadAttachment(file, "file", contentType);
       updateDraft("fileAttachment", {
         name: file.name,
-        url: await getDownloadURL(object),
+        url,
         contentType,
         size: file.size,
       });
@@ -315,6 +333,14 @@ export function FeedComposer({ account, onCreate }: FeedComposerProps) {
           />
           {imageURL && (
             <div className="bg-muted mt-3 flex items-center justify-between rounded-lg px-3 py-2 text-xs">
+              <Image
+                src={imageURL}
+                alt="Selected image preview"
+                width={80}
+                height={60}
+                unoptimized
+                className="mr-3 h-15 w-20 rounded object-cover"
+              />
               <span className="truncate">Image ready to share</span>
               <button
                 type="button"

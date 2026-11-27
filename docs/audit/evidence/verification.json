@@ -1,5 +1,5 @@
 {
-  "verifiedAt": "2026-11-25T17:29:04.905Z",
+  "verifiedAt": "2026-11-26T23:22:59.017Z",
   "readiness": "not-ready-for-public-launch",
   "environment": {
     "firebase": "demo-vista-teacher emulators",
@@ -30,30 +30,32 @@
           ]
         }
       ],
-      "buildId": "qwl3t7b7W0cdJvV1-Vlwk"
+      "buildId": "IruPCXnx50kwdyovBPigo"
     },
     "lint": {
       "passed": true,
-      "scope": "All src plus changed rules/browser tests and Next config"
+      "scope": "All src plus changed rules/browser tests, Vitest rules and Next config"
     },
     "unit": {
-      "passed": 295,
-      "files": 68,
-      "command": "vitest run --pool=threads --maxWorkers=2",
-      "note": "Full suite after native Docs, pending publication recovery and account-deletion upload guard."
+      "passed": 323,
+      "files": 73,
+      "command": "vitest run --pool=threads --maxWorkers=2"
     },
     "changedControls": {
       "passed": 3,
       "files": 2
     },
     "firestoreAndStorageRules": {
-      "passed": 60,
-      "files": 1
+      "passed": 72,
+      "files": 2
     },
     "browser": {
       "passedDistinctScenarios": 12,
       "skippedDistinctScenarios": 2,
-      "projects": ["chromium", "mobile-chrome"],
+      "projects": [
+        "chromium",
+        "mobile-chrome"
+      ],
       "scope": [
         "Community-first sign-in and platform navigation",
         "Protected permalink return destination and clipboard sharing",
@@ -67,7 +69,10 @@
     },
     "focusedControlInteractions": {
       "passed": 2,
-      "scope": ["Rating selection", "Forum edit cancellation"]
+      "scope": [
+        "Rating selection",
+        "Forum edit cancellation"
+      ]
     },
     "nativePdfNavigation": {
       "passed": 1,
@@ -83,7 +88,11 @@
     "navigationJourneys": {
       "checked": 27,
       "successful": 27,
-      "widths": [1440, 1024, 390]
+      "widths": [
+        1440,
+        1024,
+        390
+      ]
     },
     "accessibility": {
       "pageScans": 8,
@@ -95,7 +104,9 @@
       "notificationScans": 10,
       "notificationViolations": 0,
       "googleDocsDialogScans": 16,
-      "googleDocsViolations": 0
+      "googleDocsViolations": 0,
+      "lessonReliabilityScans": 28,
+      "lessonReliabilityViolations": 0
     },
     "screenshots": {
       "before": 38,
@@ -108,7 +119,9 @@
       "worksheetApplication": 12,
       "worksheetPdfPreviews": 2,
       "notifications": 10,
-      "googleDocs": 16
+      "googleDocs": 16,
+      "lessonReliability": 28,
+      "publicShellNavigation": 4
     },
     "visibleEnabledButtonTargets": {
       "checked": 465,
@@ -122,10 +135,19 @@
       "files": 4
     },
     "currentBrowserRelease": {
-      "passed": 6,
+      "passed": 44,
       "skipped": 0,
-      "projects": ["chromium", "mobile-chrome"],
-      "scope": "Focused native Docs, snapshot publication and recovery release; Google network mocked"
+      "projects": [
+        "chromium",
+        "mobile-chrome"
+      ],
+      "files": [
+        "lesson-reliability.spec.ts",
+        "google-docs.spec.ts",
+        "consistent-creation.spec.ts"
+      ],
+      "initialRunFailures": 1,
+      "methodology": "42 retained passing cases plus 2 focused completed-scroll checks; not a single clean 44-case run."
     },
     "worksheetRelease": "worksheets/verification.json",
     "notificationRelease": "notifications/verification.json",
@@ -133,15 +155,28 @@
     "previousNotificationBrowserRegression": {
       "passed": 18,
       "skipped": 0,
-      "projects": ["chromium", "mobile-chrome"],
+      "projects": [
+        "chromium",
+        "mobile-chrome"
+      ],
       "notificationChecks": 6,
       "worksheetChecks": 4,
       "lessonMessagingNotificationChecks": 8
     },
     "format": {
       "passed": true,
-      "scope": "All src plus changed tests, config, indexes and Google setup notes"
-    }
+      "scope": "All src plus changed tests/config/docs, preserving existing line endings"
+    },
+    "previousGoogleDocsBrowserRegression": {
+      "passed": 6,
+      "skipped": 0,
+      "projects": [
+        "chromium",
+        "mobile-chrome"
+      ],
+      "scope": "Focused native Docs, snapshot publication and recovery release; Google network mocked"
+    },
+    "lessonReliabilityRelease": "lesson-reliability/verification.json"
   },
   "externalVerification": {
     "liveOpenAI": false,
@@ -166,7 +201,8 @@
     "worksheets": "worksheets/verification.json",
     "currentRouteInventory": "project-inventory-current.json",
     "notifications": "notifications/verification.json",
-    "googleDocs": "google-docs/verification.json"
+    "googleDocs": "google-docs/verification.json",
+    "lessonReliability": "lesson-reliability/verification.json"
   },
   "previousVerificationAt": "2026-11-24T21:51:47.968Z"
 }
